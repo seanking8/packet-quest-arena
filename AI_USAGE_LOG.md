@@ -107,3 +107,32 @@ component was expecting a list of per-player scores and crashing on our single
 score number. Per-player scoring isn't built yet, so we simplified Scoreboard to
 just show the one score. Page came back and the board drew correctly - 6 nodes,
 8 links, all labelled. Kept it.
+
+## stage7
+## Generating packet traffic
+
+We needed flows of network traffic for players to route. Worked through this
+with AI.
+
+Added a PacketFlow entity (source node, destination node, traffic type, status,
+bandwidth), a repository, and a PacketFlowFactory that builds five flows per
+session - always one EMERGENCY and one BACKGROUND (the story requires both),
+plus three random others from VIDEO/IOT/CONTROL. Wired into createSession beside
+topology generation. The flow data is exposed through the game-state endpoint
+as a FlowView (no entity back-references, same approach we took with nodes and
+links).
+
+A few things we caught while building:
+- IntelliJ auto-imported javax.swing.text.FlowView into the DTO when we added
+  our inner FlowView class. Wrong FlowView entirely - removed the import.
+- Used explicit @Column names (source_node_id, destination_node_id,
+  traffic_type) to avoid the reserved-word problem we hit with link.load
+  during the topology story.
+
+Scope decision: flows are generated at session creation for now. When we build
+"Start game session" (story 14, P1) they'll move to the start action - noted in
+the design decisions doc so we don't forget.
+
+Verified: curl on the state endpoint returns 5 flows with all required fields,
+both EMERGENCY and BACKGROUND present. Accepted.
+

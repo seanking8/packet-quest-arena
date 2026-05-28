@@ -1,5 +1,4 @@
 package com.packetquest.dto;
-
 import java.util.List;
 
 /**
@@ -19,13 +18,13 @@ public class GameStateResponse {
     private final List<PlayerView> players;
     private final List<NodeView> nodes;
     private final List<LinkView> links;
-    private final List<Object> flows;
+    private final List<FlowView> flows;
     private final int score;
 
     public GameStateResponse(String sessionId, String status,
                              List<PlayerView> players,
                              List<NodeView> nodes, List<LinkView> links,
-                             List<Object> flows, int score) {
+                             List<FlowView> flows, int score) {
         this.sessionId = sessionId;
         this.status = status;
         this.players = players;
@@ -40,7 +39,7 @@ public class GameStateResponse {
     public List<PlayerView> getPlayers() { return players; }
     public List<NodeView> getNodes() { return nodes; }
     public List<LinkView> getLinks() { return links; }
-    public List<Object> getFlows() { return flows; }
+    public List<FlowView> getFlows() { return flows; }
     public int getScore() { return score; }
 
     public static class PlayerView {
@@ -86,5 +85,25 @@ public class GameStateResponse {
         public int getLatency() { return latency; }
         public int getLoad() { return load; }
         public String getStatus() { return status; }
+    }
+
+    public static class FlowView {
+        private final Long id;
+        private final Long source;
+        private final Long destination;
+        private final String trafficType;
+        private final String status;
+        private final int bandwidth;
+        public FlowView(Long id, Long source, Long destination,
+                        String trafficType, String status, int bandwidth) {
+            this.id = id; this.source = source; this.destination = destination;
+            this.trafficType = trafficType; this.status = status; this.bandwidth = bandwidth;
+        }
+        public Long getId() { return id; }
+        public Long getSource() { return source; }
+        public Long getDestination() { return destination; }
+        public String getTrafficType() { return trafficType; }
+        public String getStatus() { return status; }
+        public int getBandwidth() { return bandwidth; }
     }
 }

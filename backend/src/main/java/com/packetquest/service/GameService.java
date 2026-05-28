@@ -2,14 +2,17 @@ package com.packetquest.service;
 
 import com.packetquest.dto.GameStateResponse;
 import com.packetquest.exception.SessionNotFoundException;
+import com.packetquest.factory.PacketFlowFactory;
 import com.packetquest.factory.TopologyFactory;
 import com.packetquest.model.GameSession;
 import com.packetquest.model.Link;
 import com.packetquest.model.Node;
+import com.packetquest.model.PacketFlow;
 import com.packetquest.model.Player;
 import com.packetquest.repository.GameSessionRepository;
 import com.packetquest.repository.LinkRepository;
 import com.packetquest.repository.NodeRepository;
+import com.packetquest.repository.PacketFlowRepository;
 import com.packetquest.repository.PlayerRepository;
 import org.springframework.stereotype.Service;
 
@@ -27,18 +30,24 @@ public class GameService {
     private final PlayerRepository playerRepo;
     private final NodeRepository nodeRepo;
     private final LinkRepository linkRepo;
+    private final PacketFlowRepository flowRepo;
     private final TopologyFactory topologyFactory;
+    private final PacketFlowFactory flowFactory;
 
     public GameService(GameSessionRepository sessionRepo,
                        PlayerRepository playerRepo,
                        NodeRepository nodeRepo,
                        LinkRepository linkRepo,
-                       TopologyFactory topologyFactory) {
+                       PacketFlowRepository flowRepo,
+                       TopologyFactory topologyFactory,
+                       PacketFlowFactory flowFactory) {
         this.sessionRepo = sessionRepo;
         this.playerRepo = playerRepo;
         this.nodeRepo = nodeRepo;
         this.linkRepo = linkRepo;
+        this.flowRepo = flowRepo;
         this.topologyFactory = topologyFactory;
+        this.flowFactory = flowFactory;
     }
 
     public GameSession createSession(String playerName) {
@@ -81,13 +90,20 @@ public class GameService {
                         l.getCapacity(), l.getLatency(), l.getLoad(), l.getStatus()))
                 .toList();
 
+        List<GameStateResponse.FlowView> flows = flowRepo.findBySessionId(sessionId)
+                .stream()
+                .map(f -> new GameStateResponse.FlowView(
+                        f.getId(), f.getSourceNodeId(), f.getDestinationNodeId(),
+                        f.getTrafficType(), f.getStatus(), f.getBandwidth()))
+                .toList();
+
         return new GameStateResponse(
                 session.getId(),
                 session.getStatus(),
                 players,
                 nodes,
                 links,
-                List.of(),   // flows: empty until the packet-traffic story
+                flows,
                 0            // score: 0 until the scoring story
         );
     }
@@ -95,6 +111,7 @@ public class GameService {
     private void generateTopology(GameSession session) {
         List<Node> nodes = nodeRepo.saveAll(topologyFactory.buildNodes(session));
         linkRepo.saveAll(topologyFactory.buildLinks(session, nodes));
+        flowRepo.saveAll(flowFactory.buildFlows(session, nodes));
     }
 
     private void addPlayer(GameSession session, String playerName) {
