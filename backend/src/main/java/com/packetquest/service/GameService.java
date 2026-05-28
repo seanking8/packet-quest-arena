@@ -1,5 +1,6 @@
 package com.packetquest.service;
 
+import com.packetquest.dto.GameStateResponse;
 import com.packetquest.exception.SessionNotFoundException;
 import com.packetquest.factory.TopologyFactory;
 import com.packetquest.model.GameSession;
@@ -56,6 +57,39 @@ public class GameService {
                 .orElseThrow(() -> new SessionNotFoundException("Session not found"));
         addPlayer(session, playerName);
         return session;
+    }
+
+    public GameStateResponse getGameState(String sessionId) {
+        GameSession session = sessionRepo.findById(sessionId)
+                .orElseThrow(() -> new SessionNotFoundException("Session not found"));
+
+        List<GameStateResponse.PlayerView> players = playerRepo.findBySessionId(sessionId)
+                .stream()
+                .map(p -> new GameStateResponse.PlayerView(p.getId(), p.getName()))
+                .toList();
+
+        List<GameStateResponse.NodeView> nodes = nodeRepo.findBySessionId(sessionId)
+                .stream()
+                .map(n -> new GameStateResponse.NodeView(
+                        n.getId(), n.getName(), n.getX(), n.getY()))
+                .toList();
+
+        List<GameStateResponse.LinkView> links = linkRepo.findBySessionId(sessionId)
+                .stream()
+                .map(l -> new GameStateResponse.LinkView(
+                        l.getId(), l.getSource(), l.getTarget(),
+                        l.getCapacity(), l.getLatency(), l.getLoad(), l.getStatus()))
+                .toList();
+
+        return new GameStateResponse(
+                session.getId(),
+                session.getStatus(),
+                players,
+                nodes,
+                links,
+                List.of(),   // flows: empty until the packet-traffic story
+                0            // score: 0 until the scoring story
+        );
     }
 
     private void generateTopology(GameSession session) {

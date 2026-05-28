@@ -1,5 +1,6 @@
 package com.packetquest.controller;
 
+import com.packetquest.dto.GameStateResponse;
 import com.packetquest.model.GameSession;
 import com.packetquest.service.GameService;
 import jakarta.validation.Valid;
@@ -30,5 +31,10 @@ public class SessionController {
             @PathVariable String sessionId,
             @Valid @RequestBody JoinRequest req) {
         return ResponseEntity.ok(gameService.joinSession(sessionId, req.playerName()));
+    }
+
+    @GetMapping("/{id}/state")
+    public GameStateResponse getState(@PathVariable String id) {
+        return gameService.getGameState(id);
     }
 }

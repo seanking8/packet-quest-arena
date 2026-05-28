@@ -33,3 +33,6 @@ what was chosen and why. Update as decisions change.
 ## Rationale notes
 - Anything outside the spec's acceptance criteria is treated as stretch, to keep
   MVP effort focused on graded requirements.
+
+## DTo
+"used a DTO to provide a stable response contract and avoid exposing entity relationships."

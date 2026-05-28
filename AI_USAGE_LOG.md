@@ -56,3 +56,33 @@ All AI-assisted contributions must be logged here. Each entry must include what 
   source_node_id, target_node_id).
 - Verified via DB: session has 6 nodes / 8 links, each link has capacity,
   latency, load, status. Accepted.
+
+## story 5
+## Game state API
+
+We needed one endpoint the frontend could call to get everything about a session
+at once - its status, who's in it, the network layout, and (later) the packet
+flows and score. We worked through this with AI help.
+
+What we built: a GET /api/sessions/{id}/state endpoint. Behind it there's a
+response class (GameStateResponse) that bundles all the bits together, a method
+in GameService that gathers them from the database, and the controller route
+itself. If someone asks for a session that doesn't exist, it reuses the same
+"not found" handling we built for the lobby, so it returns a clean 404 instead
+of crashing.
+
+Something we caught and fixed: our first attempt just returned the raw database
+objects straight to the browser. That looked fine until we checked the actual
+output - every node and link had the whole session object stuffed inside it,
+repeated 14 times, and it was exposing the join code, which is meant to stay
+private. So we swapped to small "view" objects that only include the fields the
+frontend actually needs. Cleaner response, and nothing internal leaks out.
+
+One decision worth noting: packet flows and score don't exist yet (those are
+later stories), but we still added them to the response as an empty list and a
+zero. That way the shape of the response won't change when we add them later, so
+the frontend won't break.
+
+How we checked it: hit the endpoint with curl - a real session gave back the full
+clean state, and a made-up id gave back a safe 404. Happy with it, kept it.
+
