@@ -91,3 +91,27 @@ Core build continues on the existing story order. These four gaps are added to
 the backlog to be picked up during the quality/docs phase (scalability, security,
 frontend tests) and gameplay phase (incidents). Recorded here so they are not
 forgotten — they map to explicit Definition-of-Done items.
+
+--- this is about user story 8---
+## ## Player actions — aligned to spec, not the AI story
+
+The AI-generated story said "pick source and target node and route a packet."
+The spec talks about routing *flows* (traffic with type and bandwidth), not
+arbitrary node hops, so we re-scoped.
+
+### What we'll build for the MVP
+One well-formed action: **route a chosen flow along a chosen path of nodes.**
+Applying it increases `load` on each link in the path by the flow's bandwidth
+and marks the flow DELIVERED. The board's existing load-colour logic shows it.
+
+One action is enough for the MVP — the spec AC requires actions to exist and
+have effect, not multiple action types. Other actions in the spec (drop traffic,
+increase capacity, wait) are deferred.
+
+### Out of scope here
+Server-side validation (player belongs to session, route uses connected nodes,
+etc.) stays as its own next story. Scoring and cost arrive in their own stories.
+
+### Frontend impact
+The scaffold ActionPanel (source-node / target-node inputs) is replaced with:
+pick a PENDING flow → choose a path → submit.
