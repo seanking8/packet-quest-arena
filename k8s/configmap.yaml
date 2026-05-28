@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: packetquest-config
+data:
+  SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/packetquest
+  SPRING_DATASOURCE_USERNAME: pquser
+  BACKEND_URL: http://backend:8080
