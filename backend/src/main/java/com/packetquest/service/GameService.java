@@ -1,5 +1,6 @@
 package com.packetquest.service;
 
+import com.packetquest.exception.SessionNotFoundException;
 import com.packetquest.model.GameSession;
 import com.packetquest.model.Player;
 import com.packetquest.repository.GameSessionRepository;
@@ -34,7 +35,7 @@ public class GameService {
 
     public GameSession joinSession(String joinCode, String playerName) {
         GameSession session = sessionRepo.findByJoinCode(joinCode.trim().toUpperCase())
-                .orElseThrow(() -> new IllegalArgumentException("Session not found"));
+                .orElseThrow(() -> new SessionNotFoundException("Session not found"));
         addPlayer(session, playerName);
         return session;
     }

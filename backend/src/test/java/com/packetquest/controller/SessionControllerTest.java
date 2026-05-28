@@ -1,5 +1,6 @@
 package com.packetquest.controller;
 
+import com.packetquest.exception.SessionNotFoundException;
 import com.packetquest.model.GameSession;
 import com.packetquest.service.GameService;
 import org.junit.jupiter.api.Test;
@@ -10,6 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -26,9 +28,42 @@ class SessionControllerTest {
         when(gameService.createSession(anyString())).thenReturn(session);
 
         mockMvc.perform(post("/api/sessions")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"playerName\":\"Alice\"}"))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.id").exists());
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"playerName\":\"Alice\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").exists());
+    }
+
+    @Test
+    void joinSession_validCode_returnsSession() throws Exception {
+        GameSession session = new GameSession();
+        when(gameService.joinSession(anyString(), anyString())).thenReturn(session);
+
+        mockMvc.perform(post("/api/sessions/ASECCH/join")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"playerName\":\"Bob\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").exists());
+    }
+
+    @Test
+    void joinSession_invalidCode_returns404WithSafeError() throws Exception {
+        when(gameService.joinSession(eq("BADCODE"), anyString()))
+                .thenThrow(new SessionNotFoundException("Session not found"));
+
+        mockMvc.perform(post("/api/sessions/BADCODE/join")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"playerName\":\"Bob\"}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("Session not found"));
+    }
+
+    @Test
+    void createSession_blankName_returns400() throws Exception {
+        mockMvc.perform(post("/api/sessions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"playerName\":\"\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").exists());
     }
 }
