@@ -13,6 +13,7 @@ import com.packetquest.repository.LinkRepository;
 import com.packetquest.repository.NodeRepository;
 import com.packetquest.repository.PacketFlowRepository;
 import com.packetquest.repository.PlayerRepository;
+import com.packetquest.service.scoring.ScoringStrategy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -22,6 +23,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.anyList;
 
 class GameServiceTest {
 
@@ -32,6 +34,7 @@ class GameServiceTest {
     private PacketFlowRepository flowRepo;
     private TopologyFactory topologyFactory;
     private PacketFlowFactory flowFactory;
+    private ScoringStrategy scoringStrategy;
     private GameService service;
 
     private GameSession session;
@@ -47,10 +50,11 @@ class GameServiceTest {
         flowRepo = mock(PacketFlowRepository.class);
         topologyFactory = mock(TopologyFactory.class);
         flowFactory = mock(PacketFlowFactory.class);
+        scoringStrategy = mock(ScoringStrategy.class);
+        when(scoringStrategy.calculate(anyList(), anyList())).thenReturn(0);
 
         service = new GameService(sessionRepo, playerRepo, nodeRepo, linkRepo,
-                flowRepo, topologyFactory, flowFactory);
-
+                flowRepo, topologyFactory, flowFactory, scoringStrategy);
         // Common fixture: session "S1" with player 100 and a flow 1→4, bandwidth 10
         session = new GameSession();
         // session.id is set in the constructor; capture whatever it is and reuse it

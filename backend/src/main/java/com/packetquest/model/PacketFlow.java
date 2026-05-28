@@ -23,6 +23,9 @@ public class PacketFlow {
 
     private int bandwidth; // load this flow puts on a link when routed
 
+    @Column(name = "actual_latency")
+    private Integer actualLatency; // ms — set when the flow is delivered along a chosen path
+
     @ManyToOne
     @JoinColumn(name = "session_id")
     private GameSession session;
@@ -46,4 +49,7 @@ public class PacketFlow {
 
     public GameSession getSession() { return session; }
     public void setSession(GameSession session) { this.session = session; }
+
+    public Integer getActualLatency() { return actualLatency; }
+    public void setActualLatency(Integer actualLatency) { this.actualLatency = actualLatency; }
 }

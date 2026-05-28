@@ -115,3 +115,32 @@ etc.) stays as its own next story. Scoring and cost arrive in their own stories.
 ### Frontend impact
 The scaffold ActionPanel (source-node / target-node inputs) is replaced with:
 pick a PENDING flow → choose a path → submit.
+
+## Game mode: cooperative
+
+The spec offers cooperative, competitive, or team mode as options. We chose
+**cooperative**.
+
+### Why
+- Matches what we've already built: one `score` per session, not per player.
+  Actions are attributed to a player via `playerId` (for validation), but the
+  effect goes to a shared score.
+- The spec consistently uses collective language: "Players manage packet flows,"
+  "deliver traffic efficiently," "minimise dropped packets." Cooperative reads
+  naturally from how the game is described.
+- Maps to a real network-operations scenario: two engineers managing a shared
+  5G network. The network is up or down together — that's the educational
+  framing of the project.
+- Lowest risk for the MVP. Competitive would mean per-player score columns,
+  per-player flow ownership, and a redesign of the scoreboard, none of which
+  buys us more grading credit.
+
+### Implication for scoring
+One score per session, calculated from the combined effect of all delivered
+flows and link congestion. Players are working towards a single shared outcome.
+
+### Deferred
+- Competitive and team modes are not built. Could be added later by introducing
+  per-player score tracking — would not require rewriting the validation or
+  routing logic.
+

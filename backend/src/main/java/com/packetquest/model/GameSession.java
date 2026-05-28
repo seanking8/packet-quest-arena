@@ -15,6 +15,8 @@ public class GameSession {
 
     private String status = "WAITING"; // WAITING, ACTIVE, FINISHED
 
+    private int score = 0;
+
     public String getId() { return id; }
 
     public String getJoinCode() { return joinCode; }
@@ -22,4 +24,7 @@ public class GameSession {
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    public int getScore() { return score; }
+    public void setScore(int score) { this.score = score; }
 }

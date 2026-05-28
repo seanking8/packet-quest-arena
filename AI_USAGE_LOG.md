@@ -203,3 +203,36 @@ Verified: all unit tests pass; curl with a forged playerId returns 400 with
 "Player not found"; in the browser, routing a flow still works end-to-end.
 Accepted.
 
+## story 11
+## Calculating the score
+
+We needed scoring to make all the previous work actually mean something. Worked
+through it with AI.
+
+Started with a basic three-factor model (delivery + congestion + a simplified
+latency penalty), then decided the simplified latency wasn't using the data
+we'd already built, so we redesigned it. The final version is four factors:
+delivery base scaled by traffic-type priority, path-latency penalty also scaled
+by priority, SLA breach penalty per traffic type (EMERGENCY ≤50ms, BACKGROUND
+≤500ms, etc.), and a congestion penalty per overloaded link. Floored at 0 so
+the UI never shows negatives.
+
+To do this we needed to remember the actual latency of each delivered flow, so
+added an actualLatency column to PacketFlow and store it when the route is
+applied. Also added a score column to GameSession.
+
+Implemented the rules as a ScoringStrategy interface with a DefaultScoringStrategy
+component - this is the Strategy pattern from the spec's learning objectives,
+applied to scoring. GameService now depends on the interface, so a different
+strategy (e.g. a future competitive mode) could be swapped in with no code
+change at the call site.
+
+Wrote 10 unit tests for the strategy covering empty state, pending flows
+contributing nothing, base scoring, priority weights, SLA breach, congestion,
+and a realistic mixed scenario. Updated GameServiceTest to inject a mock
+ScoringStrategy and confirmed the existing 8 tests still pass.
+
+Verified in the browser: routed EMERGENCY 5->4 directly (scored 162), routed
+BACKGROUND 1->6 the long way around the ring (loaded several links, one turned
+amber - the colour logic we built earlier finally activated as designed). Score
+updates after each action. Accepted.

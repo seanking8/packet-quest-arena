@@ -1,6 +1,7 @@
 package com.packetquest.service;
 
 import com.packetquest.dto.GameStateResponse;
+import com.packetquest.dto.RouteActionRequest;
 import com.packetquest.dto.SessionJoinResponse;
 import com.packetquest.exception.SessionNotFoundException;
 import com.packetquest.factory.PacketFlowFactory;
@@ -15,8 +16,8 @@ import com.packetquest.repository.LinkRepository;
 import com.packetquest.repository.NodeRepository;
 import com.packetquest.repository.PacketFlowRepository;
 import com.packetquest.repository.PlayerRepository;
+import com.packetquest.service.scoring.ScoringStrategy;
 import org.springframework.stereotype.Service;
-import com.packetquest.dto.RouteActionRequest;
 
 import java.security.SecureRandom;
 import java.util.List;
@@ -35,6 +36,7 @@ public class GameService {
     private final PacketFlowRepository flowRepo;
     private final TopologyFactory topologyFactory;
     private final PacketFlowFactory flowFactory;
+    private final ScoringStrategy scoringStrategy;
 
     public GameService(GameSessionRepository sessionRepo,
                        PlayerRepository playerRepo,
@@ -42,7 +44,8 @@ public class GameService {
                        LinkRepository linkRepo,
                        PacketFlowRepository flowRepo,
                        TopologyFactory topologyFactory,
-                       PacketFlowFactory flowFactory) {
+                       PacketFlowFactory flowFactory,
+                       ScoringStrategy scoringStrategy) {
         this.sessionRepo = sessionRepo;
         this.playerRepo = playerRepo;
         this.nodeRepo = nodeRepo;
@@ -50,6 +53,7 @@ public class GameService {
         this.flowRepo = flowRepo;
         this.topologyFactory = topologyFactory;
         this.flowFactory = flowFactory;
+        this.scoringStrategy = scoringStrategy;
     }
 
     public SessionJoinResponse createSession(String playerName) {
@@ -106,21 +110,17 @@ public class GameService {
                 nodes,
                 links,
                 flows,
-                0            // score: 0 until the scoring story
+                session.getScore()
         );
     }
 
     /**
      * Apply a routing action: walk the path, add the flow's bandwidth to each
-     * link's load along the way, then mark the flow DELIVERED.
+     * link's load along the way, record the flow's actual latency, mark it
+     * DELIVERED, and recompute the session's score from the new state.
      *
-     * Only minimal "can the action be applied at all" checks here:
-     *   - flow must exist
-     *   - flow must still be PENDING
-     *   - each consecutive pair in the path must be a real link in this session
-     *
-     * Full validation (player belongs to session, path actually connects the
-     * flow's source to destination, etc.) is the next story.
+     * All side effects happen inside a single @Transactional so the score is
+     * always consistent with the action that produced it.
      */
     @org.springframework.transaction.annotation.Transactional
     public GameStateResponse routeFlow(String sessionId, RouteActionRequest req) {
@@ -164,7 +164,9 @@ public class GameService {
             linkByPair.put(pairKey(l.getSource(), l.getTarget()), l);
         }
 
-        // Walk the path; bump each link's load by the flow's bandwidth
+        // Walk the path; bump each link's load by the flow's bandwidth and
+        // accumulate the total latency along the chosen route.
+        int pathLatency = 0;
         for (int i = 0; i < path.size() - 1; i++) {
             Link link = linkByPair.get(pairKey(path.get(i), path.get(i + 1)));
             if (link == null) {
@@ -172,11 +174,22 @@ public class GameService {
                         "No link between nodes " + path.get(i) + " and " + path.get(i + 1));
             }
             link.setLoad(link.getLoad() + flow.getBandwidth());
+            pathLatency += link.getLatency();
             linkRepo.save(link);
         }
 
         flow.setStatus("DELIVERED");
+        flow.setActualLatency(pathLatency);
         flowRepo.save(flow);
+
+        // Recompute the session's score from the freshly updated state.
+        // Reads the current flows and links (which include this action's effects)
+        // and persists the new score on the session.
+        GameSession session = sessionRepo.findById(sessionId).orElseThrow();
+        List<PacketFlow> sessionFlows = flowRepo.findBySessionId(sessionId);
+        List<Link> updatedLinks = linkRepo.findBySessionId(sessionId);
+        session.setScore(scoringStrategy.calculate(sessionFlows, updatedLinks));
+        sessionRepo.save(session);
 
         return getGameState(sessionId);
     }
