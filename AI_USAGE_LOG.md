@@ -86,3 +86,24 @@ the frontend won't break.
 How we checked it: hit the endpoint with curl - a real session gave back the full
 clean state, and a made-up id gave back a safe 404. Happy with it, kept it.
 
+## story 6
+## Showing the network board
+
+We wanted the network to actually appear in the browser instead of a blank page.
+Worked through this with AI.
+
+The hook that fetches game state was trying to use a WebSocket endpoint we
+haven't built yet (that's a later story), so it was connecting to nothing and the
+board stayed empty. We switched it to just poll our REST state endpoint every 2
+seconds for now - when we build real-time updates later, only this hook changes.
+
+Then we updated the board component to read the nodes and links from the state
+and draw them with React Flow, colouring each link green/amber/red depending on
+how loaded it is (and grey/amber for down/degraded). Everything's green right now
+because there's no traffic yet, but the colour logic is ready for when there is.
+
+Hit a snag: the page went completely blank. The console showed the Scoreboard
+component was expecting a list of per-player scores and crashing on our single
+score number. Per-player scoring isn't built yet, so we simplified Scoreboard to
+just show the one score. Page came back and the board drew correctly - 6 nodes,
+8 links, all labelled. Kept it.
