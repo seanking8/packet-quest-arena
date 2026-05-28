@@ -32,3 +32,27 @@ All AI-assisted contributions must be logged here. Each entry must include what 
 - Review: reviewed the component logic; confirmed it uses session.joinCode for
   display and session.id internally. Noted as a future improvement: surface the
   backend's safe error message in api.js rather than a generic message. Accepted.
+
+## Backend safe error handling (lobby)
+- Purpose: invalid join codes threw a raw 500 exposing internals, failing the
+  "safe error message" criterion and the security requirement.
+- Action (AI-assisted): added SessionNotFoundException + a GlobalExceptionHandler
+  mapping it to 404, validation errors to 400, other bad input to 400, and a
+  catch-all to a generic 500 (no stack traces). GameService now throws the
+  custom exception. Added negative controller tests (invalid code -> 404,
+  blank name -> 400).
+- Review: reviewed each mapping; confirmed the catch-all returns no internal
+  detail. Verified all 4 tests pass. Accepted.
+
+## Network topology generation (backend)
+- Purpose: generate and persist a network of nodes and links per session.
+- Action (AI-assisted): added Node and Link entities + repositories and a
+  TopologyFactory (Factory pattern, per learning objectives) that builds 6 nodes
+  in a ring plus 2 cross-links (8 total); wired into GameService.createSession.
+- Issues found & fixed during review: (1) main application class had been moved
+  into the exception package, so Spring scanned 0 repositories — moved it back to
+  com.packetquest; (2) MySQL reserved-word columns 'load' (and source/target)
+  broke table creation — mapped them to explicit column names (link_load,
+  source_node_id, target_node_id).
+- Verified via DB: session has 6 nodes / 8 links, each link has capacity,
+  latency, load, status. Accepted.
