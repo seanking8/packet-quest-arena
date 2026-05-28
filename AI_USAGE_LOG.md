@@ -236,3 +236,43 @@ Verified in the browser: routed EMERGENCY 5->4 directly (scored 162), routed
 BACKGROUND 1->6 the long way around the ring (loaded several links, one turned
 amber - the colour logic we built earlier finally activated as designed). Score
 updates after each action. Accepted.
+
+## story 12 and 13
+## Ending the game (and the implicit scoreboard story)
+
+Built the end-game flow with AI.
+
+Two ways a session can end: manually via POST /api/sessions/{id}/end (a
+host-style action), or automatically when the last PENDING flow gets handled.
+The auto-end check runs inside the same @Transactional as the routing action,
+right after the flow is marked DELIVERED - if no PENDING flows remain, status
+flips to COMPLETED in the same commit. Manual end is idempotent: calling end
+on an already-ended session is a silent no-op, not an error, because a
+double-click or retried request shouldn't fail.
+
+To prevent late actions, routeFlow now checks the session isn't COMPLETED
+right after looking it up. A late route attempt returns 400 with "Session has
+ended" through the existing exception handler.
+
+Frontend: added an End Game button next to Leave, with a confirm prompt so it
+doesn't fire on accident. Once status is COMPLETED the button hides and a
+"Game Over" label appears in its place. Final score stays on screen via the
+existing scoreboard.
+
+Tests: three new GameServiceTest cases - routing on a COMPLETED session throws
+IllegalStateException, endSession marks status COMPLETED and saves, and
+endSession on an already-COMPLETED session is idempotent (status unchanged,
+save NOT called). All 11 GameServiceTest now green, plus the existing 10
+DefaultScoringStrategyTest and 4 SessionControllerTest.
+
+Verified end-to-end with curl: manual end flips status, blocks subsequent
+routes with HTTP 400; routing the last pending flow auto-flips status to
+COMPLETED while the final score (736 in the run we did) is preserved on the
+session. Browser shows "Game Over" once ended.
+
+Note on Story 12 (Show scoreboard): its three AC bullets - "UI displays
+current score", "updates after routing action", and "final score visible when
+game ends" - are all already satisfied by work done across stories 6, 11, and
+13. The Scoreboard component (story 6) shows state.score; story 11 made that
+    number real; story 13 makes the COMPLETED-state final score persistent. So
+    story 12 was satisfied incidentally

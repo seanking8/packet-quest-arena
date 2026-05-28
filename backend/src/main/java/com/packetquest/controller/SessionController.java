@@ -45,4 +45,9 @@ public class SessionController {
             @Valid @RequestBody RouteActionRequest req) {
         return gameService.routeFlow(id, req);
     }
+
+    @PostMapping("/{id}/end")
+    public GameStateResponse endSession(@PathVariable String id) {
+        return gameService.endSession(id);
+    }
 }

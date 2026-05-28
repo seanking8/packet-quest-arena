@@ -155,4 +155,36 @@ class GameServiceTest {
         verify(linkRepo, times(1)).save(argThat(l ->
                 l.getSource().equals(1L) && l.getTarget().equals(4L) && l.getLoad() == 10));
     }
+
+    @Test
+    void routingOnCompletedSession_throwsIllegalState() {
+        // session is currently WAITING — switch it to COMPLETED for this test
+        session.setStatus("COMPLETED");
+
+        assertThrows(IllegalStateException.class,
+                () -> service.routeFlow(session.getId(), req(100L, 1L, List.of(1L, 4L))));
+    }
+
+    @Test
+    void endSession_marksStatusCompleted() {
+        // session starts WAITING (default in the fixture)
+        service.endSession(session.getId());
+        assertEquals("COMPLETED", session.getStatus());
+        verify(sessionRepo).save(session);
+    }
+
+    @Test
+    void endSession_alreadyCompleted_isIdempotent() {
+        // pre-existing COMPLETED state
+        session.setStatus("COMPLETED");
+        reset(sessionRepo);   // forget any earlier save() calls from setUp
+        when(sessionRepo.findById(session.getId())).thenReturn(Optional.of(session));
+
+        service.endSession(session.getId());
+
+        // status is still COMPLETED
+        assertEquals("COMPLETED", session.getStatus());
+        // and we did NOT save again
+        verify(sessionRepo, never()).save(session);
+    }
 }

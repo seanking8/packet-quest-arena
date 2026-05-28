@@ -115,6 +115,24 @@ public class GameService {
     }
 
     /**
+     * Manually end a session. Sets status to COMPLETED and returns the final
+     * game state (final score is already on the session from the last action).
+     * Ending a session that's already COMPLETED is a no-op, not an error -
+     * idempotent so a double-click or retried network call won't fail.
+     */
+    @org.springframework.transaction.annotation.Transactional
+    public GameStateResponse endSession(String sessionId) {
+        GameSession session = sessionRepo.findById(sessionId)
+                .orElseThrow(() -> new SessionNotFoundException("Session not found"));
+
+        if (!"COMPLETED".equals(session.getStatus())) {
+            session.setStatus("COMPLETED");
+            sessionRepo.save(session);
+        }
+        return getGameState(sessionId);
+    }
+
+    /**
      * Apply a routing action: walk the path, add the flow's bandwidth to each
      * link's load along the way, record the flow's actual latency, mark it
      * DELIVERED, and recompute the session's score from the new state.
@@ -125,8 +143,12 @@ public class GameService {
     @org.springframework.transaction.annotation.Transactional
     public GameStateResponse routeFlow(String sessionId, RouteActionRequest req) {
         // Session exists (clean 404 via the exception handler)
-        sessionRepo.findById(sessionId)
+        GameSession sessionForGuard = sessionRepo.findById(sessionId)
                 .orElseThrow(() -> new SessionNotFoundException("Session not found"));
+
+        if ("COMPLETED".equals(sessionForGuard.getStatus())) {
+            throw new IllegalStateException("Session has ended");
+        }
 
         // Player exists and belongs to this session
         Player player = playerRepo.findById(req.getPlayerId())
@@ -181,6 +203,17 @@ public class GameService {
         flow.setStatus("DELIVERED");
         flow.setActualLatency(pathLatency);
         flowRepo.save(flow);
+
+        // Auto-end: if every flow in this session is now handled, end the session.
+        List<PacketFlow> allFlows = flowRepo.findBySessionId(sessionId);
+        boolean allHandled = allFlows.stream().allMatch(f -> !"PENDING".equals(f.getStatus()));
+        if (allHandled) {
+            GameSession sessionToEnd = sessionRepo.findById(sessionId).orElseThrow();
+            if (!"COMPLETED".equals(sessionToEnd.getStatus())) {
+                sessionToEnd.setStatus("COMPLETED");
+                sessionRepo.save(sessionToEnd);
+            }
+        }
 
         // Recompute the session's score from the freshly updated state.
         // Reads the current flows and links (which include this action's effects)
