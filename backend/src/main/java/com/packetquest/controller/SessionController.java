@@ -1,6 +1,7 @@
 package com.packetquest.controller;
 
 import com.packetquest.dto.GameStateResponse;
+import com.packetquest.dto.RouteActionRequest;
 import com.packetquest.model.GameSession;
 import com.packetquest.service.GameService;
 import jakarta.validation.Valid;
@@ -36,5 +37,12 @@ public class SessionController {
     @GetMapping("/{id}/state")
     public GameStateResponse getState(@PathVariable String id) {
         return gameService.getGameState(id);
+    }
+
+    @PostMapping("/{id}/actions/route")
+    public GameStateResponse routeFlow(
+            @PathVariable String id,
+            @Valid @RequestBody RouteActionRequest req) {
+        return gameService.routeFlow(id, req);
     }
 }

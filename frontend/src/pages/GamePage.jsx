@@ -5,7 +5,7 @@ import Scoreboard from '../components/Scoreboard'
 import useGameState from '../hooks/useGameState'
 
 export default function GamePage({ sessionId, onLeave }) {
-    const { state, error } = useGameState(sessionId)
+    const { state, error, setState } = useGameState(sessionId)
 
     return (
         <div>
@@ -15,7 +15,7 @@ export default function GamePage({ sessionId, onLeave }) {
             {error && <p style={{ color: 'crimson' }}>Connection problem: {error}</p>}
 
             <GameBoard state={state} />
-            <ActionPanel sessionId={sessionId} />
+            <ActionPanel sessionId={sessionId} state={state} onStateUpdate={setState} />
             <Scoreboard score={state?.score ?? 0} />
         </div>
     )

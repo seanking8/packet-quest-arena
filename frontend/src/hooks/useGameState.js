@@ -26,5 +26,5 @@ export default function useGameState(sessionId) {
     return () => { active = false; clearInterval(interval) }
   }, [sessionId])
 
-  return { state, error }
+  return { state, error, setState }
 }

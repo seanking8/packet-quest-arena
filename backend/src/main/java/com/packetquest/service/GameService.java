@@ -15,6 +15,7 @@ import com.packetquest.repository.NodeRepository;
 import com.packetquest.repository.PacketFlowRepository;
 import com.packetquest.repository.PlayerRepository;
 import org.springframework.stereotype.Service;
+import com.packetquest.dto.RouteActionRequest;
 
 import java.security.SecureRandom;
 import java.util.List;
@@ -106,6 +107,65 @@ public class GameService {
                 flows,
                 0            // score: 0 until the scoring story
         );
+    }
+
+    /**
+     * Apply a routing action: walk the path, add the flow's bandwidth to each
+     * link's load along the way, then mark the flow DELIVERED.
+     *
+     * Only minimal "can the action be applied at all" checks here:
+     *   - flow must exist
+     *   - flow must still be PENDING
+     *   - each consecutive pair in the path must be a real link in this session
+     *
+     * Full validation (player belongs to session, path actually connects the
+     * flow's source to destination, etc.) is the next story.
+     */
+    @org.springframework.transaction.annotation.Transactional
+    public GameStateResponse routeFlow(String sessionId, RouteActionRequest req) {
+        // Confirm session exists (clean 404 via the exception handler)
+        sessionRepo.findById(sessionId)
+                .orElseThrow(() -> new SessionNotFoundException("Session not found"));
+
+        PacketFlow flow = flowRepo.findById(req.getFlowId())
+                .orElseThrow(() -> new IllegalArgumentException("Flow not found"));
+
+        if (!"PENDING".equals(flow.getStatus())) {
+            throw new IllegalStateException("Flow has already been handled");
+        }
+
+        List<Long> path = req.getPath();
+        if (path.size() < 2) {
+            throw new IllegalArgumentException("Route must include at least two nodes");
+        }
+
+        // Build a quick lookup of links in this session, keyed on the unordered node pair
+        List<Link> sessionLinks = linkRepo.findBySessionId(sessionId);
+        java.util.Map<String, Link> linkByPair = new java.util.HashMap<>();
+        for (Link l : sessionLinks) {
+            linkByPair.put(pairKey(l.getSource(), l.getTarget()), l);
+        }
+
+        // Walk the path; bump each link's load by the flow's bandwidth
+        for (int i = 0; i < path.size() - 1; i++) {
+            Link link = linkByPair.get(pairKey(path.get(i), path.get(i + 1)));
+            if (link == null) {
+                throw new IllegalArgumentException(
+                        "No link between nodes " + path.get(i) + " and " + path.get(i + 1));
+            }
+            link.setLoad(link.getLoad() + flow.getBandwidth());
+            linkRepo.save(link);
+        }
+
+        flow.setStatus("DELIVERED");
+        flowRepo.save(flow);
+
+        return getGameState(sessionId);
+    }
+
+    /** Unordered key so a link counts the same in either direction. */
+    private String pairKey(Long a, Long b) {
+        return a < b ? a + "-" + b : b + "-" + a;
     }
 
     private void generateTopology(GameSession session) {

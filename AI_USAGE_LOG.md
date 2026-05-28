@@ -136,3 +136,34 @@ the design decisions doc so we don't forget.
 Verified: curl on the state endpoint returns 5 flows with all required fields,
 both EMERGENCY and BACKGROUND present. Accepted.
 
+## story8
+## Routing a packet flow
+
+We needed players to actually *do something* with the flows that get generated.
+Worked through this with AI.
+
+We re-scoped the AI-written story first: it said "pick source and target node
+and route a packet," but the spec talks about routing *flows*. So we built one
+real action — route a chosen flow along a chosen path of node IDs. That matched
+the spec better and used data we already had.
+
+Backend: a RouteActionRequest DTO, a routeFlow method on GameService, and a
+POST /api/sessions/{id}/actions/route endpoint. The service walks the path,
+adds the flow's bandwidth to each link's load, and marks the flow DELIVERED -
+all inside one @Transactional block so a half-applied action can't leave the
+state corrupt. Treated links as undirected with a small pairKey helper so
+"6→1" and "1→6" match the same wire.
+
+Frontend: replaced the scaffold ActionPanel (which had unrelated source/target-
+node inputs) with a flow dropdown + path input. Pending flows only, the
+required source/destination is shown next to the dropdown so the player knows
+what their path has to hit. On a successful submit we push the returned state
+straight up to GamePage so the board updates immediately instead of waiting
+for the next 2-second poll.
+
+Verified with curl first - flow status changed to DELIVERED, the right two
+links picked up the bandwidth, every other link stayed at 0, and a repeat
+submit was rejected with HTTP 400. Then verified in the browser: dropdown
+populated, "Path must start at 3 and end at 5" hint appeared, typed "3 4 5",
+clicked Route Flow, board updated with two links showing 29/.. load. Accepted.
+
