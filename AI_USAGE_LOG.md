@@ -167,3 +167,39 @@ submit was rejected with HTTP 400. Then verified in the browser: dropdown
 populated, "Path must start at 3 and end at 5" hint appeared, typed "3 4 5",
 clicked Route Flow, board updated with two links showing 29/.. load. Accepted.
 
+## story9
+## Server-side validation of player actions
+
+We needed the backend to actually defend itself against bad or forged action
+requests, not just trust the client. Worked through it with AI.
+
+Backend: added playerId to the RouteActionRequest, and tightened the routeFlow
+service to verify the session exists, the player exists and belongs to *this*
+session, the flow is still PENDING, and the path actually starts at the flow's
+source and ends at its destination (we already had "every hop is a real link"
+from the previous story). Checks run cheapest-first so we fail fast on the
+common bad cases. Side effects stay inside the @Transactional so a half-applied
+action can't corrupt state.
+
+Wrote a GameServiceTest with 8 unit tests covering every rejection path and
+the happy path. The happy-path test uses Mockito's argThat to assert which
+specific link got saved with the right load, not just "save was called."
+
+The contract change rippled out: backend's create/join now return a
+SessionJoinResponse with sessionId/playerId/joinCode (so the frontend knows
+which player it is), and the existing SessionControllerTest had to be updated
+to assert the new field shape. Frontend got threaded through too - App.jsx
+holds both sessionId and playerId, GamePage passes them down, ActionPanel
+includes playerId in routing requests.
+
+Snag: forgot to rebuild the backend container after the response shape change.
+Frontend started getting old-shape responses (no sessionId, no playerId), tried
+to read undefined properties, and rendered nothing. Curl-tested the endpoint
+to confirm the old shape was being served, then docker compose up --build
+backend fixed it. Now logged here so we remember Java code changes need a
+rebuild even though Vite hot-reloads the frontend.
+
+Verified: all unit tests pass; curl with a forged playerId returns 400 with
+"Player not found"; in the browser, routing a flow still works end-to-end.
+Accepted.
+

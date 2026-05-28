@@ -29,7 +29,7 @@ export default function LobbyPage({ onJoin }) {
         setBusy(true)
         try {
             const session = await joinSession(joinCode.trim().toUpperCase(), playerName.trim())
-            onJoin(session.id)
+            onJoin(session.sessionId, session.playerId)
         } catch (e) {
             setError('Could not join — check the code and try again.')
         } finally {
@@ -49,7 +49,7 @@ export default function LobbyPage({ onJoin }) {
                 <p>Session created. Share this code with the other player:</p>
                 <h2 style={{ letterSpacing: '2px' }}>{created.joinCode}</h2>
                 <button onClick={handleCopy}>Copy code</button>{' '}
-                <button onClick={() => onJoin(created.id)}>Enter Game</button>
+                <button onClick={() => onJoin(created.sessionId, created.playerId)}>Enter Game</button>
             </div>
         )
     }

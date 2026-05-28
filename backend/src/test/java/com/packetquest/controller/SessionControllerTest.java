@@ -1,7 +1,7 @@
 package com.packetquest.controller;
 
+import com.packetquest.dto.SessionJoinResponse;
 import com.packetquest.exception.SessionNotFoundException;
-import com.packetquest.model.GameSession;
 import com.packetquest.service.GameService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,26 +24,28 @@ class SessionControllerTest {
 
     @Test
     void createSession_returnsSession() throws Exception {
-        GameSession session = new GameSession();
-        when(gameService.createSession(anyString())).thenReturn(session);
+        when(gameService.createSession(anyString()))
+                .thenReturn(new SessionJoinResponse("s-1", "K7M2QP", "WAITING", 1L, "Alice"));
 
         mockMvc.perform(post("/api/sessions")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"playerName\":\"Alice\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").exists());
+                .andExpect(jsonPath("$.sessionId").exists())
+                .andExpect(jsonPath("$.playerId").exists());
     }
 
     @Test
     void joinSession_validCode_returnsSession() throws Exception {
-        GameSession session = new GameSession();
-        when(gameService.joinSession(anyString(), anyString())).thenReturn(session);
+        when(gameService.joinSession(anyString(), anyString()))
+                .thenReturn(new SessionJoinResponse("s-1", "K7M2QP", "WAITING", 2L, "Bob"));
 
         mockMvc.perform(post("/api/sessions/ASECCH/join")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"playerName\":\"Bob\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").exists());
+                .andExpect(jsonPath("$.sessionId").exists())
+                .andExpect(jsonPath("$.playerId").exists());
     }
 
     @Test

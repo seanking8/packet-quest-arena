@@ -1,6 +1,7 @@
 package com.packetquest.service;
 
 import com.packetquest.dto.GameStateResponse;
+import com.packetquest.dto.SessionJoinResponse;
 import com.packetquest.exception.SessionNotFoundException;
 import com.packetquest.factory.PacketFlowFactory;
 import com.packetquest.factory.TopologyFactory;
@@ -51,22 +52,22 @@ public class GameService {
         this.flowFactory = flowFactory;
     }
 
-    public GameSession createSession(String playerName) {
+    public SessionJoinResponse createSession(String playerName) {
         GameSession session = new GameSession();
         session.setJoinCode(generateUniqueJoinCode());
         session = sessionRepo.save(session);
 
-        addPlayer(session, playerName);
+        Player player = addPlayer(session, playerName);
         generateTopology(session);
 
-        return session;
+        return toResponse(session, player);
     }
 
-    public GameSession joinSession(String joinCode, String playerName) {
+    public SessionJoinResponse joinSession(String joinCode, String playerName) {
         GameSession session = sessionRepo.findByJoinCode(joinCode.trim().toUpperCase())
                 .orElseThrow(() -> new SessionNotFoundException("Session not found"));
-        addPlayer(session, playerName);
-        return session;
+        Player player = addPlayer(session, playerName);
+        return toResponse(session, player);
     }
 
     public GameStateResponse getGameState(String sessionId) {
@@ -123,23 +124,40 @@ public class GameService {
      */
     @org.springframework.transaction.annotation.Transactional
     public GameStateResponse routeFlow(String sessionId, RouteActionRequest req) {
-        // Confirm session exists (clean 404 via the exception handler)
+        // Session exists (clean 404 via the exception handler)
         sessionRepo.findById(sessionId)
                 .orElseThrow(() -> new SessionNotFoundException("Session not found"));
 
+        // Player exists and belongs to this session
+        Player player = playerRepo.findById(req.getPlayerId())
+                .orElseThrow(() -> new IllegalArgumentException("Player not found"));
+        if (player.getSession() == null
+                || !sessionId.equals(player.getSession().getId())) {
+            throw new IllegalArgumentException("Player does not belong to this session");
+        }
+
+        // Flow exists and is still pending
         PacketFlow flow = flowRepo.findById(req.getFlowId())
                 .orElseThrow(() -> new IllegalArgumentException("Flow not found"));
-
         if (!"PENDING".equals(flow.getStatus())) {
             throw new IllegalStateException("Flow has already been handled");
         }
 
+        // Path is sane and matches the flow's endpoints
         List<Long> path = req.getPath();
         if (path.size() < 2) {
             throw new IllegalArgumentException("Route must include at least two nodes");
         }
+        if (!path.get(0).equals(flow.getSourceNodeId())) {
+            throw new IllegalArgumentException(
+                    "Path must start at the flow's source node (" + flow.getSourceNodeId() + ")");
+        }
+        if (!path.get(path.size() - 1).equals(flow.getDestinationNodeId())) {
+            throw new IllegalArgumentException(
+                    "Path must end at the flow's destination node (" + flow.getDestinationNodeId() + ")");
+        }
 
-        // Build a quick lookup of links in this session, keyed on the unordered node pair
+        // Each consecutive pair must be a real link in this session
         List<Link> sessionLinks = linkRepo.findBySessionId(sessionId);
         java.util.Map<String, Link> linkByPair = new java.util.HashMap<>();
         for (Link l : sessionLinks) {
@@ -174,11 +192,21 @@ public class GameService {
         flowRepo.saveAll(flowFactory.buildFlows(session, nodes));
     }
 
-    private void addPlayer(GameSession session, String playerName) {
+    private Player addPlayer(GameSession session, String playerName) {
         Player player = new Player();
         player.setName(playerName);
         player.setSession(session);
-        playerRepo.save(player);
+        return playerRepo.save(player);
+    }
+
+    private SessionJoinResponse toResponse(GameSession session, Player player) {
+        return new SessionJoinResponse(
+                session.getId(),
+                session.getJoinCode(),
+                session.getStatus(),
+                player.getId(),
+                player.getName()
+        );
     }
 
     private String generateUniqueJoinCode() {

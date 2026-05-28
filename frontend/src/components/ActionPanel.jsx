@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
+import { routeFlow } from '../services/api'
 
-export default function ActionPanel({ sessionId, state, onStateUpdate }) {
+export default function ActionPanel({ sessionId, playerId, state, onStateUpdate }) {
     const [flowId, setFlowId] = useState('')
     const [pathInput, setPathInput] = useState('')
     const [error, setError] = useState('')
@@ -17,15 +18,10 @@ export default function ActionPanel({ sessionId, state, onStateUpdate }) {
         if (path.length < 2) { setError('Path needs at least two nodes (source and destination).'); return }
 
         setBusy(true)
+        setBusy(true)
         try {
-            const res = await fetch(`/api/sessions/${sessionId}/actions/route`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ flowId: Number(flowId), path }),
-            })
-            const data = await res.json()
-            if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`)
-            onStateUpdate?.(data)        // swap in the returned state immediately
+            const data = await routeFlow(sessionId, playerId, Number(flowId), path)
+            onStateUpdate?.(data)
             setFlowId('')
             setPathInput('')
         } catch (e) {

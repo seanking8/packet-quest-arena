@@ -2,7 +2,7 @@ package com.packetquest.controller;
 
 import com.packetquest.dto.GameStateResponse;
 import com.packetquest.dto.RouteActionRequest;
-import com.packetquest.model.GameSession;
+import com.packetquest.dto.SessionJoinResponse;
 import com.packetquest.service.GameService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -23,12 +23,12 @@ public class SessionController {
     record JoinRequest(@NotBlank String playerName) {}
 
     @PostMapping
-    public ResponseEntity<GameSession> create(@Valid @RequestBody CreateRequest req) {
+    public ResponseEntity<SessionJoinResponse> create(@Valid @RequestBody CreateRequest req) {
         return ResponseEntity.ok(gameService.createSession(req.playerName()));
     }
 
     @PostMapping("/{sessionId}/join")
-    public ResponseEntity<GameSession> join(
+    public ResponseEntity<SessionJoinResponse> join(
             @PathVariable String sessionId,
             @Valid @RequestBody JoinRequest req) {
         return ResponseEntity.ok(gameService.joinSession(sessionId, req.playerName()));
