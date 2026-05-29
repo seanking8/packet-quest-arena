@@ -1,27 +1,85 @@
 package com.packetquest.model;
 
-import jakarta.persistence.*;
+import java.util.UUID;
 
-@Entity
-@Table(name = "players")
+/**
+ * A participant in a {@link GameSession}.
+ *
+ * <p>Players live inside the in-memory session aggregate; the backend is the
+ * sole authority for {@link #score} and delivery counters. The frontend never
+ * computes or submits them.
+ */
 public class Player {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    private String name;
+    private String id = UUID.randomUUID().toString();
+    private String displayName;
+    private String color;
     private int score = 0;
+    private int deliveredPackets = 0;
+    private int droppedPackets = 0;
 
-    @ManyToOne
-    @JoinColumn(name = "session_id")
-    private GameSession session;
+    public Player() {
+    }
 
-    public Long getId() { return id; }
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-    public int getScore() { return score; }
-    public void setScore(int score) { this.score = score; }
-    public GameSession getSession() { return session; }
-    public void setSession(GameSession session) { this.session = session; }
+    public Player(String displayName) {
+        this.displayName = displayName;
+    }
+
+    public Player(String displayName, String color) {
+        this.displayName = displayName;
+        this.color = color;
+    }
+
+    /** Adds a backend-computed delta to this player's score. */
+    public void addScore(int delta) {
+        this.score += delta;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public String getDisplayName() {
+        return displayName;
+    }
+
+    public void setDisplayName(String displayName) {
+        this.displayName = displayName;
+    }
+
+    public String getColor() {
+        return color;
+    }
+
+    public void setColor(String color) {
+        this.color = color;
+    }
+
+    public int getScore() {
+        return score;
+    }
+
+    public void setScore(int score) {
+        this.score = score;
+    }
+
+    public int getDeliveredPackets() {
+        return deliveredPackets;
+    }
+
+    public void setDeliveredPackets(int deliveredPackets) {
+        this.deliveredPackets = deliveredPackets;
+    }
+
+    public int getDroppedPackets() {
+        return droppedPackets;
+    }
+
+    public void setDroppedPackets(int droppedPackets) {
+        this.droppedPackets = droppedPackets;
+    }
 }

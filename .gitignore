@@ -1,0 +1,21 @@
+# IntelliJ / IDE
+.idea/
+*.iml
+
+# Java / Maven
+target/
+backend/target/
+
+# Node / React
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+
+# OS files
+.DS_Store
+
+# Environment files
+.env
+.env.local
+*.log
