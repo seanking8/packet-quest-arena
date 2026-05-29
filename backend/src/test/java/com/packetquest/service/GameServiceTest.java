@@ -1,5 +1,6 @@
 package com.packetquest.service;
 
+import com.packetquest.config.TrafficProfiles;
 import com.packetquest.dto.GameStateDto;
 import com.packetquest.exception.GameRuleException;
 import com.packetquest.exception.SessionNotFoundException;
@@ -23,7 +24,8 @@ class GameServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new GameService(new GameSessionRepository(), new TopologyGeneratorService(), new PacketJobFactory());
+        service = new GameService(new GameSessionRepository(), new TopologyGeneratorService(),
+                new PacketFlowGenerationService(new TrafficProfiles()));
     }
 
     @Test
@@ -91,8 +93,9 @@ class GameServiceTest {
         assertThat(state.remainingSeconds()).isEqualTo(GameSession.DEFAULT_DURATION_SECONDS);
         assertThat(state.nodes()).isNotEmpty();
         assertThat(state.links()).isNotEmpty();
-        // one job per traffic type, per player (3 types x 2 players)
-        assertThat(state.packetFlows()).hasSize(6);
+        // INITIAL_JOBS_PER_PLAYER jobs per player, 2 players
+        assertThat(state.packetFlows())
+                .hasSize(2 * PacketFlowGenerationService.INITIAL_JOBS_PER_PLAYER);
         assertThat(state.serverTime()).isNotNull();
     }
 

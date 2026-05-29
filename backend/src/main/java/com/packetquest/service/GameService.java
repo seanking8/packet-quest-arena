@@ -31,14 +31,14 @@ public class GameService {
 
     private final GameSessionRepository sessionRepo;
     private final TopologyGeneratorService topologyGenerator;
-    private final PacketJobFactory packetJobFactory;
+    private final PacketFlowGenerationService packetFlowGenerator;
 
     public GameService(GameSessionRepository sessionRepo,
                        TopologyGeneratorService topologyGenerator,
-                       PacketJobFactory packetJobFactory) {
+                       PacketFlowGenerationService packetFlowGenerator) {
         this.sessionRepo = sessionRepo;
         this.topologyGenerator = topologyGenerator;
-        this.packetJobFactory = packetJobFactory;
+        this.packetFlowGenerator = packetFlowGenerator;
     }
 
     /** Creates a new, empty session in WAITING status. */
@@ -87,7 +87,7 @@ public class GameService {
                         + " players (have " + session.getPlayers().size() + ")");
             }
             topologyGenerator.populate(session);
-            packetJobFactory.generateInitialJobs(session);
+            packetFlowGenerator.generateInitialJobs(session);
             session.setDurationSeconds(GameSession.DEFAULT_DURATION_SECONDS);
             session.start();
             sessionRepo.save(session);
