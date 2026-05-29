@@ -6,7 +6,7 @@ import LeaderboardPanel from '../components/hud/LeaderboardPanel'
 import IncidentFeedPanel from '../components/hud/IncidentFeedPanel'
 import RouteControlsPanel from '../components/hud/RouteControlsPanel'
 import SelectedDetailPanel from '../components/hud/SelectedDetailPanel'
-import MapPlaceholder from '../components/map/MapPlaceholder'
+import NetworkScene from '../components/map/NetworkScene'
 
 const DEFAULT_PANELS = { jobs: true, leaderboard: true, incidents: true, route: true }
 
@@ -21,7 +21,7 @@ export default function GameScreen({ state, transport }) {
     <div className="hud">
       {/* Map fills the whole screen; HUD floats at the edges. */}
       <div className="map-layer">
-        <MapPlaceholder state={state} onSelect={setSelected} />
+        <NetworkScene state={state} onSelect={setSelected} />
       </div>
 
       <TopBar state={state} transport={transport} panels={panels} onToggle={toggle} />

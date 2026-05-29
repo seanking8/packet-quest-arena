@@ -1,7 +1,12 @@
-import { expect, test } from 'vitest'
+import { expect, test, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { GameProvider } from '../state/GameContext'
 import GameScreen from '../screens/GameScreen'
+
+// The 3D scene needs WebGL, which jsdom lacks — stub it for HUD/state tests.
+vi.mock('../components/map/NetworkScene', () => ({
+  default: ({ state }) => <div data-testid="scene">scene:{state.nodes.length}</div>,
+}))
 
 const STATE = {
   sessionId: 's1',
@@ -31,9 +36,9 @@ test('shows timer, counts and leaderboard from backend state', () => {
   expect(screen.getByText('Bob')).toBeInTheDocument()
 })
 
-test('shows the 3D map placeholder', () => {
+test('mounts the network scene with backend nodes', () => {
   renderGame()
-  expect(screen.getByText(/3D Network Map will render here/i)).toBeInTheDocument()
+  expect(screen.getByTestId('scene')).toHaveTextContent('scene:2')
 })
 
 test('toggling the Jobs panel hides it', () => {

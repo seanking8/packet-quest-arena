@@ -94,6 +94,9 @@ code.pill, .pill {
 .map-layer { position: absolute; inset: 0; z-index: 0; }
 .map-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
 .map-placeholder-inner { text-align: center; opacity: 0.6; }
+.scene-wrap { position: absolute; inset: 0; }
+.scene-wrap canvas { display: block; }
+.view-controls { position: absolute; left: 12px; bottom: 112px; z-index: 3; display: flex; gap: 6px; }
 
 .hud-top, .hud-left, .hud-right, .hud-bottom { position: absolute; z-index: 2; }
 .hud-top {
