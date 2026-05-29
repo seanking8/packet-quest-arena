@@ -1,5 +1,5 @@
 from simulator.topology import generate_topology
-from simulator.simulator import generate_event
+from simulator import simulator
 
 
 def test_topology_node_count():
@@ -16,8 +16,14 @@ def test_topology_is_repeatable():
     assert generate_topology(seed=42) == generate_topology(seed=42)
 
 
-def test_generate_event_has_required_fields():
-    event = generate_event()
-    assert "type" in event
-    assert "linkId" in event
-    assert "load" in event
+def test_run_emits_requested_count_in_print_mode():
+    # No SESSION_ID -> print-only; a stub sleep keeps the test instant.
+    emitted = []
+    original = simulator.SESSION_ID
+    simulator.SESSION_ID = None
+    try:
+        simulator.run(count=3, seed=7, sleep=lambda s: emitted.append(s))
+    finally:
+        simulator.SESSION_ID = original
+    # 3 incidents -> 2 inter-incident sleeps
+    assert len(emitted) == 2

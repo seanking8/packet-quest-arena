@@ -12,6 +12,13 @@ frontend/node_modules/
 dist/
 frontend/dist/
 
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+
 # OS files
 .DS_Store
 
