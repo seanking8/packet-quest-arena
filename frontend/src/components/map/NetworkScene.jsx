@@ -3,12 +3,12 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, Line } from '@react-three/drei'
 import * as THREE from 'three'
 import { nodeColor, linkColor, nodeSize, isArcLink, isBrokenLink } from './colors'
+import PlanetScene from './PlanetScene'
 
 // Camera presets — y is up, matching backend coordinates.
 const VIEWS = {
   close: { pos: [18, 16, 30], target: [0, 2, 0] },
   iso: { pos: [70, 60, 70], target: [10, 0, 0] },
-  planet: { pos: [50, 175, 60], target: [15, 45, 5] },
 }
 
 function CameraRig({ view }) {
@@ -47,9 +47,9 @@ function nodeMeshGeometry(type) {
   }
 }
 
-function NodeMesh({ node, onSelect }) {
+function NodeMesh({ node, onSelect, inPath, isSource, isDest }) {
   const [hovered, setHovered] = useState(false)
-  const color = nodeColor(node)
+  const color = isSource ? '#36c98d' : isDest ? '#ff7ab6' : inPath ? '#ffd479' : nodeColor(node)
   const degraded = node.status === 'DEGRADED'
   const failed = node.status === 'FAILED'
   return (
@@ -69,15 +69,15 @@ function NodeMesh({ node, onSelect }) {
         <meshStandardMaterial
           color={color}
           emissive={color}
-          emissiveIntensity={failed ? 0.1 : degraded ? 0.6 : 0.35}
+          emissiveIntensity={inPath || isSource || isDest ? 0.9 : failed ? 0.1 : degraded ? 0.6 : 0.35}
           opacity={failed ? 0.6 : 1}
           transparent={failed}
         />
       </mesh>
-      {hovered && (
+      {(hovered || inPath || isSource || isDest) && (
         <mesh>
           <sphereGeometry args={[nodeSize(node.type) * 1.6, 12, 12]} />
-          <meshBasicMaterial color={color} transparent opacity={0.12} />
+          <meshBasicMaterial color={color} transparent opacity={0.18} />
         </mesh>
       )}
     </group>
@@ -167,7 +167,7 @@ function Packet({ points, color }) {
   )
 }
 
-function SceneContent({ state, onSelect }) {
+function SceneContent({ state, onSelect, routePath, selectedPacket }) {
   const nodeIndex = useMemo(() => {
     const map = {}
     ;(state.nodes || []).forEach((n) => (map[n.id] = n))
@@ -191,6 +191,10 @@ function SceneContent({ state, onSelect }) {
       .filter((p) => p.points.length >= 2)
   }, [state.packetFlows, nodeIndex, playerColor])
 
+  const pathSet = useMemo(() => new Set(routePath), [routePath])
+  const sourceId = selectedPacket?.sourceNodeId
+  const destId = selectedPacket?.destinationNodeId
+
   return (
     <>
       <ambientLight intensity={0.6} />
@@ -209,7 +213,14 @@ function SceneContent({ state, onSelect }) {
       })}
 
       {(state.nodes || []).map((n) => (
-        <NodeMesh key={n.id} node={n} onSelect={onSelect} />
+        <NodeMesh
+          key={n.id}
+          node={n}
+          onSelect={onSelect}
+          inPath={pathSet.has(n.id)}
+          isSource={n.id === sourceId}
+          isDest={n.id === destId}
+        />
       ))}
 
       {packets.map((p) => (
@@ -219,8 +230,8 @@ function SceneContent({ state, onSelect }) {
   )
 }
 
-export default function NetworkScene({ state, onSelect }) {
-  const [view, setView] = useState('iso')
+export default function NetworkScene({ state, onSelect, routePath = [], selectedPacket = null, view = 'iso' }) {
+  const planet = view === 'planet'
 
   if (!state?.nodes?.length) {
     return (
@@ -234,27 +245,26 @@ export default function NetworkScene({ state, onSelect }) {
 
   return (
     <div className="scene-wrap">
-      <Canvas camera={{ position: VIEWS.iso.pos, fov: 45 }} onPointerMissed={() => onSelect(null)}>
-        <color attach="background" args={['#0b1020']} />
-        <CameraRig view={view} />
-        <OrbitControls makeDefault enablePan enableZoom enableRotate />
-        <SceneContent state={state} onSelect={onSelect} />
-      </Canvas>
-
-      <div className="view-controls">
-        <button className={`toggle ${view === 'close' ? 'on' : ''}`} onClick={() => setView('close')}>
-          Close
-        </button>
-        <button className={`toggle ${view === 'iso' ? 'on' : ''}`} onClick={() => setView('iso')}>
-          City
-        </button>
-        <button className={`toggle ${view === 'planet' ? 'on' : ''}`} onClick={() => setView('planet')}>
-          Planet
-        </button>
-        <button className="ghost" onClick={() => setView('iso')}>
-          Reset
-        </button>
+      <div style={{ position: 'absolute', inset: 0, visibility: planet ? 'hidden' : 'visible' }}>
+        <Canvas camera={{ position: VIEWS.iso.pos, fov: 45 }} onPointerMissed={() => onSelect(null)}>
+          <color attach="background" args={['#0b1020']} />
+          <CameraRig view={view} />
+          <OrbitControls makeDefault enablePan enableZoom enableRotate />
+          <SceneContent state={state} onSelect={onSelect} routePath={routePath} selectedPacket={selectedPacket} />
+        </Canvas>
       </div>
+
+      {planet && (
+        <div style={{ position: 'absolute', inset: 0 }}>
+          <PlanetScene state={state} />
+          <div className="planet-overlay-label">
+            <span>🛰 Satellite Network Overview</span>
+            <span className="muted" style={{ fontSize: 12 }}>
+              {(state.nodes || []).filter(n => n.type === 'SATELLITE').length} satellites active
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

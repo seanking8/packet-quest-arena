@@ -13,22 +13,63 @@ const DEFAULT_PANELS = { jobs: true, leaderboard: true, incidents: true, route: 
 export default function GameScreen({ state, transport }) {
   const { playerId } = useGame()
   const [panels, setPanels] = useState(DEFAULT_PANELS)
-  const [selected, setSelected] = useState(null) // { kind: 'node'|'link', data }
+  const [view, setView] = useState('iso')
+  const [selected, setSelected] = useState(null)       // { kind: 'node'|'link', data }
+  const [selectedPacket, setSelectedPacket] = useState(null) // PacketFlow object
+  const [routePath, setRoutePath] = useState([])       // node ids being built
 
   const toggle = (name) => setPanels((p) => ({ ...p, [name]: !p[name] }))
 
+  // When a node is clicked: if a packet is selected, append to path; otherwise inspect
+  const handleSelect = (item) => {
+    if (!item) { setSelected(null); return }
+    if (item.kind === 'node' && selectedPacket) {
+      setRoutePath((prev) => {
+        // Don't add duplicates at the end
+        if (prev[prev.length - 1] === item.data.id) return prev
+        return [...prev, item.data.id]
+      })
+    } else {
+      setSelected(item)
+    }
+  }
+
+  const handleSelectPacket = (flow) => {
+    setSelectedPacket(flow)
+    setRoutePath(flow ? [flow.sourceNodeId] : [])
+    setSelected(null)
+  }
+
   return (
     <div className="hud">
-      {/* Map fills the whole screen; HUD floats at the edges. */}
       <div className="map-layer">
-        <NetworkScene state={state} onSelect={setSelected} />
+        <NetworkScene
+          state={state}
+          onSelect={handleSelect}
+          routePath={routePath}
+          selectedPacket={selectedPacket}
+          view={view}
+        />
+      </div>
+
+      {/* View controls live outside map-layer so the canvas cannot block them */}
+      <div className="view-controls">
+        <button className={`toggle ${view === 'close' ? 'on' : ''}`} onClick={() => setView('close')}>Close</button>
+        <button className={`toggle ${view === 'iso' ? 'on' : ''}`} onClick={() => setView('iso')}>City</button>
+        <button className={`toggle ${view === 'planet' ? 'on' : ''}`} onClick={() => setView('planet')}>🌍 Planet</button>
+        <button className="ghost" onClick={() => setView('iso')}>Reset</button>
       </div>
 
       <TopBar state={state} transport={transport} panels={panels} onToggle={toggle} />
 
       {panels.jobs && (
         <aside className="hud-left">
-          <PacketJobsPanel state={state} playerId={playerId} />
+          <PacketJobsPanel
+            state={state}
+            playerId={playerId}
+            selectedPacketId={selectedPacket?.id}
+            onSelectPacket={handleSelectPacket}
+          />
         </aside>
       )}
 
@@ -40,7 +81,14 @@ export default function GameScreen({ state, transport }) {
 
       {panels.route && (
         <div className="hud-bottom">
-          <RouteControlsPanel state={state} playerId={playerId} />
+          <RouteControlsPanel
+            state={state}
+            playerId={playerId}
+            selectedPacket={selectedPacket}
+            routePath={routePath}
+            onRoutePath={setRoutePath}
+            onClearPacket={() => handleSelectPacket(null)}
+          />
         </div>
       )}
     </div>

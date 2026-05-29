@@ -17,7 +17,7 @@ export default function SelectedDetailPanel({ selected, onClear }) {
       </div>
       {kind === 'node' ? (
         <dl className="kv">
-          <dt>Name</dt><dd>{data.name}</dd>
+          <dt>Name</dt><dd>{data.label}</dd>
           <dt>Type</dt><dd>{data.type}</dd>
           <dt>Status</dt><dd>{data.status}</dd>
           <dt>Loss</dt><dd>{(data.packetLossRate ?? 0).toFixed(3)}</dd>
