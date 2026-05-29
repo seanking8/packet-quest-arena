@@ -18,7 +18,12 @@ export default function PacketJobsPanel({ state, playerId, selectedPacketId, onS
             <li key={f.id} className={isSelected ? 'job-selected' : ''}>
               <span className="job-type">{f.trafficType}</span>
               <span className="job-route">
-                {f.sourceNodeId} → {f.destinationNodeId}
+                {f.sourceNodeId} to {f.destinationNodeId}
+              </span>
+              <span className="job-meta">
+                {f.packetSize ?? '?'} load
+                {f.deadlineSeconds ? ` | ${f.deadlineSeconds}s deadline` : ''}
+                {f.expiresAt ? ` | expires ${formatExpiry(f.expiresAt)}` : ''}
               </span>
               <span className={`job-status ${STATUS_CLASS[f.status] || ''}`}>{f.status}</span>
               {f.status === 'PENDING' && (
@@ -36,4 +41,8 @@ export default function PacketJobsPanel({ state, playerId, selectedPacketId, onS
       </ul>
     </section>
   )
+}
+
+function formatExpiry(value) {
+  return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }

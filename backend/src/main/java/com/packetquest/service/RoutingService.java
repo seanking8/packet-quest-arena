@@ -223,10 +223,13 @@ public class RoutingService {
     private double computeLatency(GameSession session, List<NetworkLink> links, List<NetworkNode> nodes) {
         double total = 0;
         for (NetworkLink link : links) {
-            double loadPenalty = link.getBaseLatencyMs() * link.getUtilisation();
+            double effectiveLatency = link.getCurrentLatencyMs() > 0
+                    ? link.getCurrentLatencyMs()
+                    : link.getBaseLatencyMs();
+            double loadPenalty = effectiveLatency * link.getUtilisation();
             double statusPenalty = statusLatency(link.getStatus());
             double incidentPenalty = incidentLatency(session, link);
-            total += link.getBaseLatencyMs() + loadPenalty + statusPenalty + incidentPenalty;
+            total += effectiveLatency + loadPenalty + statusPenalty + incidentPenalty;
         }
         // Degraded nodes multiply the whole-route latency.
         for (NetworkNode node : nodes) {

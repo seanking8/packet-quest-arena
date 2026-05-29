@@ -1,4 +1,4 @@
-import { useRef, useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls, Line } from '@react-three/drei'
 import * as THREE from 'three'
@@ -6,20 +6,17 @@ import { nodeColor, linkColor, isBrokenLink } from './colors'
 
 const PLANET_R = 14
 const ORBIT_R = 22
+const SATELLITE_SPEED = 0.12
 
-/** Slow-spinning Earth-like sphere */
 function Planet() {
-  const ref = useRef()
-  useFrame((_, dt) => { if (ref.current) ref.current.rotation.y += dt * 0.04 })
   return (
-    <mesh ref={ref}>
+    <mesh>
       <sphereGeometry args={[PLANET_R, 48, 48]} />
       <meshStandardMaterial color="#1a3a6e" emissive="#0a1a3a" emissiveIntensity={0.3} />
     </mesh>
   )
 }
 
-/** Faint continent-like patches */
 function Continents() {
   const patches = useMemo(() => [
     { lat: 30, lon: 10, rx: 4, rz: 2.5 },
@@ -45,12 +42,11 @@ function Continents() {
   })
 }
 
-/** Dashed orbit ring */
 function OrbitRing({ radius = ORBIT_R, tilt = 0 }) {
   const points = useMemo(() => {
     const pts = []
-    for (let i = 0; i <= 64; i++) {
-      const a = (i / 64) * Math.PI * 2
+    for (let i = 0; i <= 96; i += 1) {
+      const a = (i / 96) * Math.PI * 2
       pts.push(new THREE.Vector3(Math.cos(a) * radius, 0, Math.sin(a) * radius))
     }
     return pts
@@ -62,27 +58,13 @@ function OrbitRing({ radius = ORBIT_R, tilt = 0 }) {
   )
 }
 
-/** Animated satellite node on its orbit */
-function OrbitingSatellite({ node, orbitRadius, orbitTilt, phase, speed = 0.12 }) {
-  const ref = useRef()
-  const angle = useRef(phase)
+function SatelliteNode({ node, position }) {
   const color = nodeColor(node)
   const failed = node.status === 'FAILED'
   const degraded = node.status === 'DEGRADED'
 
-  useFrame((_, dt) => {
-    if (!ref.current) return
-    angle.current += dt * speed
-    const a = angle.current
-    const x = Math.cos(a) * orbitRadius
-    const z = Math.sin(a) * orbitRadius
-    const y = Math.sin(orbitTilt) * z
-    ref.current.position.set(x, y, Math.cos(orbitTilt) * z)
-  })
-
   return (
-    <group ref={ref}>
-      {/* body */}
+    <group position={position}>
       <mesh>
         <octahedronGeometry args={[0.9, 0]} />
         <meshStandardMaterial
@@ -93,7 +75,6 @@ function OrbitingSatellite({ node, orbitRadius, orbitTilt, phase, speed = 0.12 }
           transparent={failed}
         />
       </mesh>
-      {/* solar panels */}
       <mesh position={[1.6, 0, 0]}>
         <boxGeometry args={[1.8, 0.08, 0.7]} />
         <meshStandardMaterial color="#4f8cff" transparent opacity={0.7} />
@@ -106,38 +87,12 @@ function OrbitingSatellite({ node, orbitRadius, orbitTilt, phase, speed = 0.12 }
   )
 }
 
-/** Beam from a ground gateway position (on planet surface) to a satellite */
-function SatelliteBeam({ link, satNode, groundNode }) {
+function SatelliteBeam({ link, satellitePosition, groundNode }) {
   const color = linkColor(link)
   const broken = isBrokenLink(link.status)
-
-  // Ground point: map city coords to planet surface
-  const ground = useMemo(() => {
-    // Normalise city x/z to lat/lon-ish angles
-    const nx = ((groundNode.x || 0) - 15) / 60  // rough centre offset
-    const nz = ((groundNode.z || 0) - 15) / 60
-    const phi = Math.PI / 2 - nx * 0.8
-    const theta = nz * 0.8
-    const r = PLANET_R + 0.2
-    return new THREE.Vector3(
-      r * Math.sin(phi) * Math.cos(theta),
-      r * Math.cos(phi),
-      r * Math.sin(phi) * Math.sin(theta)
-    )
-  }, [groundNode])
-
-  // Satellite position is animated — approximate with a fixed high point for the static beam
-  const satPos = useMemo(() => {
-    const phase = (satNode.x || 0) * 0.1
-    return new THREE.Vector3(
-      Math.cos(phase) * ORBIT_R,
-      Math.sin(0.3) * Math.sin(phase) * ORBIT_R,
-      Math.cos(0.3) * Math.sin(phase) * ORBIT_R
-    )
-  }, [satNode])
-
-  const mid = ground.clone().lerp(satPos, 0.5)
-  mid.multiplyScalar(1.15)
+  const ground = useMemo(() => cityToPlanet(groundNode, PLANET_R + 0.2), [groundNode])
+  const satPos = useMemo(() => new THREE.Vector3(...satellitePosition), [satellitePosition])
+  const mid = ground.clone().lerp(satPos, 0.5).multiplyScalar(1.15)
 
   return (
     <Line
@@ -148,33 +103,27 @@ function SatelliteBeam({ link, satNode, groundNode }) {
       dashSize={1.5}
       gapSize={0.8}
       transparent
-      opacity={broken ? 0.35 : 0.65}
+      opacity={broken ? 0.35 : 0.72}
     />
   )
 }
 
-/** Ground gateway dots for non-satellite nodes that have satellite links */
 function GroundGateway({ node }) {
-  const phi = Math.PI / 2 - ((node.x || 0) - 15) / 60 * 0.8
-  const theta = ((node.z || 0) - 15) / 60 * 0.8
-  const r = PLANET_R + 0.3
-  const pos = [
-    r * Math.sin(phi) * Math.cos(theta),
-    r * Math.cos(phi),
-    r * Math.sin(phi) * Math.sin(theta),
-  ]
+  const pos = cityToPlanet(node, PLANET_R + 0.3)
   return (
-    <mesh position={pos}>
+    <mesh position={[pos.x, pos.y, pos.z]}>
       <sphereGeometry args={[0.35, 8, 8]} />
       <meshStandardMaterial color="#7affc4" emissive="#7affc4" emissiveIntensity={0.6} />
     </mesh>
   )
 }
 
-export default function PlanetScene({ state }) {
+function PlanetContent({ state }) {
+  const [elapsed, setElapsed] = useState(0)
+  useFrame((_, delta) => setElapsed((t) => t + delta))
+
   const nodes = state.nodes || []
   const links = state.links || []
-
   const nodeIndex = useMemo(() => {
     const m = {}
     nodes.forEach((n) => (m[n.id] = n))
@@ -182,27 +131,12 @@ export default function PlanetScene({ state }) {
   }, [nodes])
 
   const satellites = nodes.filter((n) => n.type === 'SATELLITE')
-
-  // Links that connect a satellite to a ground node
   const satLinks = useMemo(() => links.filter((l) => {
     const a = nodeIndex[l.sourceNodeId]
     const b = nodeIndex[l.targetNodeId]
-    return (a?.type === 'SATELLITE') !== (b?.type === 'SATELLITE') // one sat, one ground
+    return Boolean(a && b && ((a.type === 'SATELLITE') !== (b.type === 'SATELLITE')))
   }), [links, nodeIndex])
 
-  // Ground nodes that have satellite links
-  const gatewayIds = useMemo(() => {
-    const ids = new Set()
-    satLinks.forEach((l) => {
-      const a = nodeIndex[l.sourceNodeId]
-      const b = nodeIndex[l.targetNodeId]
-      if (a?.type !== 'SATELLITE') ids.add(a?.id)
-      if (b?.type !== 'SATELLITE') ids.add(b?.id)
-    })
-    return ids
-  }, [satLinks, nodeIndex])
-
-  // Assign each satellite an orbit slot
   const satSlots = useMemo(() => satellites.map((sat, i) => ({
     sat,
     orbitRadius: ORBIT_R + i * 2.5,
@@ -210,58 +144,98 @@ export default function PlanetScene({ state }) {
     phase: (i / Math.max(satellites.length, 1)) * Math.PI * 2,
   })), [satellites])
 
+  const satPositions = useMemo(() => {
+    const positions = {}
+    satSlots.forEach((slot) => {
+      positions[slot.sat.id] = satellitePosition(slot, elapsed)
+    })
+    return positions
+  }, [satSlots, elapsed])
+
+  const gatewayIds = useMemo(() => {
+    const ids = new Set()
+    satLinks.forEach((l) => {
+      const a = nodeIndex[l.sourceNodeId]
+      const b = nodeIndex[l.targetNodeId]
+      if (a?.type !== 'SATELLITE' && a?.id) ids.add(a.id)
+      if (b?.type !== 'SATELLITE' && b?.id) ids.add(b.id)
+    })
+    return ids
+  }, [satLinks, nodeIndex])
+
   return (
-    <Canvas camera={{ position: [0, 20, 55], fov: 50 }}>
-      <color attach="background" args={['#020510']} />
-      <ambientLight intensity={0.3} />
-      <pointLight position={[60, 40, 60]} intensity={1.2} color="#fff8e0" />
-
-      {/* Stars */}
+    <>
       <StarField />
-
       <Planet />
       <Continents />
 
-      {/* Orbit rings */}
       {satSlots.map(({ orbitRadius, orbitTilt }, i) => (
         <OrbitRing key={i} radius={orbitRadius} tilt={orbitTilt} />
       ))}
 
-      {/* Satellites */}
-      {satSlots.map(({ sat, orbitRadius, orbitTilt, phase }) => (
-        <OrbitingSatellite
-          key={sat.id}
-          node={sat}
-          orbitRadius={orbitRadius}
-          orbitTilt={orbitTilt}
-          phase={phase}
-        />
+      {satSlots.map(({ sat }) => (
+        <SatelliteNode key={sat.id} node={sat} position={satPositions[sat.id]} />
       ))}
 
-      {/* Ground gateways */}
       {[...gatewayIds].map((id) => nodeIndex[id] && (
         <GroundGateway key={id} node={nodeIndex[id]} />
       ))}
 
-      {/* Satellite beams */}
       {satLinks.map((link) => {
         const a = nodeIndex[link.sourceNodeId]
         const b = nodeIndex[link.targetNodeId]
         const satNode = a?.type === 'SATELLITE' ? a : b
         const groundNode = a?.type === 'SATELLITE' ? b : a
         if (!satNode || !groundNode) return null
-        return <SatelliteBeam key={link.id} link={link} satNode={satNode} groundNode={groundNode} />
+        return (
+          <SatelliteBeam
+            key={link.id}
+            link={link}
+            satellitePosition={satPositions[satNode.id]}
+            groundNode={groundNode}
+          />
+        )
       })}
+    </>
+  )
+}
 
+export default function PlanetScene({ state }) {
+  return (
+    <Canvas camera={{ position: [0, 20, 55], fov: 50 }}>
+      <color attach="background" args={['#020510']} />
+      <ambientLight intensity={0.3} />
+      <pointLight position={[60, 40, 60]} intensity={1.2} color="#fff8e0" />
+      <PlanetContent state={state} />
       <OrbitControls enablePan={false} minDistance={30} maxDistance={90} />
     </Canvas>
+  )
+}
+
+function satellitePosition(slot, elapsed) {
+  const a = slot.phase + elapsed * SATELLITE_SPEED
+  const x = Math.cos(a) * slot.orbitRadius
+  const z = Math.sin(a) * slot.orbitRadius
+  const y = Math.sin(slot.orbitTilt) * z
+  return [x, y, Math.cos(slot.orbitTilt) * z]
+}
+
+function cityToPlanet(node, radius) {
+  const nx = ((node.x || 0) - 15) / 60
+  const nz = ((node.z || 0) - 15) / 60
+  const phi = Math.PI / 2 - nx * 0.8
+  const theta = nz * 0.8
+  return new THREE.Vector3(
+    radius * Math.sin(phi) * Math.cos(theta),
+    radius * Math.cos(phi),
+    radius * Math.sin(phi) * Math.sin(theta)
   )
 }
 
 function StarField() {
   const positions = useMemo(() => {
     const arr = new Float32Array(600 * 3)
-    for (let i = 0; i < 600; i++) {
+    for (let i = 0; i < 600; i += 1) {
       const r = 180 + Math.random() * 60
       const theta = Math.random() * Math.PI * 2
       const phi = Math.acos(2 * Math.random() - 1)

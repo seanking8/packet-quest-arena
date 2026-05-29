@@ -34,6 +34,9 @@ services:
     build: ./simulator
     environment:
       BACKEND_URL: http://backend:8080
+      SESSION_ID: ${SESSION_ID:-}
+      SIMULATOR_SEED: ${SIMULATOR_SEED:-42}
+      SIMULATOR_COUNT: ${SIMULATOR_COUNT:-0}
     depends_on:
       - backend
 

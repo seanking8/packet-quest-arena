@@ -95,9 +95,12 @@ public class IncidentService {
         return incident;
     }
 
-    /** Links targeted by id OR by affected link type. */
+    /** Links targeted by id, targetId, or affected link type. */
     private List<NetworkLink> resolveLinks(GameSession session, IncidentSubmissionRequest request) {
         Set<String> ids = new HashSet<>(nullSafe(request.affectedLinkIds()));
+        if ("LINK".equalsIgnoreCase(request.targetType()) && request.targetId() != null) {
+            ids.add(request.targetId());
+        }
         Set<LinkType> types = new HashSet<>(nullSafe(request.affectedLinkTypes()));
         List<NetworkLink> result = new ArrayList<>();
         for (NetworkLink link : session.getLinks()) {
@@ -110,6 +113,9 @@ public class IncidentService {
 
     private List<NetworkNode> resolveNodes(GameSession session, IncidentSubmissionRequest request) {
         Set<String> ids = new HashSet<>(nullSafe(request.affectedNodeIds()));
+        if ("NODE".equalsIgnoreCase(request.targetType()) && request.targetId() != null) {
+            ids.add(request.targetId());
+        }
         List<NetworkNode> result = new ArrayList<>();
         for (NetworkNode node : session.getNodes()) {
             if (ids.contains(node.getId())) {
@@ -153,10 +159,7 @@ public class IncidentService {
     /** Recovery / clear: restore affected links/nodes and drop matching incidents. */
     private void recover(GameSession session, IncidentEvent incident,
                          List<NetworkLink> links, List<NetworkNode> nodes) {
-        links.forEach(l -> {
-            l.setStatus(LinkStatus.HEALTHY);
-            l.recomputeStatus();
-        });
+        links.forEach(this::restoreLink);
         nodes.forEach(n -> {
             n.setStatus(NodeStatus.HEALTHY);
             n.setLatencyMultiplier(1.0);
@@ -168,6 +171,24 @@ public class IncidentService {
                             && other.getEventType() != IncidentType.RECOVERY
                             && other.getEventType() != IncidentType.WEATHER_CLEAR);
         }
+    }
+
+    private void restoreLink(NetworkLink link) {
+        link.setCurrentLatencyMs(link.getBaseLatencyMs());
+        link.setPacketLossRate(baselinePacketLoss(link.getLinkType()));
+        if (link.getStatus() == LinkStatus.FAILED || link.getStatus() == LinkStatus.EXPIRED) {
+            link.setStatus(LinkStatus.HEALTHY);
+        }
+        link.recomputeStatus();
+    }
+
+    private double baselinePacketLoss(LinkType type) {
+        return switch (type) {
+            case FIBRE -> 0.001;
+            case MICROWAVE, RADIO -> 0.01;
+            case MMWAVE, LEGACY -> 0.02;
+            case SATELLITE -> 0.03;
+        };
     }
 
     private double clamp(double value) {

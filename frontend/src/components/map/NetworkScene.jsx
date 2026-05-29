@@ -93,10 +93,10 @@ function linkPoints(a, b, arc) {
   return [start, mid, end]
 }
 
-function LinkLine({ link, a, b, onSelect }) {
+function LinkLine({ link, a, b, onSelect, inRoute }) {
   const arc = isArcLink(link.linkType)
   const points = useMemo(() => linkPoints(a, b, arc), [a, b, arc])
-  const color = linkColor(link)
+  const color = inRoute ? '#ffd479' : linkColor(link)
   const broken = isBrokenLink(link.status)
   const mid = points[Math.floor(points.length / 2)]
   return (
@@ -104,12 +104,12 @@ function LinkLine({ link, a, b, onSelect }) {
       <Line
         points={points}
         color={color}
-        lineWidth={link.status === 'OVERLOADED' || link.status === 'CONGESTED' ? 3 : 1.6}
+        lineWidth={inRoute ? 4 : link.status === 'OVERLOADED' || link.status === 'CONGESTED' ? 3 : 1.6}
         dashed={broken}
         dashSize={1}
         gapSize={0.6}
         transparent
-        opacity={broken ? 0.6 : 0.9}
+        opacity={inRoute ? 1 : broken ? 0.6 : 0.9}
       />
       {/* small clickable handle at the midpoint for reliable selection */}
       <mesh
@@ -192,6 +192,13 @@ function SceneContent({ state, onSelect, routePath, selectedPacket }) {
   }, [state.packetFlows, nodeIndex, playerColor])
 
   const pathSet = useMemo(() => new Set(routePath), [routePath])
+  const routeEdges = useMemo(() => {
+    const edges = new Set()
+    for (let i = 0; i < routePath.length - 1; i += 1) {
+      edges.add(edgeKey(routePath[i], routePath[i + 1]))
+    }
+    return edges
+  }, [routePath])
   const sourceId = selectedPacket?.sourceNodeId
   const destId = selectedPacket?.destinationNodeId
 
@@ -209,7 +216,16 @@ function SceneContent({ state, onSelect, routePath, selectedPacket }) {
         const a = nodeIndex[link.sourceNodeId]
         const b = nodeIndex[link.targetNodeId]
         if (!a || !b) return null
-        return <LinkLine key={link.id} link={link} a={a} b={b} onSelect={onSelect} />
+        return (
+          <LinkLine
+            key={link.id}
+            link={link}
+            a={a}
+            b={b}
+            onSelect={onSelect}
+            inRoute={routeEdges.has(edgeKey(link.sourceNodeId, link.targetNodeId))}
+          />
+        )
       })}
 
       {(state.nodes || []).map((n) => (
@@ -258,7 +274,7 @@ export default function NetworkScene({ state, onSelect, routePath = [], selected
         <div style={{ position: 'absolute', inset: 0 }}>
           <PlanetScene state={state} />
           <div className="planet-overlay-label">
-            <span>🛰 Satellite Network Overview</span>
+            <span>Satellite Network Overview</span>
             <span className="muted" style={{ fontSize: 12 }}>
               {(state.nodes || []).filter(n => n.type === 'SATELLITE').length} satellites active
             </span>
@@ -267,4 +283,8 @@ export default function NetworkScene({ state, onSelect, routePath = [], selected
       )}
     </div>
   )
+}
+
+function edgeKey(a, b) {
+  return [a, b].sort().join('--')
 }

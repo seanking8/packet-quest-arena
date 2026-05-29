@@ -127,6 +127,7 @@ code.pill, .pill {
 
 .job-type { font-weight: 600; font-size: 13px; }
 .job-route { color: var(--muted); font-size: 12px; }
+.job-meta { color: var(--muted); font-size: 11px; grid-column: 1 / -1; }
 .job-status { font-size: 11px; }
 .st-pending { color: var(--warn); }
 .st-ok { color: var(--ok); }

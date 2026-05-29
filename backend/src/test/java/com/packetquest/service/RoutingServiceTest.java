@@ -122,6 +122,17 @@ class RoutingServiceTest {
     }
 
     @Test
+    void routeLatencyUsesIncidentAdjustedCurrentLatency() {
+        Scenario s = new Scenario(TrafficType.EMERGENCY, 100, 10);
+        s.link.setCurrentLatencyMs(100); // e.g. weather or latency spike raised it above the 60ms SLA
+
+        RouteResultResponse result = s.route(List.of("A", "B"));
+
+        assertThat(result.packetStatus()).isEqualTo(PacketStatus.DROPPED);
+        assertThat(result.latencyMs()).isEqualTo(100.0);
+    }
+
+    @Test
     void route_mustStartAtSource() {
         Scenario s = new Scenario(TrafficType.VIDEO, 100, 4);
         assertThatThrownBy(() -> s.route(List.of("B", "B")))

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useGame } from '../state/GameContext'
 import TopBar from '../components/hud/TopBar'
 import PacketJobsPanel from '../components/hud/PacketJobsPanel'
@@ -14,29 +14,57 @@ export default function GameScreen({ state, transport }) {
   const { playerId } = useGame()
   const [panels, setPanels] = useState(DEFAULT_PANELS)
   const [view, setView] = useState('iso')
-  const [selected, setSelected] = useState(null)       // { kind: 'node'|'link', data }
-  const [selectedPacket, setSelectedPacket] = useState(null) // PacketFlow object
-  const [routePath, setRoutePath] = useState([])       // node ids being built
+  const [selected, setSelected] = useState(null)
+  const [selectedPacket, setSelectedPacket] = useState(null)
+  const [routePath, setRoutePath] = useState([])
+  const [routeNotice, setRouteNotice] = useState(null)
 
   const toggle = (name) => setPanels((p) => ({ ...p, [name]: !p[name] }))
 
-  // When a node is clicked: if a packet is selected, append to path; otherwise inspect
+  useEffect(() => {
+    if (!selectedPacket) return
+    const latest = (state.packetFlows || []).find((f) => f.id === selectedPacket.id)
+    if (!latest || latest.status !== 'PENDING') {
+      handleSelectPacket(null)
+    } else if (latest !== selectedPacket) {
+      setSelectedPacket(latest)
+    }
+  }, [state.packetFlows, selectedPacket])
+
   const handleSelect = (item) => {
-    if (!item) { setSelected(null); return }
+    if (!item) {
+      setSelected(null)
+      return
+    }
+
     if (item.kind === 'node' && selectedPacket) {
       setRoutePath((prev) => {
-        // Don't add duplicates at the end
-        if (prev[prev.length - 1] === item.data.id) return prev
-        return [...prev, item.data.id]
+        const nodeId = item.data.id
+        const existingIndex = prev.indexOf(nodeId)
+        if (existingIndex >= 0) {
+          setRouteNotice(null)
+          return prev.slice(0, existingIndex + 1)
+        }
+
+        const last = prev[prev.length - 1]
+        if (!last || connected(state.links || [], last, nodeId)) {
+          setRouteNotice(null)
+          return [...prev, nodeId]
+        }
+
+        setRouteNotice(`${nodeId} is not connected to ${last}. Pick a neighbouring node.`)
+        return prev
       })
-    } else {
-      setSelected(item)
+      return
     }
+
+    setSelected(item)
   }
 
   const handleSelectPacket = (flow) => {
     setSelectedPacket(flow)
     setRoutePath(flow ? [flow.sourceNodeId] : [])
+    setRouteNotice(null)
     setSelected(null)
   }
 
@@ -52,12 +80,11 @@ export default function GameScreen({ state, transport }) {
         />
       </div>
 
-      {/* View controls live outside map-layer so the canvas cannot block them */}
       <div className="view-controls">
         <button className={`toggle ${view === 'close' ? 'on' : ''}`} onClick={() => setView('close')}>Close</button>
         <button className={`toggle ${view === 'iso' ? 'on' : ''}`} onClick={() => setView('iso')}>City</button>
-        <button className={`toggle ${view === 'planet' ? 'on' : ''}`} onClick={() => setView('planet')}>🌍 Planet</button>
-        <button className="ghost" onClick={() => setView('iso')}>Reset</button>
+        <button className={`toggle ${view === 'planet' ? 'on' : ''}`} onClick={() => setView('planet')}>Planet</button>
+        <button className="ghost" onClick={() => setView('iso')}>{view === 'planet' ? 'Back to City' : 'Reset'}</button>
       </div>
 
       <TopBar state={state} transport={transport} panels={panels} onToggle={toggle} />
@@ -87,10 +114,18 @@ export default function GameScreen({ state, transport }) {
             selectedPacket={selectedPacket}
             routePath={routePath}
             onRoutePath={setRoutePath}
+            routeNotice={routeNotice}
             onClearPacket={() => handleSelectPacket(null)}
           />
         </div>
       )}
     </div>
+  )
+}
+
+function connected(links, a, b) {
+  return links.some((link) =>
+    (link.sourceNodeId === a && link.targetNodeId === b)
+    || (link.sourceNodeId === b && link.targetNodeId === a)
   )
 }

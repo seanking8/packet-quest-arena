@@ -58,6 +58,9 @@ SIMULATOR_COUNT=5 SIMULATOR_SEED=42 python simulator.py   # 5 deterministic inci
 
 # post incidents to a live session
 SESSION_ID=<id> BACKEND_URL=http://localhost:8080 python simulator.py
+
+# with Docker Compose after creating a browser session
+SESSION_ID=<id> docker compose up simulator
 ```
 
 ## Tests

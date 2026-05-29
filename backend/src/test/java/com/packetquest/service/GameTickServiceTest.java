@@ -2,6 +2,8 @@ package com.packetquest.service;
 
 import com.packetquest.config.TrafficProfiles;
 import com.packetquest.model.GameSession;
+import com.packetquest.model.IncidentEvent;
+import com.packetquest.model.IncidentType;
 import com.packetquest.model.LinkStatus;
 import com.packetquest.model.LinkType;
 import com.packetquest.model.NetworkLink;
@@ -158,5 +160,30 @@ class GameTickServiceTest {
         tick.tick(s.getId());
 
         assertThat(s.getStatus()).isEqualTo(SessionStatus.ACTIVE);
+    }
+
+    @Test
+    void expiredIncidentRestoresAffectedLinkMetrics() {
+        GameSession s = new GameSession();
+        NetworkLink l = link(s, 100, 0);
+        l.setBaseLatencyMs(4);
+        l.setCurrentLatencyMs(80);
+        l.setPacketLossRate(0.8);
+        l.setStatus(LinkStatus.FAILED);
+        IncidentEvent incident = new IncidentEvent(
+                "inc", IncidentType.LATENCY_SPIKE, "LINK", l.getId(), 0.8, "Spike", 1);
+        incident.setStartedAt(Instant.now().minusSeconds(5));
+        incident.setExpiresAt(Instant.now().minusSeconds(1));
+        incident.setAffectedLinkIds(java.util.List.of(l.getId()));
+        s.addIncident(incident);
+        s.start();
+        repo.save(s);
+
+        tick.tick(s.getId());
+
+        assertThat(s.getIncidents()).isEmpty();
+        assertThat(l.getCurrentLatencyMs()).isEqualTo(4);
+        assertThat(l.getPacketLossRate()).isEqualTo(0.001);
+        assertThat(l.getStatus()).isEqualTo(LinkStatus.HEALTHY);
     }
 }
