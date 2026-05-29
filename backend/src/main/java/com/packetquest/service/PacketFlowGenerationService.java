@@ -31,6 +31,9 @@ public class PacketFlowGenerationService {
     /** Number of pending jobs each player starts the match with (>= 3 required). */
     public static final int INITIAL_JOBS_PER_PLAYER = 4;
 
+    /** Minimum PENDING jobs a player should have available during the match. */
+    public static final int MIN_PENDING_PER_PLAYER = 3;
+
     /** Rotation used to spread traffic types across players and ticks. */
     private static final List<TrafficType> ROTATION = List.of(
             TrafficType.EMERGENCY,
@@ -72,6 +75,26 @@ public class PacketFlowGenerationService {
         List<Player> players = session.getPlayers();
         for (int i = 0; i < players.size(); i++) {
             createJobsForPlayer(session, players.get(i), offset + i, jobsPerPlayer);
+        }
+    }
+
+    /**
+     * Tops each player up to {@code minPending} PENDING jobs (generating only
+     * the deficit). Used by the traffic tick so players are never idle.
+     */
+    public void replenishPendingJobs(GameSession session, int minPending) {
+        int offset = session.getPacketFlows().size();
+        List<Player> players = session.getPlayers();
+        for (int i = 0; i < players.size(); i++) {
+            Player player = players.get(i);
+            long pending = session.getPacketFlows().stream()
+                    .filter(f -> f.getOwnerPlayerId().equals(player.getId())
+                            && f.getStatus() == com.packetquest.model.PacketStatus.PENDING)
+                    .count();
+            int deficit = (int) (minPending - pending);
+            if (deficit > 0) {
+                createJobsForPlayer(session, player, offset + i, deficit);
+            }
         }
     }
 

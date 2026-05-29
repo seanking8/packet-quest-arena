@@ -4,7 +4,9 @@ import com.packetquest.dto.GameStateDto;
 import com.packetquest.exception.SessionNotFoundException;
 import com.packetquest.model.GameSession;
 import com.packetquest.model.Player;
+import com.packetquest.model.SessionStatus;
 import com.packetquest.service.GameService;
+import com.packetquest.service.GameTickService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -25,6 +27,8 @@ class SessionControllerTest {
     MockMvc mockMvc;
     @MockBean
     GameService gameService;
+    @MockBean
+    GameTickService gameTickService;
 
     @Test
     void createSession_returns201WithSessionId() throws Exception {
@@ -90,5 +94,16 @@ class SessionControllerTest {
         mockMvc.perform(get("/api/sessions/nope/state"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404));
+    }
+
+    @Test
+    void tick_returns200WithState() throws Exception {
+        GameSession session = new GameSession();
+        session.setStatus(SessionStatus.COMPLETED);
+        when(gameTickService.tick(anyString())).thenReturn(GameStateDto.from(session));
+
+        mockMvc.perform(post("/api/sessions/s1/tick"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("COMPLETED"));
     }
 }

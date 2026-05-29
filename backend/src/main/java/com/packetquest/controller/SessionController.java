@@ -7,6 +7,7 @@ import com.packetquest.dto.JoinPlayerResponse;
 import com.packetquest.model.GameSession;
 import com.packetquest.model.Player;
 import com.packetquest.service.GameService;
+import com.packetquest.service.GameTickService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,9 +28,11 @@ import org.springframework.web.bind.annotation.*;
 public class SessionController {
 
     private final GameService gameService;
+    private final GameTickService gameTickService;
 
-    public SessionController(GameService gameService) {
+    public SessionController(GameService gameService, GameTickService gameTickService) {
         this.gameService = gameService;
+        this.gameTickService = gameTickService;
     }
 
     @PostMapping
@@ -57,5 +60,10 @@ public class SessionController {
     @GetMapping("/{sessionId}/state")
     public ResponseEntity<GameStateDto> state(@PathVariable String sessionId) {
         return ResponseEntity.ok(gameService.getState(sessionId));
+    }
+
+    @PostMapping("/{sessionId}/tick")
+    public ResponseEntity<GameStateDto> tick(@PathVariable String sessionId) {
+        return ResponseEntity.ok(gameTickService.tick(sessionId));
     }
 }
