@@ -1,18 +1,33 @@
 package com.packetquest.controller;
 
+import com.packetquest.dto.RouteResultResponse;
+import com.packetquest.dto.RouteSubmissionRequest;
+import com.packetquest.service.RoutingService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import java.util.Map;
 
+/**
+ * In-game player actions.
+ *
+ * <pre>
+ * POST /api/sessions/{sessionId}/actions/route  submit a route for a packet
+ * </pre>
+ */
 @RestController
 @RequestMapping("/api/sessions/{sessionId}/actions")
 public class ActionController {
 
-    @PostMapping
-    public ResponseEntity<Map<String, String>> submitAction(
+    private final RoutingService routingService;
+
+    public ActionController(RoutingService routingService) {
+        this.routingService = routingService;
+    }
+
+    @PostMapping("/route")
+    public ResponseEntity<RouteResultResponse> route(
             @PathVariable String sessionId,
-            @RequestBody Map<String, Object> action) {
-        // TODO: validate and apply action via GameService
-        return ResponseEntity.ok(Map.of("result", "accepted"));
+            @Valid @RequestBody RouteSubmissionRequest request) {
+        return ResponseEntity.ok(routingService.submitRoute(sessionId, request));
     }
 }

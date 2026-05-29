@@ -42,6 +42,27 @@ public class NetworkLink {
         return capacity > 0 ? currentLoad / capacity : 0.0;
     }
 
+    /**
+     * Recomputes {@link #status} from current utilisation:
+     * &lt;0.60 HEALTHY, [0.60,0.85) BUSY, [0.85,1.00] CONGESTED, &gt;1.00 OVERLOADED.
+     * Terminal states (FAILED / EXPIRED) are left untouched.
+     */
+    public void recomputeStatus() {
+        if (status == LinkStatus.FAILED || status == LinkStatus.EXPIRED) {
+            return;
+        }
+        double u = getUtilisation();
+        if (u > 1.00) {
+            status = LinkStatus.OVERLOADED;
+        } else if (u >= 0.85) {
+            status = LinkStatus.CONGESTED;
+        } else if (u >= 0.60) {
+            status = LinkStatus.BUSY;
+        } else {
+            status = LinkStatus.HEALTHY;
+        }
+    }
+
     public String getId() {
         return id;
     }
