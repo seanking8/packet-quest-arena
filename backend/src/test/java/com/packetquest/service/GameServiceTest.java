@@ -11,6 +11,9 @@ import com.packetquest.repository.GameSessionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -25,7 +28,8 @@ class GameServiceTest {
     @BeforeEach
     void setUp() {
         service = new GameService(new GameSessionRepository(), new TopologyGeneratorService(),
-                new PacketFlowGenerationService(new TrafficProfiles()));
+                new PacketFlowGenerationService(new TrafficProfiles()),
+                (id, state) -> { /* no-op broadcaster */ });
     }
 
     @Test
@@ -127,5 +131,21 @@ class GameServiceTest {
     void getState_unknownSession_throwsNotFound() {
         assertThatThrownBy(() -> service.getState("missing"))
                 .isInstanceOf(SessionNotFoundException.class);
+    }
+
+    @Test
+    void joinAndStart_broadcastUpdatedState() {
+        List<String> broadcasts = new ArrayList<>();
+        GameService svc = new GameService(new GameSessionRepository(), new TopologyGeneratorService(),
+                new PacketFlowGenerationService(new TrafficProfiles()),
+                (id, state) -> broadcasts.add(id));
+        String id = svc.createSession().getId();
+
+        svc.joinPlayer(id, "Alice");
+        svc.joinPlayer(id, "Bob");
+        svc.startSession(id);
+
+        // a broadcast per join + one for start
+        assertThat(broadcasts).containsExactly(id, id, id);
     }
 }

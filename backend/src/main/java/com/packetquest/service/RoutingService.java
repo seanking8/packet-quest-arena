@@ -52,15 +52,18 @@ public class RoutingService {
     private final TrafficProfiles trafficProfiles;
     private final ScoreCalculator scoreCalculator;
     private final PacketLossPolicy packetLossPolicy;
+    private final GameStateBroadcaster broadcaster;
 
     public RoutingService(GameSessionRepository sessionRepo,
                           TrafficProfiles trafficProfiles,
                           ScoreCalculator scoreCalculator,
-                          PacketLossPolicy packetLossPolicy) {
+                          PacketLossPolicy packetLossPolicy,
+                          GameStateBroadcaster broadcaster) {
         this.sessionRepo = sessionRepo;
         this.trafficProfiles = trafficProfiles;
         this.scoreCalculator = scoreCalculator;
         this.packetLossPolicy = packetLossPolicy;
+        this.broadcaster = broadcaster;
     }
 
     public RouteResultResponse submitRoute(String sessionId, RouteSubmissionRequest request) {
@@ -121,8 +124,9 @@ public class RoutingService {
             }
 
             sessionRepo.save(session);
-            return new RouteResultResponse(message, outcome, latencyMs, scoreDelta,
-                    GameStateDto.from(session, now));
+            GameStateDto state = GameStateDto.from(session, now);
+            broadcaster.broadcast(sessionId, state);
+            return new RouteResultResponse(message, outcome, latencyMs, scoreDelta, state);
         }
     }
 

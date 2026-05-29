@@ -35,7 +35,8 @@ class RoutingServiceTest {
     private static class Scenario {
         GameSessionRepository repo = new GameSessionRepository();
         RoutingService routing = new RoutingService(
-                repo, new TrafficProfiles(), new ScoreCalculator(), new ThresholdPacketLossPolicy());
+                repo, new TrafficProfiles(), new ScoreCalculator(), new ThresholdPacketLossPolicy(),
+                (id, state) -> { /* no-op broadcaster */ });
         GameSession session = new GameSession();
         NetworkNode a;
         NetworkNode b;

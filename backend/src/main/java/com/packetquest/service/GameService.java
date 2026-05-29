@@ -32,13 +32,16 @@ public class GameService {
     private final GameSessionRepository sessionRepo;
     private final TopologyGeneratorService topologyGenerator;
     private final PacketFlowGenerationService packetFlowGenerator;
+    private final GameStateBroadcaster broadcaster;
 
     public GameService(GameSessionRepository sessionRepo,
                        TopologyGeneratorService topologyGenerator,
-                       PacketFlowGenerationService packetFlowGenerator) {
+                       PacketFlowGenerationService packetFlowGenerator,
+                       GameStateBroadcaster broadcaster) {
         this.sessionRepo = sessionRepo;
         this.topologyGenerator = topologyGenerator;
         this.packetFlowGenerator = packetFlowGenerator;
+        this.broadcaster = broadcaster;
     }
 
     /** Creates a new, empty session in WAITING status. */
@@ -66,6 +69,7 @@ public class GameService {
             String color = PLAYER_COLORS.get(currentCount);
             Player player = session.addPlayer(displayName, color);
             sessionRepo.save(session);
+            broadcaster.broadcast(sessionId, GameStateDto.from(session));
             return player;
         }
     }
@@ -92,7 +96,9 @@ public class GameService {
             session.start();
             sessionRepo.save(session);
         }
-        return GameStateDto.from(session);
+        GameStateDto state = GameStateDto.from(session);
+        broadcaster.broadcast(sessionId, state);
+        return state;
     }
 
     /** Returns the backend-owned state snapshot for a session. */
