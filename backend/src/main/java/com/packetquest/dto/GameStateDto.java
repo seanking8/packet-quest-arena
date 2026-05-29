@@ -2,6 +2,7 @@ package com.packetquest.dto;
 
 import com.packetquest.model.GameSession;
 import com.packetquest.model.IncidentEvent;
+import com.packetquest.model.MapObject;
 import com.packetquest.model.NetworkLink;
 import com.packetquest.model.NetworkNode;
 import com.packetquest.model.PacketFlow;
@@ -27,6 +28,7 @@ public record GameStateDto(
         List<NetworkLink> links,
         List<PacketFlow> packetFlows,
         List<IncidentEvent> incidents,
+        List<MapObject> mapObjects,
         Instant serverTime
 ) {
 
@@ -46,6 +48,7 @@ public record GameStateDto(
                 List.copyOf(session.getLinks()),
                 List.copyOf(session.getPacketFlows()),
                 List.copyOf(session.getIncidents()),
+                List.copyOf(session.getMapObjects()),
                 now
         );
     }

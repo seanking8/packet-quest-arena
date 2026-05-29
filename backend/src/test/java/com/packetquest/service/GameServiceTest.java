@@ -23,7 +23,7 @@ class GameServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new GameService(new GameSessionRepository(), new TopologyFactory(), new PacketJobFactory());
+        service = new GameService(new GameSessionRepository(), new TopologyGeneratorService(), new PacketJobFactory());
     }
 
     @Test

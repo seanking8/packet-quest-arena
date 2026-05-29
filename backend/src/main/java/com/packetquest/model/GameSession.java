@@ -35,6 +35,7 @@ public class GameSession {
     private final List<NetworkLink> links = new CopyOnWriteArrayList<>();
     private final List<PacketFlow> packetFlows = new CopyOnWriteArrayList<>();
     private final List<IncidentEvent> incidents = new CopyOnWriteArrayList<>();
+    private final List<MapObject> mapObjects = new CopyOnWriteArrayList<>();
 
     // --- Lifecycle ---------------------------------------------------------
 
@@ -122,6 +123,10 @@ public class GameSession {
         incidents.add(incident);
     }
 
+    public void addMapObject(MapObject mapObject) {
+        mapObjects.add(mapObject);
+    }
+
     // --- Accessors ---------------------------------------------------------
 
     public String getId() {
@@ -174,5 +179,9 @@ public class GameSession {
 
     public List<IncidentEvent> getIncidents() {
         return incidents;
+    }
+
+    public List<MapObject> getMapObjects() {
+        return mapObjects;
     }
 }

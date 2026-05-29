@@ -30,14 +30,14 @@ public class GameService {
     public static final List<String> PLAYER_COLORS = List.of("blue", "green", "orange", "purple");
 
     private final GameSessionRepository sessionRepo;
-    private final TopologyFactory topologyFactory;
+    private final TopologyGeneratorService topologyGenerator;
     private final PacketJobFactory packetJobFactory;
 
     public GameService(GameSessionRepository sessionRepo,
-                       TopologyFactory topologyFactory,
+                       TopologyGeneratorService topologyGenerator,
                        PacketJobFactory packetJobFactory) {
         this.sessionRepo = sessionRepo;
-        this.topologyFactory = topologyFactory;
+        this.topologyGenerator = topologyGenerator;
         this.packetJobFactory = packetJobFactory;
     }
 
@@ -86,7 +86,7 @@ public class GameService {
                 throw new GameRuleException("Cannot start: need at least " + MIN_PLAYERS_TO_START
                         + " players (have " + session.getPlayers().size() + ")");
             }
-            topologyFactory.populate(session);
+            topologyGenerator.populate(session);
             packetJobFactory.generateInitialJobs(session);
             session.setDurationSeconds(GameSession.DEFAULT_DURATION_SECONDS);
             session.start();
