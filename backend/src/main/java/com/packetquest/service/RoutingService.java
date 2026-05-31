@@ -3,6 +3,7 @@ package com.packetquest.service;
 import com.packetquest.config.TrafficProfile;
 import com.packetquest.config.TrafficProfiles;
 import com.packetquest.dto.GameStateDto;
+import com.packetquest.dto.RoutePreviewResponse;
 import com.packetquest.dto.RouteResultResponse;
 import com.packetquest.dto.RouteSubmissionRequest;
 import com.packetquest.exception.InvalidRouteException;
@@ -22,7 +23,9 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * The core game engine: validates a submitted route, computes latency, updates
@@ -128,6 +131,95 @@ public class RoutingService {
             broadcaster.broadcast(sessionId, state);
             return new RouteResultResponse(message, outcome, latencyMs, scoreDelta, state);
         }
+    }
+
+    /**
+     * Estimate the outcome of a candidate route without changing any state.
+     * Reuses the same validation, latency and loss logic as {@link #submitRoute},
+     * but never applies load, scores, saves or broadcasts. Invalid routes return
+     * a {@code valid=false} response with the reason rather than throwing, so the
+     * UI can show why a path won't work while the player is still building it.
+     */
+    public RoutePreviewResponse previewRoute(String sessionId, RouteSubmissionRequest request) {
+        GameSession session = sessionRepo.findById(sessionId)
+                .orElseThrow(() -> new SessionNotFoundException(sessionId));
+
+        synchronized (session) {
+            Instant now = Instant.now();
+            try {
+                requireActiveSession(session, now);
+                Player player = requirePlayer(session, request.playerId());
+                PacketFlow packet = requirePacket(session, request.packetFlowId());
+                requireRoutablePacket(packet, player, now);
+
+                List<String> path = request.path();
+                requireValidPathShape(path, packet);
+                List<NetworkNode> nodes = resolveNodes(session, path);
+                List<NetworkLink> links = resolveLinks(session, path);
+
+                List<LinkStatus> preStatuses = links.stream().map(NetworkLink::getStatus).toList();
+                double latencyMs = computeLatency(session, links, nodes);
+                double lossRisk = computeLossRisk(links, preStatuses);
+                TrafficProfile profile = trafficProfiles.profileFor(packet.getTrafficType());
+                int hops = path.size() - 1;
+
+                return RoutePreviewResponse.valid(
+                        latencyMs,
+                        riskBand(lossRisk),
+                        buildWarnings(session, links, preStatuses, latencyMs, profile),
+                        estimateScoreRange(profile, latencyMs, hops, preStatuses, lossRisk));
+            } catch (InvalidRouteException e) {
+                return RoutePreviewResponse.invalid(e.getMessage());
+            }
+        }
+    }
+
+    private String riskBand(double lossRisk) {
+        if (lossRisk < 0.10) {
+            return "LOW";
+        }
+        if (lossRisk < 0.35) {
+            return "MEDIUM";
+        }
+        return "HIGH";
+    }
+
+    private List<String> buildWarnings(GameSession session, List<NetworkLink> links,
+                                       List<LinkStatus> preStatuses, double latencyMs, TrafficProfile profile) {
+        Set<String> warnings = new LinkedHashSet<>();
+        if (latencyMs > profile.slaLatencyMs()) {
+            warnings.add(String.format("Latency %.0fms exceeds the %dms SLA — packet would be dropped.",
+                    latencyMs, profile.slaLatencyMs()));
+        }
+        for (int i = 0; i < links.size(); i++) {
+            LinkStatus status = preStatuses.get(i);
+            if (status == LinkStatus.OVERLOADED || status == LinkStatus.CONGESTED || status == LinkStatus.BUSY) {
+                warnings.add(String.format("Route uses a %s %s link.", status, links.get(i).getLinkType()));
+            }
+        }
+        for (NetworkLink link : links) {
+            for (IncidentEvent incident : session.getIncidents()) {
+                boolean byId = link.getId().equals(incident.getTargetId())
+                        || incident.getAffectedLinkIds().contains(link.getId());
+                boolean byType = incident.getAffectedLinkTypes().contains(link.getLinkType());
+                if (byId || byType) {
+                    warnings.add(String.format("Active %s affects this route.", incident.getEventType()));
+                }
+            }
+        }
+        return List.copyOf(warnings);
+    }
+
+    private RoutePreviewResponse.ScoreRange estimateScoreRange(TrafficProfile profile, double latencyMs, int hops,
+                                                               List<LinkStatus> preStatuses, double lossRisk) {
+        int drop = scoreCalculator.dropScore(profile);
+        // Mirror the same deterministic decision the real submission makes, so the
+        // preview score equals the outcome — too slow or over the loss threshold drops.
+        if (latencyMs > profile.slaLatencyMs() || packetLossPolicy.isLost(lossRisk)) {
+            return new RoutePreviewResponse.ScoreRange(drop, drop);
+        }
+        int delivered = scoreCalculator.deliveryScore(profile, latencyMs, hops, preStatuses, lossRisk);
+        return new RoutePreviewResponse.ScoreRange(delivered, delivered);
     }
 
     // --- Validation --------------------------------------------------------
