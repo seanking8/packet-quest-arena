@@ -7,19 +7,34 @@ import IncidentFeedPanel from '../components/hud/IncidentFeedPanel'
 import RouteControlsPanel from '../components/hud/RouteControlsPanel'
 import SelectedDetailPanel from '../components/hud/SelectedDetailPanel'
 import NetworkScene from '../components/map/NetworkScene'
+import { zoneCenter } from '../components/map/incidents'
 
 const DEFAULT_PANELS = { jobs: true, leaderboard: true, incidents: true, route: true }
+const DEFAULT_LAYERS = { weather: true, incidents: true, labels: false }
 
 export default function GameScreen({ state, transport }) {
   const { playerId } = useGame()
   const [panels, setPanels] = useState(DEFAULT_PANELS)
+  const [layers, setLayers] = useState(DEFAULT_LAYERS)
   const [view, setView] = useState('iso')
+  const [focus, setFocus] = useState(null)
   const [selected, setSelected] = useState(null)
   const [selectedPacket, setSelectedPacket] = useState(null)
   const [routePath, setRoutePath] = useState([])
   const [routeNotice, setRouteNotice] = useState(null)
 
   const toggle = (name) => setPanels((p) => ({ ...p, [name]: !p[name] }))
+  const toggleLayer = (name) => setLayers((l) => ({ ...l, [name]: !l[name] }))
+
+  // Click an incident in the feed → bring the city view to its zone.
+  const handleFocusIncident = (incident) => {
+    const nodeIndex = {}
+    ;(state.nodes || []).forEach((n) => (nodeIndex[n.id] = n))
+    const center = zoneCenter(incident, nodeIndex)
+    if (!center) return
+    setView('iso')
+    setFocus({ x: center.x, z: center.z, key: (focus?.key || 0) + 1 })
+  }
 
   useEffect(() => {
     if (!selectedPacket) return
@@ -77,6 +92,8 @@ export default function GameScreen({ state, transport }) {
           routePath={routePath}
           selectedPacket={selectedPacket}
           view={view}
+          layers={layers}
+          focus={focus}
         />
       </div>
 
@@ -85,6 +102,12 @@ export default function GameScreen({ state, transport }) {
         <button className={`toggle ${view === 'iso' ? 'on' : ''}`} onClick={() => setView('iso')}>City</button>
         <button className={`toggle ${view === 'planet' ? 'on' : ''}`} onClick={() => setView('planet')}>Planet</button>
         <button className="ghost" onClick={() => setView('iso')}>{view === 'planet' ? 'Back to City' : 'Reset'}</button>
+      </div>
+
+      <div className="layer-controls">
+        <button className={`toggle ${layers.weather ? 'on' : ''}`} aria-pressed={layers.weather} onClick={() => toggleLayer('weather')}>Weather</button>
+        <button className={`toggle ${layers.incidents ? 'on' : ''}`} aria-pressed={layers.incidents} onClick={() => toggleLayer('incidents')}>Incidents</button>
+        <button className={`toggle ${layers.labels ? 'on' : ''}`} aria-pressed={layers.labels} onClick={() => toggleLayer('labels')}>Labels</button>
       </div>
 
       <TopBar state={state} transport={transport} panels={panels} onToggle={toggle} />
@@ -103,7 +126,7 @@ export default function GameScreen({ state, transport }) {
       <aside className="hud-right">
         <SelectedDetailPanel selected={selected} onClear={() => setSelected(null)} />
         {panels.leaderboard && <LeaderboardPanel state={state} playerId={playerId} />}
-        {panels.incidents && <IncidentFeedPanel state={state} />}
+        {panels.incidents && <IncidentFeedPanel state={state} onFocus={handleFocusIncident} />}
       </aside>
 
       {panels.route && (

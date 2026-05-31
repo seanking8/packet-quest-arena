@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { OrbitControls, Line } from '@react-three/drei'
+import { OrbitControls, Line, Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { nodeColor, linkColor, nodeSize, isArcLink, isBrokenLink } from './colors'
+import { isWeather, incidentColor } from './incidents'
+import IncidentZones from './IncidentZones'
 import PlanetScene from './PlanetScene'
 
 // Camera presets — y is up, matching backend coordinates.
@@ -11,7 +13,7 @@ const VIEWS = {
   iso: { pos: [70, 60, 70], target: [10, 0, 0] },
 }
 
-function CameraRig({ view }) {
+function CameraRig({ view, focus }) {
   const camera = useThree((s) => s.camera)
   const controls = useThree((s) => s.controls)
   useEffect(() => {
@@ -24,6 +26,19 @@ function CameraRig({ view }) {
       camera.lookAt(...preset.target)
     }
   }, [view, camera, controls])
+
+  // Focus an incident: re-centre on its zone. Declared after the view effect so
+  // a click that changes both view and focus lands the camera on the incident.
+  useEffect(() => {
+    if (!focus) return
+    camera.position.set(focus.x + 22, 26, focus.z + 22)
+    if (controls) {
+      controls.target.set(focus.x, 0, focus.z)
+      controls.update()
+    } else {
+      camera.lookAt(focus.x, 0, focus.z)
+    }
+  }, [focus?.key]) // eslint-disable-line react-hooks/exhaustive-deps
   return null
 }
 
@@ -93,7 +108,7 @@ function linkPoints(a, b, arc) {
   return [start, mid, end]
 }
 
-function LinkLine({ link, a, b, onSelect, inRoute }) {
+function LinkLine({ link, a, b, onSelect, inRoute, affectedColor }) {
   const arc = isArcLink(link.linkType)
   const points = useMemo(() => linkPoints(a, b, arc), [a, b, arc])
   const color = inRoute ? '#ffd479' : linkColor(link)
@@ -111,6 +126,10 @@ function LinkLine({ link, a, b, onSelect, inRoute }) {
         transparent
         opacity={inRoute ? 1 : broken ? 0.6 : 0.9}
       />
+      {/* At-risk overlay: this link is touched by an active weather/incident. */}
+      {affectedColor && !inRoute && (
+        <Line points={points} color={affectedColor} lineWidth={3} dashed dashSize={0.8} gapSize={1.2} transparent opacity={0.55} />
+      )}
       {/* small clickable handle at the midpoint for reliable selection */}
       <mesh
         position={[mid.x, mid.y, mid.z]}
@@ -167,12 +186,33 @@ function Packet({ points, color }) {
   )
 }
 
-function SceneContent({ state, onSelect, routePath, selectedPacket }) {
+function SceneContent({ state, onSelect, routePath, selectedPacket, layers }) {
+  const { weather: showWeather = true, incidents: showIncidents = true, labels: showLabels = false } = layers || {}
+
   const nodeIndex = useMemo(() => {
     const map = {}
     ;(state.nodes || []).forEach((n) => (map[n.id] = n))
     return map
   }, [state.nodes])
+
+  // Links touched by an active weather/incident — coloured by the incident so
+  // players can see which paths are risky even before status flips.
+  const affectedLinkColor = useMemo(() => {
+    const map = new Map()
+    ;(state.incidents || []).forEach((inc) => {
+      const weather = isWeather(inc.eventType)
+      if (weather ? !showWeather : !showIncidents) return
+      const color = incidentColor(inc.eventType)
+      const types = new Set(inc.affectedLinkTypes || [])
+      ;(inc.affectedLinkIds || []).forEach((id) => { if (!map.has(id)) map.set(id, color) })
+      if (types.size) {
+        ;(state.links || []).forEach((l) => {
+          if (types.has(l.linkType) && !map.has(l.id)) map.set(l.id, color)
+        })
+      }
+    })
+    return map
+  }, [state.incidents, state.links, showWeather, showIncidents])
 
   const playerColor = useMemo(() => {
     const map = {}
@@ -224,6 +264,7 @@ function SceneContent({ state, onSelect, routePath, selectedPacket }) {
             b={b}
             onSelect={onSelect}
             inRoute={routeEdges.has(edgeKey(link.sourceNodeId, link.targetNodeId))}
+            affectedColor={affectedLinkColor.get(link.id)}
           />
         )
       })}
@@ -239,6 +280,20 @@ function SceneContent({ state, onSelect, routePath, selectedPacket }) {
         />
       ))}
 
+      {showLabels && (state.nodes || []).map((n) => (
+        <Html key={`lbl-${n.id}`} position={[n.x, (nodeSize(n.type) || 1) * 2 + 2, n.z]} center distanceFactor={120} style={{ pointerEvents: 'none' }}>
+          <div className="node-label">{n.label || n.id}</div>
+        </Html>
+      ))}
+
+      <IncidentZones
+        incidents={state.incidents || []}
+        nodeIndex={nodeIndex}
+        serverTime={state.serverTime}
+        showWeather={showWeather}
+        showIncidents={showIncidents}
+      />
+
       {packets.map((p) => (
         <Packet key={p.id} points={p.points} color={p.color} />
       ))}
@@ -246,7 +301,7 @@ function SceneContent({ state, onSelect, routePath, selectedPacket }) {
   )
 }
 
-export default function NetworkScene({ state, onSelect, routePath = [], selectedPacket = null, view = 'iso' }) {
+export default function NetworkScene({ state, onSelect, routePath = [], selectedPacket = null, view = 'iso', layers, focus }) {
   const planet = view === 'planet'
 
   if (!state?.nodes?.length) {
@@ -264,9 +319,9 @@ export default function NetworkScene({ state, onSelect, routePath = [], selected
       <div style={{ position: 'absolute', inset: 0, visibility: planet ? 'hidden' : 'visible' }}>
         <Canvas camera={{ position: VIEWS.iso.pos, fov: 45 }} onPointerMissed={() => onSelect(null)}>
           <color attach="background" args={['#0b1020']} />
-          <CameraRig view={view} />
+          <CameraRig view={view} focus={focus} />
           <OrbitControls makeDefault enablePan enableZoom enableRotate />
-          <SceneContent state={state} onSelect={onSelect} routePath={routePath} selectedPacket={selectedPacket} />
+          <SceneContent state={state} onSelect={onSelect} routePath={routePath} selectedPacket={selectedPacket} layers={layers} />
         </Canvas>
       </div>
 

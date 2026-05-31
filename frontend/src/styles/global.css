@@ -97,6 +97,45 @@ code.pill, .pill {
 .scene-wrap { position: absolute; inset: 0; }
 .scene-wrap canvas { display: block; }
 .view-controls { position: absolute; left: 12px; bottom: 112px; z-index: 3; display: flex; gap: 6px; }
+.layer-controls { position: absolute; left: 12px; bottom: 150px; z-index: 3; display: flex; gap: 6px; }
+
+/* map node labels (toggleable) */
+.node-label {
+  background: rgba(8,12,28,0.78);
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  padding: 1px 6px;
+  font-size: 11px;
+  color: var(--text);
+  white-space: nowrap;
+  transform: translateY(-50%);
+}
+
+/* weather/incident zone marker chip + hover tooltip (rendered in-canvas) */
+.zone-chip {
+  background: rgba(8,12,28,0.85);
+  border: 1px solid;
+  border-radius: 999px;
+  width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+}
+.zone-tooltip {
+  width: 230px;
+  background: rgba(8,12,28,0.95);
+  border: 1px solid;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--text);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.4);
+}
+.zone-tt-head { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.zone-tt-icon { font-size: 14px; }
+.zone-tt-msg { color: var(--muted); margin-bottom: 6px; }
+.zone-tt-kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin: 0; }
+.zone-tt-kv dt { color: var(--muted); }
+.zone-tt-kv dd { margin: 0; }
 
 .hud-top, .hud-left, .hud-right, .hud-bottom { position: absolute; z-index: 2; }
 .hud-top {
@@ -141,6 +180,10 @@ code.pill, .pill {
 .incident-list li { display: flex; flex-direction: column; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
 .incident-type { font-weight: 600; font-size: 13px; color: var(--warn); }
 .sev { font-size: 11px; color: var(--muted); }
+.feed-group { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 8px 0 2px; }
+.incident-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 2px; }
+.incident-row.clickable { cursor: pointer; border-radius: 6px; }
+.incident-row.clickable:hover { background: rgba(79,140,255,0.1); }
 
 .kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; }
 .kv dt { color: var(--muted); font-size: 12px; }
