@@ -128,6 +128,7 @@ public class PacketFlowGenerationService {
                 profile.packetSize(),
                 profile.deadlineSeconds()
         );
+        flow.setValue(profile.value());
         flow.setCreatedAt(now);
         flow.setExpiresAt(now.plusSeconds(profile.deadlineSeconds()));
         // status defaults to PENDING; selectedPath null; latencyMs/scoreDelta 0

@@ -20,6 +20,7 @@ public class PacketFlow {
     private TrafficType trafficType;
     private int packetSize;
     private int deadlineSeconds;
+    private int value;
     private Instant createdAt = Instant.now();
     private Instant expiresAt;
     private PacketStatus status = PacketStatus.PENDING;
@@ -97,6 +98,15 @@ public class PacketFlow {
 
     public void setDeadlineSeconds(int deadlineSeconds) {
         this.deadlineSeconds = deadlineSeconds;
+    }
+
+    /** Base reward (the traffic profile's value) shown to players before routing. */
+    public int getValue() {
+        return value;
+    }
+
+    public void setValue(int value) {
+        this.value = value;
     }
 
     public Instant getCreatedAt() {

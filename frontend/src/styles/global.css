@@ -231,3 +231,30 @@ code.pill, .pill {
 .job-selected { background: rgba(79,140,255,0.08); border-radius: 6px; }
 .job-select-btn { background: rgba(255,255,255,0.08); color: var(--muted); padding: 3px 8px; font-size: 11px; border-radius: 6px; }
 .job-select-btn.on { background: var(--accent); color: white; }
+
+/* Section 14 — HUD polish */
+.pill.code { font-family: monospace; letter-spacing: 0.04em; }
+
+.pressure { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; }
+.pressure-bar { width: 48px; height: 6px; border-radius: 999px; background: rgba(255,255,255,0.12); overflow: hidden; }
+.pressure-bar > span { display: block; height: 100%; border-radius: 999px; }
+.pressure-low { color: var(--ok); }
+.pressure-low .pressure-bar > span { background: var(--ok); }
+.pressure-medium { color: var(--warn); }
+.pressure-medium .pressure-bar > span { background: var(--warn); }
+.pressure-high { color: var(--bad); }
+.pressure-high .pressure-bar > span { background: var(--bad); }
+
+.timer.urgent { color: var(--warn); }
+.timer.critical { color: var(--bad); animation: timer-pulse 1s ease-in-out infinite; }
+@keyframes timer-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+
+.deadline { color: var(--muted); }
+.deadline-urgent { color: var(--bad); font-weight: 700; }
+
+.pkt-counts { display: inline-flex; gap: 8px; margin-left: 8px; font-size: 11px; }
+.pkt-ok { color: var(--ok); }
+.pkt-bad { color: var(--bad); }
+
+.leaderboard .top-score { background: rgba(255,180,84,0.10); border-radius: 6px; }
+.leaderboard .top-score .score { color: var(--warn); }

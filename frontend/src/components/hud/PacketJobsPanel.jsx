@@ -1,3 +1,6 @@
+import { useNow } from '../../lib/useNow'
+import { secondsLeft } from '../../lib/format'
+
 const STATUS_CLASS = {
   PENDING: 'st-pending',
   DELIVERED: 'st-ok',
@@ -6,14 +9,21 @@ const STATUS_CLASS = {
 }
 
 export default function PacketJobsPanel({ state, playerId, selectedPacketId, onSelectPacket }) {
+  const now = useNow(1000)
   const flows = (state.packetFlows || []).filter((f) => f.ownerPlayerId === playerId)
+  const me = (state.players || []).find((p) => p.id === playerId)
 
   return (
     <section className="panel">
-      <h3>Your packet jobs ({flows.length})</h3>
+      <h3>
+        {me && <span className="dot" style={{ background: me.color }} />}
+        Your packet jobs ({flows.length})
+      </h3>
       <ul className="job-list">
         {flows.map((f) => {
           const isSelected = f.id === selectedPacketId
+          const left = f.status === 'PENDING' ? secondsLeft(f.expiresAt, now) : null
+          const urgent = left != null && left <= 10
           return (
             <li key={f.id} className={isSelected ? 'job-selected' : ''}>
               <span className="job-type">{f.trafficType}</span>
@@ -22,8 +32,15 @@ export default function PacketJobsPanel({ state, playerId, selectedPacketId, onS
               </span>
               <span className="job-meta">
                 {f.packetSize ?? '?'} load
-                {f.deadlineSeconds ? ` | ${f.deadlineSeconds}s deadline` : ''}
-                {f.expiresAt ? ` | expires ${formatExpiry(f.expiresAt)}` : ''}
+                {f.value ? ` | worth ${f.value} pts` : ''}
+                {left != null
+                  ? ` | `
+                  : f.deadlineSeconds
+                    ? ` | ${f.deadlineSeconds}s deadline`
+                    : ''}
+                {left != null && (
+                  <span className={urgent ? 'deadline-urgent' : 'deadline'}>{left}s left</span>
+                )}
               </span>
               <span className={`job-status ${STATUS_CLASS[f.status] || ''}`}>{f.status}</span>
               {f.status === 'PENDING' && (
@@ -41,8 +58,4 @@ export default function PacketJobsPanel({ state, playerId, selectedPacketId, onS
       </ul>
     </section>
   )
-}
-
-function formatExpiry(value) {
-  return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }

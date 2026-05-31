@@ -14,6 +14,10 @@ export default function LeaderboardPanel({ state, playerId }) {
             <span className="grow">
               {p.displayName}
               {p.id === playerId && <span className="tag">you</span>}
+              <span className="pkt-counts">
+                <span className="pkt-ok" title="delivered">✓ {p.deliveredPackets ?? 0}</span>
+                <span className="pkt-bad" title="dropped">✗ {p.droppedPackets ?? 0}</span>
+              </span>
             </span>
             <span className="score">{p.score}</span>
           </li>
