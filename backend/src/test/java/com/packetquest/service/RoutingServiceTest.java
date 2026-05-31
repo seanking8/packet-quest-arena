@@ -130,12 +130,12 @@ class RoutingServiceTest {
     @Test
     void routeLatencyUsesIncidentAdjustedCurrentLatency() {
         Scenario s = new Scenario(TrafficType.EMERGENCY, 100, 10);
-        s.link.setCurrentLatencyMs(100); // e.g. weather or latency spike raised it above the 60ms SLA
+        s.link.setCurrentLatencyMs(200); // e.g. weather or latency spike raised it above the 120ms SLA
 
         RouteResultResponse result = s.route(List.of("A", "B"));
 
         assertThat(result.packetStatus()).isEqualTo(PacketStatus.DROPPED);
-        assertThat(result.latencyMs()).isEqualTo(100.0);
+        assertThat(result.latencyMs()).isEqualTo(200.0);
     }
 
     @Test

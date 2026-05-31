@@ -48,7 +48,7 @@ class ScoreCalculatorTest {
 
     @Test
     void deliveryScore_appliesFullFormula() {
-        TrafficProfile video = profiles.profileFor(TrafficType.VIDEO); // value 90, sla 150
+        TrafficProfile video = profiles.profileFor(TrafficType.VIDEO); // value 90, sla 300
         // very fast (+30), 1 hop (cost 0), healthy (0), no loss (0)
         int score = calc.deliveryScore(video, 4, 1, List.of(LinkStatus.HEALTHY), 0.0);
         assertThat(score).isEqualTo(120);
@@ -56,9 +56,10 @@ class ScoreCalculatorTest {
 
     @Test
     void deliveryScore_withCostsAndPenalties() {
-        TrafficProfile video = profiles.profileFor(TrafficType.VIDEO); // value 90, sla 150
-        // on time (+10), 3 hops (-3), one BUSY link (-5), risk 0.2 (-10)
-        int score = calc.deliveryScore(video, 120, 3,
+        TrafficProfile video = profiles.profileFor(TrafficType.VIDEO); // value 90, sla 300
+        // on time (+10): 200ms vs 300ms sla -> 0.67 ratio (above 0.50 very-fast, within 0.85 on-time)
+        // 3 hops (-3), one BUSY link (-5), risk 0.2 (-10)
+        int score = calc.deliveryScore(video, 200, 3,
                 List.of(LinkStatus.HEALTHY, LinkStatus.BUSY, LinkStatus.HEALTHY), 0.2);
         assertThat(score).isEqualTo(90 + 10 - 3 - 5 - 10);
     }
