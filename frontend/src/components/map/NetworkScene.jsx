@@ -67,7 +67,31 @@ function Beacon({ color }) {
   )
 }
 
-function NodeMesh({ node, onSelect, inPath, isSource, isDest }) {
+// A pulsing cyan "click here next" cue on every node you're currently allowed
+// to add to the route, so building a path in the busy city is obvious.
+function HopMarker() {
+  const dot = useRef()
+  useFrame((state) => {
+    if (!dot.current) return
+    const p = 0.5 + 0.5 * Math.sin(state.clock.elapsedTime * 4)
+    dot.current.position.y = 7 + p * 1.4
+    dot.current.material.opacity = 0.55 + p * 0.4
+  })
+  return (
+    <group raycast={() => null}>
+      <mesh position={[0, 0.16, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[2.4, 3.1, 28]} />
+        <meshBasicMaterial color="#4fe0ff" transparent opacity={0.75} side={THREE.DoubleSide} depthWrite={false} />
+      </mesh>
+      <mesh ref={dot} position={[0, 7, 0]}>
+        <octahedronGeometry args={[0.85, 0]} />
+        <meshBasicMaterial color="#4fe0ff" transparent opacity={0.85} />
+      </mesh>
+    </group>
+  )
+}
+
+function NodeMesh({ node, onSelect, inPath, isSource, isDest, isNextHop }) {
   const [hovered, setHovered] = useState(false)
   const failed = node.status === 'FAILED'
   const degraded = node.status === 'DEGRADED'
@@ -97,6 +121,9 @@ function NodeMesh({ node, onSelect, inPath, isSource, isDest }) {
 
       {/* Sender / receiver of the packet being routed get a tall light beam. */}
       {(isSource || isDest) && <Beacon color={isSource ? '#36c98d' : '#ff7ab6'} />}
+
+      {/* Valid next click while building the route. */}
+      {isNextHop && !inPath && !isSource && !isDest && <HopMarker />}
 
       {/* Base marker ring — makes each node easy to spot in the city and shows
           its selection / health state. */}
@@ -296,6 +323,19 @@ function SceneContent({ state, onSelect, routePath, selectedPacket, layers }) {
   const sourceId = selectedPacket?.sourceNodeId
   const destId = selectedPacket?.destinationNodeId
 
+  // While building a route, the nodes you're actually allowed to click next:
+  // neighbours of the current path end that aren't already on the path.
+  const lastInPath = routePath[routePath.length - 1]
+  const nextHops = useMemo(() => {
+    const set = new Set()
+    if (!selectedPacket || !lastInPath || lastInPath === destId) return set
+    ;(state.links || []).forEach((l) => {
+      if (l.sourceNodeId === lastInPath && !pathSet.has(l.targetNodeId)) set.add(l.targetNodeId)
+      else if (l.targetNodeId === lastInPath && !pathSet.has(l.sourceNodeId)) set.add(l.sourceNodeId)
+    })
+    return set
+  }, [selectedPacket, lastInPath, destId, state.links, pathSet])
+
   return (
     <>
       <hemisphereLight args={['#dce8ff', '#5b6446', 0.7]} />
@@ -338,6 +378,7 @@ function SceneContent({ state, onSelect, routePath, selectedPacket, layers }) {
           inPath={pathSet.has(n.id)}
           isSource={n.id === sourceId}
           isDest={n.id === destId}
+          isNextHop={nextHops.has(n.id)}
         />
       ))}
 
