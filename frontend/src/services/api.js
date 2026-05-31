@@ -61,6 +61,17 @@ export const submitRoute = (sessionId, { playerId, packetFlowId, path }) =>
     body: JSON.stringify({ playerId, packetFlowId, path }),
   })
 
+/**
+ * POST /api/sessions/{id}/routes/preview -> RoutePreviewResponse
+ * Non-binding estimate (latency / loss risk / score range / warnings). The
+ * backend stays authoritative; this never changes game state.
+ */
+export const previewRoute = (sessionId, { playerId, packetFlowId, path }) =>
+  request(`/sessions/${sessionId}/routes/preview`, {
+    method: 'POST',
+    body: JSON.stringify({ playerId, packetFlowId, path }),
+  })
+
 /** POST /api/sessions/{id}/tick -> GameStateDto */
 export const tick = (sessionId) =>
   request(`/sessions/${sessionId}/tick`, { method: 'POST' })

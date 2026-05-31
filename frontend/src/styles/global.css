@@ -217,6 +217,16 @@ code.pill, .pill {
 .route-result.ok { color: var(--ok); }
 .route-result.bad { color: var(--bad); }
 
+.route-preview { margin: 8px 0 0; font-size: 13px; }
+.route-preview-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.preview-stat { color: var(--text); }
+.risk { font-weight: 600; padding: 1px 8px; border-radius: 999px; font-size: 12px; }
+.risk-low { color: var(--ok); background: rgba(54,201,141,0.12); }
+.risk-medium { color: var(--warn); background: rgba(255,180,84,0.12); }
+.risk-high { color: var(--bad); background: rgba(255,93,108,0.12); }
+.route-warnings { margin: 6px 0 0; padding: 0 0 0 2px; list-style: none; }
+.route-warnings li { font-size: 12px; color: var(--warn); padding: 1px 0; }
+
 .job-list li { display: grid; grid-template-columns: auto 1fr auto auto; gap: 2px 8px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.06); align-items: center; }
 .job-selected { background: rgba(79,140,255,0.08); border-radius: 6px; }
 .job-select-btn { background: rgba(255,255,255,0.08); color: var(--muted); padding: 3px 8px; font-size: 11px; border-radius: 6px; }
