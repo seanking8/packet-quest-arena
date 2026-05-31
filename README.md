@@ -47,15 +47,26 @@ SESSION_ID=<sessionId> docker compose up simulator
 ## Running Tests
 
 ```bash
-# Backend
+# Everything at once (backend + frontend + simulator)
+./scripts/test-all.sh
+
+# Or run each suite individually:
+
+# Backend (JUnit / Spring — includes the full-match system flow test)
 cd backend && mvn test
 
-# Frontend
+# Frontend (Vitest)
 cd frontend && npm test
 
-# Simulator
-python -m pytest simulator/tests -q
+# Simulator (pytest)
+python3 -m pytest simulator/tests -q
 ```
+
+The backend suite includes `FullMatchFlowTest`, an end-to-end system test that
+drives create session → join two players → start → generate traffic → submit a
+route over the real topology → assert the packet status and score change. See
+[Docs/security-notes.md](Docs/security-notes.md) for the anti-cheat and
+validation design.
 
 ## Project Structure
 

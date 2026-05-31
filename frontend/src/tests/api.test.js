@@ -1,5 +1,5 @@
 import { beforeEach, expect, test, vi } from 'vitest'
-import { createSession, joinSession, previewRoute, ApiError } from '../services/api'
+import { createSession, joinSession, previewRoute, submitRoute, ApiError } from '../services/api'
 
 beforeEach(() => {
   global.fetch = vi.fn()
@@ -35,6 +35,15 @@ test('previewRoute posts path to the preview endpoint without mutating state', a
     body: JSON.stringify({ playerId: 'p1', packetFlowId: 'pkt1', path: ['A', 'B'] }),
   }))
   expect(res.packetLossRisk).toBe('LOW')
+})
+
+test('submitRoute sends only playerId, packetFlowId and path (no score/latency)', async () => {
+  fetch.mockResolvedValue({ ok: true, status: 200, json: async () => ({ packetStatus: 'DELIVERED', latencyMs: 4, scoreDelta: 120 }) })
+  // A caller could pass extra fields; the client must not forward score/latency/result.
+  await submitRoute('s1', { playerId: 'p1', packetFlowId: 'pkt1', path: ['A', 'B'], score: 99999, latencyMs: 1 })
+  const [, options] = fetch.mock.calls[0]
+  expect(fetch.mock.calls[0][0]).toBe('/api/sessions/s1/actions/route')
+  expect(JSON.parse(options.body)).toEqual({ playerId: 'p1', packetFlowId: 'pkt1', path: ['A', 'B'] })
 })
 
 test('network failure becomes a friendly ApiError', async () => {

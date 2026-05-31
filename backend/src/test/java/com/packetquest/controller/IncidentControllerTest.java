@@ -55,4 +55,30 @@ class IncidentControllerTest {
                         .content("{\"targetType\":\"ZONE\",\"severity\":0.4,\"durationSeconds\":25}"))
                 .andExpect(status().isBadRequest());
     }
+
+    @Test
+    void applyIncident_severityOutOfRange_returns400() throws Exception {
+        mockMvc.perform(post("/api/sessions/s1/incidents")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"eventType\":\"WEATHER_HIGH_WINDS\",\"severity\":5.0,\"durationSeconds\":25}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void applyIncident_durationTooLong_returns400() throws Exception {
+        mockMvc.perform(post("/api/sessions/s1/incidents")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"eventType\":\"WEATHER_HIGH_WINDS\",\"severity\":0.4,\"durationSeconds\":99999}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void applyIncident_unknownEventType_returns400Safely() throws Exception {
+        // Unparseable enum -> handled as a malformed body, not a 500/stack trace.
+        mockMvc.perform(post("/api/sessions/s1/incidents")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"eventType\":\"NOT_A_REAL_EVENT\",\"severity\":0.4,\"durationSeconds\":25}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.trace").doesNotExist());
+    }
 }
