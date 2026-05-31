@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { secondsLeft } from '../../lib/format'
 import { districtForNode, friendlyNodeName } from '../../utils/mapDisplay'
 
 const STATUS_CLASS = {
@@ -10,6 +11,7 @@ const STATUS_CLASS = {
 
 export default function PacketJobsPanel({ state, playerId, selectedPacketId, onSelectPacket, timerPaused = false }) {
   const flows = (state.packetFlows || []).filter((f) => f.ownerPlayerId === playerId)
+  const me = (state.players || []).find((p) => p.id === playerId)
   const nodeIndex = Object.fromEntries((state.nodes || []).map((n) => [n.id, n]))
   const [now, setNow] = useState(() => Date.now())
   const timerKey = flows.map((f) => `${f.id}:${f.status}:${f.expiresAt || ''}`).join('|')
@@ -24,13 +26,17 @@ export default function PacketJobsPanel({ state, playerId, selectedPacketId, onS
 
   return (
     <section className="panel">
-      <h3>Your packet jobs ({flows.length})</h3>
+      <h3>
+        {me && <span className="dot" style={{ background: me.color }} />}
+        Your packet jobs ({flows.length})
+      </h3>
       <ul className="job-list">
         {flows.map((f) => {
           const isSelected = f.id === selectedPacketId
           const source = nodeIndex[f.sourceNodeId] || f.sourceNodeId
           const dest = nodeIndex[f.destinationNodeId] || f.destinationNodeId
           const deadline = deadlineState(f, now)
+          const left = f.status === 'PENDING' ? secondsLeft(f.expiresAt, now) : null
           return (
             <li key={f.id} className={isSelected ? 'job-selected' : ''}>
               <span className="job-type">{f.trafficType}</span>
@@ -42,9 +48,11 @@ export default function PacketJobsPanel({ state, playerId, selectedPacketId, onS
               <span className="job-meta">
                 <span>{districtForNode(source)} to {districtForNode(dest)}</span>
                 <span>
-                {f.packetSize ?? '?'} load
-                {f.deadlineSeconds ? ` | ${f.deadlineSeconds}s deadline` : ''}
-                {f.expiresAt ? ` | expires ${formatExpiry(f.expiresAt)}` : ''}
+                  {f.packetSize ?? '?'} load
+                  {f.value ? ` | worth ${f.value} pts` : ''}
+                  {f.deadlineSeconds ? ` | ${f.deadlineSeconds}s deadline` : ''}
+                  {f.expiresAt ? ` | expires ${formatExpiry(f.expiresAt)}` : ''}
+                  {left != null ? ` | ${left}s left` : ''}
                 </span>
               </span>
               {deadline && <DeadlineMeter deadline={deadline} />}

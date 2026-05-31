@@ -785,10 +785,47 @@ code.pill, .pill {
   background: rgba(255,255,255,0.05);
 }
 
+.route-preview { margin: 8px 0 0; font-size: 13px; }
+.route-preview-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.preview-stat { color: var(--text); }
+.risk { font-weight: 600; padding: 1px 8px; border-radius: 999px; font-size: 12px; }
+.risk-low { color: var(--ok); background: rgba(54,201,141,0.12); }
+.risk-medium { color: var(--warn); background: rgba(255,180,84,0.12); }
+.risk-high { color: var(--bad); background: rgba(255,93,108,0.12); }
+.route-warnings { margin: 6px 0 0; padding: 0 0 0 2px; list-style: none; }
+.route-warnings li { font-size: 12px; color: var(--warn); padding: 1px 0; }
+
 .job-list li { display: grid; grid-template-columns: auto 1fr auto auto; gap: 2px 8px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.06); align-items: center; }
 .job-selected { background: rgba(79,140,255,0.08); border-radius: 6px; }
 .job-select-btn { background: rgba(255,255,255,0.08); color: var(--muted); padding: 3px 8px; font-size: 11px; border-radius: 6px; }
 .job-select-btn.on { background: var(--accent); color: white; }
+
+/* Section 14 HUD polish */
+.pill.code { font-family: monospace; letter-spacing: 0.04em; }
+
+.pressure { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; }
+.pressure-bar { width: 48px; height: 6px; border-radius: 999px; background: rgba(255,255,255,0.12); overflow: hidden; }
+.pressure-bar > span { display: block; height: 100%; border-radius: 999px; }
+.pressure-low { color: var(--ok); }
+.pressure-low .pressure-bar > span { background: var(--ok); }
+.pressure-medium { color: var(--warn); }
+.pressure-medium .pressure-bar > span { background: var(--warn); }
+.pressure-high { color: var(--bad); }
+.pressure-high .pressure-bar > span { background: var(--bad); }
+
+.timer.urgent { color: var(--warn); }
+.timer.critical { color: var(--bad); animation: timer-pulse 1s ease-in-out infinite; }
+@keyframes timer-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+
+.deadline { color: var(--muted); }
+.deadline-urgent { color: var(--bad); font-weight: 700; }
+
+.pkt-counts { display: inline-flex; gap: 8px; margin-left: 8px; font-size: 11px; }
+.pkt-ok { color: var(--ok); }
+.pkt-bad { color: var(--bad); }
+
+.leaderboard .top-score { background: rgba(255,180,84,0.10); border-radius: 6px; }
+.leaderboard .top-score .score { color: var(--warn); }
 
 @media (max-width: 980px) {
   .map-legend {

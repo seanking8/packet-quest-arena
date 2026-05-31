@@ -18,3 +18,44 @@ export function leaderOf(players) {
 export function rankedPlayers(players) {
   return [...(players || [])].sort((a, b) => b.score - a.score)
 }
+
+/**
+ * Urgency band for the match timer. The backend still owns match end — this is
+ * only a visual cue. < 30s critical, < 60s urgent, otherwise normal.
+ */
+export function timerUrgency(seconds) {
+  const s = Math.max(0, Math.floor(seconds || 0))
+  if (s <= 30) return 'critical'
+  if (s <= 60) return 'urgent'
+  return ''
+}
+
+/**
+ * Whole seconds left until an ISO deadline, relative to `now` (ms). Never
+ * negative. The backend remains authoritative for actual expiry; this is a
+ * display countdown only.
+ */
+export function secondsLeft(expiresAt, now) {
+  if (!expiresAt) return null
+  const end = Date.parse(expiresAt)
+  if (Number.isNaN(end)) return null
+  return Math.max(0, Math.ceil((end - now) / 1000))
+}
+
+/**
+ * Aggregate network pressure derived from per-link load. Returns the 0..1 ratio
+ * of total current load to total capacity plus a Low/Medium/High band. All
+ * inputs are backend-computed; this only summarises them.
+ */
+export function networkPressure(links) {
+  const list = links || []
+  let load = 0
+  let capacity = 0
+  for (const l of list) {
+    load += l.currentLoad || 0
+    capacity += l.capacity || 0
+  }
+  const ratio = capacity > 0 ? Math.min(1, load / capacity) : 0
+  const band = ratio >= 0.66 ? 'HIGH' : ratio >= 0.33 ? 'MEDIUM' : 'LOW'
+  return { ratio, band }
+}

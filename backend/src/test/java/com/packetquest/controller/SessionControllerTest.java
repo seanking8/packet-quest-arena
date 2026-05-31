@@ -66,6 +66,15 @@ class SessionControllerTest {
     }
 
     @Test
+    void joinSession_overlongDisplayName_returns400() throws Exception {
+        String tooLong = "x".repeat(33);
+        mockMvc.perform(post("/api/sessions/s1/players")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"displayName\":\"" + tooLong + "\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void startSession_returns200WithState() throws Exception {
         GameSession session = new GameSession();
         session.addPlayer("Alice", "blue");

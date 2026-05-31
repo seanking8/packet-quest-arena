@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useGame } from '../../state/GameContext'
-import { submitRoute } from '../../services/api'
+import { previewRoute, submitRoute } from '../../services/api'
 import { buildRouteAssist, estimatePath } from '../../utils/routeAssist'
 import { districtForNode, friendlyNodeName } from '../../utils/mapDisplay'
 
@@ -18,6 +18,8 @@ export default function RouteControlsPanel({
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
+  const [preview, setPreview] = useState(null)
+  const [previewing, setPreviewing] = useState(false)
 
   useEffect(() => {
     setResult(null)
@@ -45,6 +47,27 @@ export default function RouteControlsPanel({
     && routePath[0] === selectedPacket.sourceNodeId
     && routePath[routePath.length - 1] === selectedPacket.destinationNodeId
 
+  // Fetch a non-binding backend estimate when a real match has a complete
+  // candidate route. The tutorial keeps using its local guided estimate.
+  useEffect(() => {
+    if (!routeComplete || onSubmitRoute || !sessionId) {
+      setPreview(null)
+      setPreviewing(false)
+      return undefined
+    }
+    let cancelled = false
+    setPreviewing(true)
+    previewRoute(sessionId, {
+      playerId,
+      packetFlowId: selectedPacket.id,
+      path: routePath,
+    })
+      .then((res) => { if (!cancelled) setPreview(res) })
+      .catch(() => { if (!cancelled) setPreview(null) })
+      .finally(() => { if (!cancelled) setPreviewing(false) })
+    return () => { cancelled = true }
+  }, [routeComplete, onSubmitRoute, sessionId, playerId, selectedPacket?.id, routePath.join('|')])
+
   const nextHint = useMemo(() => {
     if (!selectedPacket) return null
     const last = routePath[routePath.length - 1]
@@ -68,7 +91,11 @@ export default function RouteControlsPanel({
             packetFlowId: selectedPacket.id,
             path: routePath,
           })
-      setResult(`${res.packetStatus} | ${Math.round(res.latencyMs)}ms | ${res.scoreDelta >= 0 ? '+' : ''}${res.scoreDelta}`)
+      const summary = `${res.packetStatus} | ${Math.round(res.latencyMs)}ms | ${res.scoreDelta >= 0 ? '+' : ''}${res.scoreDelta}`
+      setResult({
+        delivered: res.packetStatus === 'DELIVERED',
+        text: res.message ? `${summary} - ${res.message}` : summary,
+      })
       onClearPacket()
     } catch (e) {
       setError(e.message)
@@ -107,6 +134,7 @@ export default function RouteControlsPanel({
           </span>
         )}
       </div>
+
       {selectedPacket && (
         <RouteQuality
           source={nodeIndex[selectedPacket.sourceNodeId] || selectedPacket.sourceNodeId}
@@ -114,8 +142,34 @@ export default function RouteControlsPanel({
           stats={routeStats}
         />
       )}
+
+      {selectedPacket && routeComplete && (
+        <div className="route-preview">
+          {previewing && <span className="muted">Estimating...</span>}
+          {!previewing && preview && preview.valid && (
+            <div className="route-preview-row">
+              <span className="preview-stat">~{Math.round(preview.estimatedLatencyMs)}ms</span>
+              <span className={`risk risk-${preview.packetLossRisk.toLowerCase()}`}>
+                {preview.packetLossRisk} loss risk
+              </span>
+              <span className="preview-stat">
+                Est. score {scoreRangeLabel(preview.estimatedScoreRange)}
+              </span>
+            </div>
+          )}
+          {!previewing && preview && !preview.valid && (
+            <span className="risk risk-high">Route cannot be delivered</span>
+          )}
+          {!previewing && preview && preview.warnings?.length > 0 && (
+            <ul className="route-warnings">
+              {preview.warnings.map((warning, index) => <li key={index}>Warning: {warning}</li>)}
+            </ul>
+          )}
+        </div>
+      )}
+
       {selectedPacket && <p className="route-result">{routeNotice || nextHint}</p>}
-      {result && <p className="route-result ok">{result}</p>}
+      {result && <p className={`route-result ${result.delivered ? 'ok' : 'bad'}`}>{result.text}</p>}
       {error && <p className="route-result bad">{error}</p>}
     </section>
   )
@@ -150,4 +204,9 @@ function RouteQuality({ source, dest, stats }) {
       </div>
     </div>
   )
+}
+
+function scoreRangeLabel(range) {
+  if (!range) return '-'
+  return range.min === range.max ? `${range.min}` : `${range.min} to ${range.max}`
 }

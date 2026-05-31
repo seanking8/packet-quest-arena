@@ -78,4 +78,40 @@ class ActionControllerTest {
                         .content("{\"playerId\":\"\",\"packetFlowId\":\"pkt\",\"path\":[\"A\",\"B\"]}"))
                 .andExpect(status().isBadRequest());
     }
+
+    @Test
+    void submitRoute_singleNodePath_returns400() throws Exception {
+        // A path needs at least 2 nodes (source -> destination).
+        mockMvc.perform(post("/api/sessions/s1/actions/route")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"playerId\":\"p1\",\"packetFlowId\":\"pkt\",\"path\":[\"A\"]}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void submitRoute_blankNodeInPath_returns400() throws Exception {
+        mockMvc.perform(post("/api/sessions/s1/actions/route")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"playerId\":\"p1\",\"packetFlowId\":\"pkt\",\"path\":[\"A\",\"\"]}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void errorResponse_doesNotLeakInternalDetails() throws Exception {
+        when(routingService.submitRoute(anyString(), any()))
+                .thenThrow(new InvalidRouteException("Path must start at the packet source node."));
+
+        // The safe error body exposes only status/error/message/timestamp — no
+        // stack trace, exception class name or "trace" field.
+        mockMvc.perform(post("/api/sessions/s1/actions/route")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"playerId\":\"p1\",\"packetFlowId\":\"pkt\",\"path\":[\"X\",\"B\"]}"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.status").value(422))
+                .andExpect(jsonPath("$.error").exists())
+                .andExpect(jsonPath("$.message").exists())
+                .andExpect(jsonPath("$.timestamp").exists())
+                .andExpect(jsonPath("$.trace").doesNotExist())
+                .andExpect(jsonPath("$.exception").doesNotExist());
+    }
 }

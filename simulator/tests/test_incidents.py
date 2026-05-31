@@ -1,3 +1,5 @@
+import json
+
 from simulator.incidents import (
     IncidentGenerator, NON_WEATHER_TYPES, RECOVERY_TYPE,
     SEVERITY_RANGE, DURATION_RANGE, INTERVAL_RANGE,
@@ -102,3 +104,20 @@ def test_easy_difficulty_is_gentler_than_hard():
     assert max(i["severity"] for i in easy_incidents) <= 0.45
     assert max(i["severity"] for i in hard_incidents) >= 0.5
     assert not any(i["eventType"] == "NODE_FAILURE" for i in easy_incidents)
+
+
+def test_incident_is_json_serializable_with_exact_schema():
+    # The incident must round-trip through JSON unchanged (it is POSTed as JSON)
+    # and expose exactly the schema fields the backend expects, no more.
+    for incident in _many(n=50):
+        restored = json.loads(json.dumps(incident))
+        assert restored == incident
+        assert set(restored.keys()) == REQUIRED_FIELDS
+
+
+def test_values_stay_within_backend_accepted_bounds():
+    # Contract with the backend: severity in [0, 1] and duration in [0, 300].
+    # If the simulator ever exceeded these, the backend would reject the POST.
+    for incident in _many(n=300):
+        assert 0.0 <= incident["severity"] <= 1.0
+        assert 0 <= incident["durationSeconds"] <= 300
