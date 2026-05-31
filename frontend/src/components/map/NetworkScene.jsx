@@ -6,6 +6,7 @@ import { nodeColor, linkColor, nodeSize, isArcLink, isBrokenLink } from './color
 import { isWeather, incidentColor } from './incidents'
 import IncidentZones from './IncidentZones'
 import PlanetScene from './PlanetScene'
+import { DecorBuildings, NodeModel, Roads, Greenery, StreetTrees, TrafficLights, Bridges, Cars, anchorY } from './cityDetails'
 
 // Camera presets — y is up, matching backend coordinates.
 const VIEWS = {
@@ -42,57 +43,71 @@ function CameraRig({ view, focus }) {
   return null
 }
 
-function nodeMeshGeometry(type) {
-  const s = nodeSize(type)
-  switch (type) {
-    case 'RADIO_TOWER':
-    case 'O_RU':
-      return <cylinderGeometry args={[0.25 * s, 0.45 * s, 3 * s, 6]} />
-    case 'SATELLITE':
-      return <octahedronGeometry args={[1.1 * s, 0]} />
-    case 'UPF':
-      return <sphereGeometry args={[1.0 * s, 16, 16]} />
-    case 'CORE':
-    case 'DATA_CENTRE':
-      return <boxGeometry args={[2.4 * s, 2.0 * s, 2.4 * s]} />
-    case 'SMALL_CELL':
-      return <boxGeometry args={[0.8 * s, 1.2 * s, 0.8 * s]} />
-    default:
-      return <boxGeometry args={[1.4 * s, 1.2 * s, 1.4 * s]} />
-  }
+// A tall, pulsing light column + floating marker so the sender / receiver of a
+// selected packet are impossible to miss in the busy city.
+function Beacon({ color }) {
+  const beam = useRef()
+  const marker = useRef()
+  useFrame((state) => {
+    const p = 0.5 + 0.5 * Math.sin(state.clock.elapsedTime * 3)
+    if (beam.current) beam.current.material.opacity = 0.16 + p * 0.24
+    if (marker.current) marker.current.position.y = 40 + p * 1.6
+  })
+  return (
+    <group raycast={() => null}>
+      <mesh ref={beam} position={[0, 20, 0]}>
+        <cylinderGeometry args={[0.8, 0.8, 40, 14, 1, true]} />
+        <meshBasicMaterial color={color} transparent opacity={0.25} side={THREE.DoubleSide} depthWrite={false} blending={THREE.AdditiveBlending} />
+      </mesh>
+      <mesh ref={marker} position={[0, 40, 0]}>
+        <octahedronGeometry args={[1.8, 0]} />
+        <meshBasicMaterial color={color} transparent opacity={0.95} />
+      </mesh>
+    </group>
+  )
 }
 
 function NodeMesh({ node, onSelect, inPath, isSource, isDest }) {
   const [hovered, setHovered] = useState(false)
-  const color = isSource ? '#36c98d' : isDest ? '#ff7ab6' : inPath ? '#ffd479' : nodeColor(node)
-  const degraded = node.status === 'DEGRADED'
   const failed = node.status === 'FAILED'
+  const degraded = node.status === 'DEGRADED'
+  const highlight = isSource ? '#36c98d' : isDest ? '#ff7ab6' : inPath ? '#ffd479' : null
+  // Ring shows selection first, then health, then the node-type colour.
+  const ringColor = highlight || (failed ? '#ff5d6c' : degraded ? '#ffb454' : nodeColor(node))
+  const active = hovered || inPath || isSource || isDest
+  const sat = node.type === 'SATELLITE'
+  const s = nodeSize(node.type)
+
   return (
-    <group position={[node.x, node.y, node.z]}>
-      <mesh
-        onClick={(e) => {
-          e.stopPropagation()
-          onSelect({ kind: 'node', data: node })
-        }}
-        onPointerOver={(e) => {
-          e.stopPropagation()
-          setHovered(true)
-        }}
-        onPointerOut={() => setHovered(false)}
-      >
-        {nodeMeshGeometry(node.type)}
-        <meshStandardMaterial
-          color={color}
-          emissive={color}
-          emissiveIntensity={inPath || isSource || isDest ? 0.9 : failed ? 0.1 : degraded ? 0.6 : 0.35}
-          opacity={failed ? 0.6 : 1}
-          transparent={failed}
-        />
+    <group
+      position={[node.x, sat ? node.y : 0, node.z]}
+      onClick={(e) => {
+        e.stopPropagation()
+        onSelect({ kind: 'node', data: node })
+      }}
+      onPointerOver={(e) => {
+        e.stopPropagation()
+        setHovered(true)
+      }}
+      onPointerOut={() => setHovered(false)}
+    >
+      <group scale={failed ? 0.95 : 1}>
+        <NodeModel type={node.type} />
+      </group>
+
+      {/* Sender / receiver of the packet being routed get a tall light beam. */}
+      {(isSource || isDest) && <Beacon color={isSource ? '#36c98d' : '#ff7ab6'} />}
+
+      {/* Base marker ring — makes each node easy to spot in the city and shows
+          its selection / health state. */}
+      <mesh position={[0, 0.12, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[s * 1.5, s * 2.1, 28]} />
+        <meshBasicMaterial color={ringColor} transparent opacity={active ? 0.9 : 0.5} side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
-      {(hovered || inPath || isSource || isDest) && (
-        <mesh>
-          <sphereGeometry args={[nodeSize(node.type) * 1.6, 12, 12]} />
-          <meshBasicMaterial color={color} transparent opacity={0.18} />
+      {active && (
+        <mesh position={[0, 0.06, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <circleGeometry args={[s * 2.1, 28]} />
+          <meshBasicMaterial color={ringColor} transparent opacity={0.18} side={THREE.DoubleSide} depthWrite={false} />
         </mesh>
       )}
     </group>
@@ -100,8 +115,9 @@ function NodeMesh({ node, onSelect, inPath, isSource, isDest }) {
 }
 
 function linkPoints(a, b, arc) {
-  const start = new THREE.Vector3(a.x, a.y, a.z)
-  const end = new THREE.Vector3(b.x, b.y, b.z)
+  // Attach at the top of each structure (antenna / rooftop), not the ground.
+  const start = new THREE.Vector3(a.x, anchorY(a), a.z)
+  const end = new THREE.Vector3(b.x, anchorY(b), b.z)
   if (!arc) return [start, end]
   const mid = start.clone().lerp(end, 0.5)
   mid.y += Math.max(4, start.distanceTo(end) * 0.25)
@@ -158,6 +174,41 @@ function Building({ obj }) {
         opacity={tall ? 0.45 : 0.28}
       />
     </mesh>
+  )
+}
+
+// Daytime city floor: ground, a river along the north edge, a few parks, and a
+// faint street grid. Centred on x=10 to match the iso camera target.
+const PARKS = [
+  { x: -95, z: -18, w: 30, d: 30 },
+  { x: 118, z: 8, w: 28, d: 26 },
+  { x: 18, z: -58, w: 42, d: 22 },
+  { x: -78, z: 20, w: 26, d: 24 },
+  { x: 100, z: -22, w: 26, d: 22 },
+  { x: -34, z: -56, w: 32, d: 18 },
+  { x: 64, z: -54, w: 30, d: 18 },
+]
+
+function CityGround() {
+  return (
+    <group position={[10, 0, 0]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]}>
+        <planeGeometry args={[320, 240]} />
+        <meshStandardMaterial color="#74815b" roughness={1} />
+      </mesh>
+      {/* River along the north edge (clear of the node field). */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 82]}>
+        <planeGeometry args={[320, 76]} />
+        <meshStandardMaterial color="#2f6f9e" emissive="#1d4d72" emissiveIntensity={0.25} roughness={0.4} metalness={0.2} />
+      </mesh>
+      {PARKS.map((p, i) => (
+        <mesh key={i} rotation={[-Math.PI / 2, 0, 0]} position={[p.x, 0.02, p.z]}>
+          <planeGeometry args={[p.w, p.d]} />
+          <meshStandardMaterial color="#4e7a3f" roughness={1} />
+        </mesh>
+      ))}
+      <Greenery parks={PARKS} />
+    </group>
   )
 }
 
@@ -226,7 +277,10 @@ function SceneContent({ state, onSelect, routePath, selectedPacket, layers }) {
       .map((f) => ({
         id: f.id,
         color: playerColor[f.ownerPlayerId] || '#ffffff',
-        points: f.selectedPath.map((id) => nodeIndex[id]).filter(Boolean),
+        points: f.selectedPath
+          .map((id) => nodeIndex[id])
+          .filter(Boolean)
+          .map((n) => ({ x: n.x, y: anchorY(n), z: n.z })),
       }))
       .filter((p) => p.points.length >= 2)
   }, [state.packetFlows, nodeIndex, playerColor])
@@ -244,9 +298,16 @@ function SceneContent({ state, onSelect, routePath, selectedPacket, layers }) {
 
   return (
     <>
-      <ambientLight intensity={0.6} />
-      <directionalLight position={[40, 80, 40]} intensity={0.9} />
-      <gridHelper args={[240, 24, '#21305e', '#16204a']} position={[10, 0, 0]} />
+      <hemisphereLight args={['#dce8ff', '#5b6446', 0.7]} />
+      <ambientLight intensity={0.5} />
+      <directionalLight position={[60, 95, 35]} intensity={1.5} color="#fff4dc" />
+      <CityGround />
+      <Roads />
+      <Bridges />
+      <TrafficLights />
+      <Cars />
+      <StreetTrees nodes={state.nodes || []} />
+      <DecorBuildings nodes={state.nodes || []} links={state.links || []} nodeIndex={nodeIndex} />
 
       {(state.mapObjects || []).map((o) => (
         <Building key={o.id} obj={o} />
@@ -318,7 +379,7 @@ export default function NetworkScene({ state, onSelect, routePath = [], selected
     <div className="scene-wrap">
       <div style={{ position: 'absolute', inset: 0, visibility: planet ? 'hidden' : 'visible' }}>
         <Canvas camera={{ position: VIEWS.iso.pos, fov: 45 }} onPointerMissed={() => onSelect(null)}>
-          <color attach="background" args={['#0b1020']} />
+          <color attach="background" args={['#9fb3cf']} />
           <CameraRig view={view} focus={focus} />
           <OrbitControls makeDefault enablePan enableZoom enableRotate />
           <SceneContent state={state} onSelect={onSelect} routePath={routePath} selectedPacket={selectedPacket} layers={layers} />

@@ -234,6 +234,7 @@ code.pill, .pill {
 
 /* Section 14 — HUD polish */
 .pill.code { font-family: monospace; letter-spacing: 0.04em; }
+.copy-btn { padding: 2px 10px; font-size: 12px; margin-left: 8px; vertical-align: middle; }
 
 .pressure { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; }
 .pressure-bar { width: 48px; height: 6px; border-radius: 999px; background: rgba(255,255,255,0.12); overflow: hidden; }

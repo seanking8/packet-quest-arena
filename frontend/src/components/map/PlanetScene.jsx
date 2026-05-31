@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { Suspense, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
-import { OrbitControls, Line } from '@react-three/drei'
+import { OrbitControls, Line, useTexture } from '@react-three/drei'
 import * as THREE from 'three'
 import { nodeColor, linkColor, isBrokenLink } from './colors'
 
@@ -8,38 +8,62 @@ const PLANET_R = 14
 const ORBIT_R = 22
 const SATELLITE_SPEED = 0.12
 
-function Planet() {
-  return (
-    <mesh>
-      <sphereGeometry args={[PLANET_R, 48, 48]} />
-      <meshStandardMaterial color="#1a3a6e" emissive="#0a1a3a" emissiveIntensity={0.3} />
-    </mesh>
-  )
-}
+/**
+ * Photoreal-ish Earth: a real NASA day-map wrapped on the sphere, a slowly
+ * drifting cloud layer, and an additive back-side shell for the blue
+ * atmosphere rim. Lit by a directional "sun" so one side is bright (see the
+ * lights in PlanetScene), matching the reference look.
+ */
+function Earth() {
+  const earthRef = useRef()
+  const cloudRef = useRef()
+  const [day, clouds] = useTexture([
+    '/textures/earth_daymap.jpg',
+    '/textures/earth_clouds.png',
+  ])
+  day.colorSpace = THREE.SRGBColorSpace
+  clouds.colorSpace = THREE.SRGBColorSpace
 
-function Continents() {
-  const patches = useMemo(() => [
-    { lat: 30, lon: 10, rx: 4, rz: 2.5 },
-    { lat: 10, lon: -80, rx: 3, rz: 4 },
-    { lat: -20, lon: 25, rx: 3.5, rz: 3 },
-    { lat: 50, lon: 100, rx: 5, rz: 2 },
-    { lat: -30, lon: 135, rx: 3, rz: 2 },
-  ], [])
-
-  return patches.map((p, i) => {
-    const phi = (90 - p.lat) * (Math.PI / 180)
-    const theta = p.lon * (Math.PI / 180)
-    const r = PLANET_R + 0.05
-    const x = r * Math.sin(phi) * Math.cos(theta)
-    const y = r * Math.cos(phi)
-    const z = r * Math.sin(phi) * Math.sin(theta)
-    return (
-      <mesh key={i} position={[x, y, z]}>
-        <sphereGeometry args={[p.rx * 0.6, 8, 8]} />
-        <meshStandardMaterial color="#2d6e3a" transparent opacity={0.55} />
-      </mesh>
-    )
+  useFrame((_, delta) => {
+    if (earthRef.current) earthRef.current.rotation.y += delta * 0.03
+    if (cloudRef.current) cloudRef.current.rotation.y += delta * 0.045
   })
+
+  return (
+    <group>
+      {/* Atmosphere glow — a slightly larger shell rendered inside-out. */}
+      <mesh scale={1.07}>
+        <sphereGeometry args={[PLANET_R, 64, 64]} />
+        <meshBasicMaterial
+          color="#3a86ff"
+          transparent
+          opacity={0.18}
+          side={THREE.BackSide}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </mesh>
+
+      {/* The planet itself. emissiveMap keeps the night side dimly visible. */}
+      <mesh ref={earthRef}>
+        <sphereGeometry args={[PLANET_R, 64, 64]} />
+        <meshStandardMaterial
+          map={day}
+          emissiveMap={day}
+          emissive="#16305a"
+          emissiveIntensity={0.35}
+          roughness={0.85}
+          metalness={0.0}
+        />
+      </mesh>
+
+      {/* Drifting cloud layer. */}
+      <mesh ref={cloudRef} scale={1.015}>
+        <sphereGeometry args={[PLANET_R, 64, 64]} />
+        <meshStandardMaterial map={clouds} transparent opacity={0.45} depthWrite={false} />
+      </mesh>
+    </group>
+  )
 }
 
 function OrbitRing({ radius = ORBIT_R, tilt = 0 }) {
@@ -53,7 +77,7 @@ function OrbitRing({ radius = ORBIT_R, tilt = 0 }) {
   }, [radius])
   return (
     <group rotation={[tilt, 0, 0]}>
-      <Line points={points} color="#2a4a8a" lineWidth={0.8} transparent opacity={0.4} />
+      <Line points={points} color="#5ad0ff" lineWidth={1.2} transparent opacity={0.5} />
     </group>
   )
 }
@@ -62,26 +86,36 @@ function SatelliteNode({ node, position }) {
   const color = nodeColor(node)
   const failed = node.status === 'FAILED'
   const degraded = node.status === 'DEGRADED'
+  const bodyEmissive = failed ? 0.1 : degraded ? 0.5 : 1.0
 
   return (
-    <group position={position}>
+    <group position={position} scale={1.35}>
+      {/* Body */}
       <mesh>
-        <octahedronGeometry args={[0.9, 0]} />
+        <boxGeometry args={[1.1, 0.8, 0.8]} />
         <meshStandardMaterial
           color={color}
           emissive={color}
-          emissiveIntensity={failed ? 0.05 : degraded ? 0.5 : 0.8}
+          emissiveIntensity={bodyEmissive}
+          metalness={0.6}
+          roughness={0.3}
           opacity={failed ? 0.5 : 1}
           transparent={failed}
         />
       </mesh>
-      <mesh position={[1.6, 0, 0]}>
-        <boxGeometry args={[1.8, 0.08, 0.7]} />
-        <meshStandardMaterial color="#4f8cff" transparent opacity={0.7} />
+      {/* Boom connecting the two solar-panel wings */}
+      <mesh>
+        <boxGeometry args={[3.6, 0.05, 0.05]} />
+        <meshStandardMaterial color="#9aa7c0" metalness={0.5} roughness={0.5} />
       </mesh>
-      <mesh position={[-1.6, 0, 0]}>
-        <boxGeometry args={[1.8, 0.08, 0.7]} />
-        <meshStandardMaterial color="#4f8cff" transparent opacity={0.7} />
+      {/* Solar panels */}
+      <mesh position={[1.75, 0, 0]}>
+        <boxGeometry args={[2.0, 0.06, 0.9]} />
+        <meshStandardMaterial color="#2f5fd0" emissive="#1b3a8a" emissiveIntensity={0.55} metalness={0.4} roughness={0.4} />
+      </mesh>
+      <mesh position={[-1.75, 0, 0]}>
+        <boxGeometry args={[2.0, 0.06, 0.9]} />
+        <meshStandardMaterial color="#2f5fd0" emissive="#1b3a8a" emissiveIntensity={0.55} metalness={0.4} roughness={0.4} />
       </mesh>
     </group>
   )
@@ -113,7 +147,7 @@ function GroundGateway({ node }) {
   return (
     <mesh position={[pos.x, pos.y, pos.z]}>
       <sphereGeometry args={[0.35, 8, 8]} />
-      <meshStandardMaterial color="#7affc4" emissive="#7affc4" emissiveIntensity={0.6} />
+      <meshStandardMaterial color="#7affc4" emissive="#7affc4" emissiveIntensity={0.7} />
     </mesh>
   )
 }
@@ -166,8 +200,7 @@ function PlanetContent({ state }) {
   return (
     <>
       <StarField />
-      <Planet />
-      <Continents />
+      <Earth />
 
       {satSlots.map(({ orbitRadius, orbitTilt }, i) => (
         <OrbitRing key={i} radius={orbitRadius} tilt={orbitTilt} />
@@ -202,12 +235,16 @@ function PlanetContent({ state }) {
 
 export default function PlanetScene({ state }) {
   return (
-    <Canvas camera={{ position: [0, 20, 55], fov: 50 }}>
-      <color attach="background" args={['#020510']} />
-      <ambientLight intensity={0.3} />
-      <pointLight position={[60, 40, 60]} intensity={1.2} color="#fff8e0" />
-      <PlanetContent state={state} />
-      <OrbitControls enablePan={false} minDistance={30} maxDistance={90} />
+    <Canvas camera={{ position: [0, 16, 48], fov: 50 }}>
+      <color attach="background" args={['#03060f']} />
+      {/* Soft fill so nothing is pure black, plus a bright directional "sun". */}
+      <ambientLight intensity={0.35} />
+      <directionalLight position={[40, 25, 30]} intensity={2.2} color="#fff6e6" />
+      <directionalLight position={[-50, -10, -40]} intensity={0.22} color="#33557f" />
+      <Suspense fallback={null}>
+        <PlanetContent state={state} />
+      </Suspense>
+      <OrbitControls enablePan={false} minDistance={22} maxDistance={90} />
     </Canvas>
   )
 }
