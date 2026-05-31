@@ -7,14 +7,17 @@ import IncidentFeedPanel from '../components/hud/IncidentFeedPanel'
 import RouteControlsPanel from '../components/hud/RouteControlsPanel'
 import SelectedDetailPanel from '../components/hud/SelectedDetailPanel'
 import NetworkScene from '../components/map/NetworkScene'
+import TacticalMap from '../components/map/TacticalMap'
 import { createTutorialState } from '../tutorial/tutorialState'
 import { buildRouteAssist, isUsableLink } from '../utils/routeAssist'
 import { friendlyNodeName } from '../utils/mapDisplay'
+import { affectedSummary, incidentMeta, isWeather } from '../components/map/incidents'
 
 const PLAYER_ID = 'tutorial-player'
 const INITIAL_SECONDS = 75
 const STUCK_AFTER_MS = 9000
-const DEFAULT_PANELS = { jobs: true, leaderboard: false, incidents: false, route: true }
+const DEFAULT_PANELS = { jobs: true, leaderboard: false, incidents: true, route: true }
+const TUTORIAL_LAYERS = { weather: true, incidents: true, labels: false }
 
 export default function TutorialScreen() {
   const { leave } = useGame()
@@ -193,18 +196,30 @@ export default function TutorialScreen() {
   return (
     <div className="hud tutorial-mode">
       <div className="map-layer">
-        <NetworkScene
-          state={state}
-          onSelect={handleSelect}
-          routePath={routePath}
-          selectedPacket={selectedPacket}
-          view={view}
-        />
+        {view === 'tactical' ? (
+          <TacticalMap
+            state={state}
+            onSelect={handleSelect}
+            routePath={routePath}
+            selectedPacket={selectedPacket}
+            layers={TUTORIAL_LAYERS}
+          />
+        ) : (
+          <NetworkScene
+            state={state}
+            onSelect={handleSelect}
+            routePath={routePath}
+            selectedPacket={selectedPacket}
+            view={view}
+            layers={TUTORIAL_LAYERS}
+          />
+        )}
       </div>
 
       <div className="view-controls">
         <button className={`toggle ${view === 'close' ? 'on' : ''}`} onClick={() => setView('close')}>Close</button>
         <button className={`toggle ${view === 'iso' ? 'on' : ''}`} onClick={() => setView('iso')}>City</button>
+        <button className={`toggle ${view === 'tactical' ? 'on' : ''}`} onClick={() => setView('tactical')}>2D</button>
         <button className={`toggle ${view === 'planet' ? 'on' : ''}`} onClick={() => setView('planet')}>Planet</button>
         <button className="ghost" onClick={() => setView('iso')}>{view === 'planet' ? 'Back to City' : 'Reset'}</button>
       </div>
@@ -218,6 +233,7 @@ export default function TutorialScreen() {
             playerId={PLAYER_ID}
             selectedPacketId={selectedPacket?.id}
             onSelectPacket={handleSelectPacket}
+            timerPaused={paused}
           />
         </aside>
       )}
@@ -225,6 +241,7 @@ export default function TutorialScreen() {
       <aside className="hud-right tutorial-right">
         <TutorialCoach
           coach={coach}
+          incidents={state.incidents || []}
           paused={paused}
           complete={packetStatus === 'DELIVERED'}
           canResume={Boolean(selectedPacket)}
@@ -259,7 +276,7 @@ export default function TutorialScreen() {
   )
 }
 
-function TutorialCoach({ coach, paused, complete, canResume, onResume, onRestart, onExit }) {
+function TutorialCoach({ coach, incidents, paused, complete, canResume, onResume, onRestart, onExit }) {
   return (
     <section className={`panel tutorial-coach ${paused ? 'paused' : ''} ${complete ? 'complete' : ''}`} aria-live="polite">
       <div className="tutorial-coach-head">
@@ -268,6 +285,7 @@ function TutorialCoach({ coach, paused, complete, canResume, onResume, onRestart
       </div>
       <h3>{coach.title}</h3>
       <p>{coach.body}</p>
+      {incidents.length > 0 && <TutorialConditions incidents={incidents} />}
       {coach.tip && <p className="tutorial-tip">{coach.tip}</p>}
       <div className="tutorial-actions">
         {!complete && paused && canResume && <button onClick={onResume}>Resume timer</button>}
@@ -278,13 +296,29 @@ function TutorialCoach({ coach, paused, complete, canResume, onResume, onRestart
   )
 }
 
+function TutorialConditions({ incidents }) {
+  return (
+    <div className="tutorial-conditions">
+      {incidents.map((incident) => {
+        const meta = incidentMeta(incident.eventType)
+        return (
+          <div key={incident.id} className={`tutorial-condition ${isWeather(incident.eventType) ? 'weather' : 'incident'}`}>
+            <strong style={{ color: meta.color }}>{meta.icon} {meta.label}</strong>
+            <span>{affectedSummary(incident)}</span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 function coachCopy({ selectedPacket, routePath, packetStatus, paused, misses, routeAssist, state }) {
   if (packetStatus === 'DELIVERED') {
     return {
       step: 'Complete',
       title: 'Packet delivered',
       body: 'That is the core loop: choose a packet, follow connected network hops, watch route quality, and submit before the timer expires.',
-      tip: 'In live play, congestion, outages, and satellite fallbacks make the best route change while everyone is racing.',
+      tip: 'In live play, weather and incidents keep changing the best route while everyone is racing.',
     }
   }
 
@@ -293,7 +327,7 @@ function coachCopy({ selectedPacket, routePath, packetStatus, paused, misses, ro
       step: 'Step 1',
       title: 'Choose the packet job',
       body: 'Click Route on the CONTROL job. The map will jump to the source and destination so you are not hunting blindly.',
-      tip: paused ? 'The tutorial starts paused so you can read the map before the clock matters.' : null,
+      tip: paused ? 'Notice the STORM and WORK markers too: weather is separate from incidents, and both can make nearby links risky.' : null,
     }
   }
 
@@ -321,7 +355,7 @@ function coachCopy({ selectedPacket, routePath, packetStatus, paused, misses, ro
       body: suggestedName
         ? `Start at ${currentName}. Click the BEST NEXT marker for ${suggestedName}, or click the cyan link leading to it.`
         : `Start at ${currentName}. Click a glowing cyan neighbour to move the packet forward.`,
-      tip: misses ? 'You can click the floating labels, node models, or highlighted link markers. They all count.' : null,
+      tip: misses ? 'You can click the floating labels, node models, or highlighted link markers. Coloured zones explain why some links look risky.' : 'Storms mostly affect wireless links; construction mostly affects fibre links.',
     }
   }
 
@@ -331,7 +365,7 @@ function coachCopy({ selectedPacket, routePath, packetStatus, paused, misses, ro
     body: suggestedName
       ? `You are now at ${currentName}. The fastest suggested next hop is ${suggestedName}; keep moving toward ${destName}.`
       : `You are now at ${currentName}. Pick any glowing cyan connected node that moves you toward ${destName}.`,
-    tip: misses || paused ? 'When the clock pauses, read the cyan markers first. The pink DESTINATION beacon is your goal.' : 'The bottom panel shows latency, loss, hops, and time left while you build.',
+    tip: misses || paused ? 'When the clock pauses, read the cyan markers first. The pink DESTINATION beacon is your goal.' : 'The bottom panel shows latency, loss, hops, and time left. The incident feed explains active map hazards.',
   }
 }
 

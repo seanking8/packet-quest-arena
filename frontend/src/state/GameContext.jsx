@@ -29,9 +29,9 @@ export function GameProvider({ children }) {
   }
 
   /** Create a new session and join it as the first player (host). */
-  const host = (name) =>
+  const host = (name, difficulty = 'MEDIUM') =>
     run(async () => {
-      const { sessionId: id } = await createSession()
+      const { sessionId: id } = await createSession(difficulty)
       const { player } = await joinSession(id, name)
       setSessionId(id)
       setPlayerId(player.id)

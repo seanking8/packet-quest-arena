@@ -7,6 +7,7 @@ import IncidentFeedPanel from '../components/hud/IncidentFeedPanel'
 import RouteControlsPanel from '../components/hud/RouteControlsPanel'
 import SelectedDetailPanel from '../components/hud/SelectedDetailPanel'
 import NetworkScene from '../components/map/NetworkScene'
+import TacticalMap from '../components/map/TacticalMap'
 import { isUsableLink } from '../utils/routeAssist'
 import { friendlyNodeName } from '../utils/mapDisplay'
 import { zoneCenter } from '../components/map/incidents'
@@ -34,7 +35,7 @@ export default function GameScreen({ state, transport }) {
     ;(state.nodes || []).forEach((n) => (nodeIndex[n.id] = n))
     const center = zoneCenter(incident, nodeIndex)
     if (!center) return
-    setView('iso')
+    setView((current) => (current === 'tactical' ? 'tactical' : 'iso'))
     setFocus({ x: center.x, z: center.z, key: (focus?.key || 0) + 1 })
   }
 
@@ -94,20 +95,31 @@ export default function GameScreen({ state, transport }) {
   return (
     <div className="hud">
       <div className="map-layer">
-        <NetworkScene
-          state={state}
-          onSelect={handleSelect}
-          routePath={routePath}
-          selectedPacket={selectedPacket}
-          view={view}
-          layers={layers}
-          focus={focus}
-        />
+        {view === 'tactical' ? (
+          <TacticalMap
+            state={state}
+            onSelect={handleSelect}
+            routePath={routePath}
+            selectedPacket={selectedPacket}
+            layers={layers}
+          />
+        ) : (
+          <NetworkScene
+            state={state}
+            onSelect={handleSelect}
+            routePath={routePath}
+            selectedPacket={selectedPacket}
+            view={view}
+            layers={layers}
+            focus={focus}
+          />
+        )}
       </div>
 
       <div className="view-controls">
         <button className={`toggle ${view === 'close' ? 'on' : ''}`} onClick={() => setView('close')}>Close</button>
         <button className={`toggle ${view === 'iso' ? 'on' : ''}`} onClick={() => setView('iso')}>City</button>
+        <button className={`toggle ${view === 'tactical' ? 'on' : ''}`} onClick={() => setView('tactical')}>2D</button>
         <button className={`toggle ${view === 'planet' ? 'on' : ''}`} onClick={() => setView('planet')}>Planet</button>
         <button className="ghost" onClick={() => setView('iso')}>{view === 'planet' ? 'Back to City' : 'Reset'}</button>
       </div>

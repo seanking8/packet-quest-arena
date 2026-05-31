@@ -1,4 +1,4 @@
-import { expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { GameProvider } from '../state/GameContext'
 import GameScreen from '../screens/GameScreen'
@@ -19,11 +19,30 @@ const STATE = {
   nodes: [{ id: 'n1' }, { id: 'n2' }],
   links: [{ id: 'l1' }],
   packetFlows: [
-    { id: 'f1', ownerPlayerId: 'p1', trafficType: 'VIDEO', sourceNodeId: 'a', destinationNodeId: 'b', status: 'PENDING' },
+    {
+      id: 'f1',
+      ownerPlayerId: null,
+      trafficType: 'VIDEO',
+      sourceNodeId: 'a',
+      destinationNodeId: 'b',
+      status: 'PENDING',
+      deadlineSeconds: 90,
+      createdAt: '2026-05-31T12:00:00.000Z',
+      expiresAt: '2026-05-31T12:01:00.000Z',
+    },
   ],
   incidents: [],
   mapObjects: [],
 }
+
+beforeEach(() => {
+  vi.useFakeTimers()
+  vi.setSystemTime(new Date('2026-05-31T12:00:00.000Z'))
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 const renderGame = () =>
   render(<GameProvider><GameScreen state={STATE} transport="websocket" /></GameProvider>)
@@ -46,4 +65,10 @@ test('toggling the Jobs panel hides it', () => {
   expect(screen.getByText(/Your packet jobs/i)).toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'Jobs' }))
   expect(screen.queryByText(/Your packet jobs/i)).not.toBeInTheDocument()
+})
+
+test('packet jobs show a visual deadline countdown', () => {
+  renderGame()
+  expect(screen.getByRole('progressbar', { name: /packet deadline/i })).toBeInTheDocument()
+  expect(screen.getByText('60s left')).toBeInTheDocument()
 })

@@ -13,9 +13,10 @@ export default function LobbyScreen({ state, transport }) {
           <h1>Lobby</h1>
           <p className="muted">
             Session <code className="pill">{sessionId}</code>
-            <span className="transport"> · {transport}</span>
+            <span className="transport"> | {transport}</span>
           </p>
-          <p className="muted">Share the session id so others can join (2–4 players).</p>
+          <p className="muted">Difficulty <code className="pill">{state.difficulty || 'MEDIUM'}</code></p>
+          <p className="muted">Share the session id so others can join (2-4 players).</p>
         </header>
 
         <ErrorBanner message={error} onDismiss={() => setError(null)} />
@@ -30,7 +31,7 @@ export default function LobbyScreen({ state, transport }) {
                 {p.id === playerId && <span className="tag">you</span>}
               </li>
             ))}
-            {players.length === 0 && <li className="muted">Waiting for players…</li>}
+            {players.length === 0 && <li className="muted">Waiting for players...</li>}
           </ul>
         </section>
 

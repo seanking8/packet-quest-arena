@@ -63,9 +63,11 @@ const MAP_OBJECTS = [
 
 export function createTutorialState({ remainingSeconds = 75, status = 'ACTIVE', packetStatus = 'PENDING' } = {}) {
   const now = Date.now()
+  const links = createTutorialLinks()
   return {
     sessionId: 'tutorial-session',
     status,
+    difficulty: 'EASY',
     remainingSeconds,
     players: [
       {
@@ -78,7 +80,7 @@ export function createTutorialState({ remainingSeconds = 75, status = 'ACTIVE', 
       },
     ],
     nodes: NODES,
-    links: LINKS,
+    links,
     packetFlows: [
       {
         id: 'tutorial-flow-1',
@@ -98,10 +100,63 @@ export function createTutorialState({ remainingSeconds = 75, status = 'ACTIVE', 
         scoreDelta: packetStatus === 'DELIVERED' ? 120 : 0,
       },
     ],
-    incidents: [],
+    incidents: createTutorialIncidents(now),
     mapObjects: MAP_OBJECTS,
     serverTime: new Date(now).toISOString(),
   }
+}
+
+function createTutorialLinks() {
+  return LINKS.map((base) => {
+    const link = { ...base }
+    if (['l-oru-odu2', 'l-odu2-ocu'].includes(link.id)) {
+      link.status = 'BUSY'
+      link.currentLoad = Math.round(link.capacity * 0.72)
+      link.utilisation = 0.72
+      link.currentLatencyMs = link.baseLatencyMs + 12
+      link.packetLossRate = Math.max(link.packetLossRate, 0.035)
+    }
+    if (['RADIO', 'MMWAVE', 'MICROWAVE', 'SATELLITE'].includes(link.linkType)) {
+      link.currentLatencyMs = Math.round(link.currentLatencyMs * 1.25)
+      link.packetLossRate = Math.max(link.packetLossRate, link.linkType === 'SATELLITE' ? 0.04 : 0.035)
+    }
+    return link
+  })
+}
+
+function createTutorialIncidents(now) {
+  return [
+    {
+      id: 'tutorial-weather-storm',
+      eventType: 'WEATHER_ELECTRICAL_STORM',
+      targetType: 'ZONE',
+      targetId: 'zone-downtown',
+      severity: 0.55,
+      message: 'Electrical storm is making wireless hops around downtown riskier.',
+      startedAt: new Date(now - 10_000).toISOString(),
+      durationSeconds: 120,
+      expiresAt: new Date(now + 110_000).toISOString(),
+      affectedLinkTypes: ['RADIO', 'MMWAVE', 'MICROWAVE', 'SATELLITE'],
+      affectedLinkIds: [],
+      affectedNodeIds: [],
+      visualZone: { id: 'zone-downtown-storm', x: -12, z: 24, radius: 46 },
+    },
+    {
+      id: 'tutorial-construction',
+      eventType: 'CONSTRUCTION',
+      targetType: 'ZONE',
+      targetId: 'zone-south-fibre',
+      severity: 0.45,
+      message: 'Roadworks are slowing the south fibre backhaul.',
+      startedAt: new Date(now - 8_000).toISOString(),
+      durationSeconds: 100,
+      expiresAt: new Date(now + 92_000).toISOString(),
+      affectedLinkTypes: ['FIBRE'],
+      affectedLinkIds: ['l-oru-odu2', 'l-odu2-ocu'],
+      affectedNodeIds: [],
+      visualZone: { id: 'zone-south-fibre', x: -8, z: -34, radius: 24 },
+    },
+  ]
 }
 
 function node(id, name, type, x, y, z) {

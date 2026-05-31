@@ -3,6 +3,7 @@ package com.packetquest.service;
 import com.packetquest.dto.GameStateDto;
 import com.packetquest.exception.GameRuleException;
 import com.packetquest.exception.SessionNotFoundException;
+import com.packetquest.model.GameDifficulty;
 import com.packetquest.model.GameSession;
 import com.packetquest.model.Player;
 import com.packetquest.model.SessionStatus;
@@ -46,7 +47,14 @@ public class GameService {
 
     /** Creates a new, empty session in WAITING status. */
     public GameSession createSession() {
-        return sessionRepo.save(new GameSession());
+        return createSession(null);
+    }
+
+    /** Creates a new, empty session in WAITING status. */
+    public GameSession createSession(GameDifficulty difficulty) {
+        GameSession session = new GameSession();
+        session.setDifficulty(difficulty);
+        return sessionRepo.save(session);
     }
 
     /**
@@ -92,7 +100,7 @@ public class GameService {
             }
             topologyGenerator.populate(session);
             packetFlowGenerator.generateInitialJobs(session);
-            session.setDurationSeconds(GameSession.DEFAULT_DURATION_SECONDS);
+            session.setDurationSeconds(session.getDifficulty().matchDurationSeconds());
             session.start();
             sessionRepo.save(session);
         }

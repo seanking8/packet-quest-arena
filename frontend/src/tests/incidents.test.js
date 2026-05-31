@@ -1,6 +1,11 @@
 import { expect, test } from 'vitest'
 import {
-  isWeather, incidentMeta, affectedSummary, remainingSeconds, zoneCenter,
+  KNOWN_EVENT_TYPES,
+  affectedSummary,
+  incidentMeta,
+  isWeather,
+  remainingSeconds,
+  zoneCenter,
 } from '../components/map/incidents'
 
 test('weather types are separated from non-weather incidents', () => {
@@ -12,6 +17,10 @@ test('weather types are separated from non-weather incidents', () => {
 
 test('every known event type has presentation metadata; unknown falls back', () => {
   expect(incidentMeta('WEATHER_HIGH_WINDS').label).toBe('High winds')
+  KNOWN_EVENT_TYPES.forEach((type) => {
+    expect(incidentMeta(type).label).toBeTruthy()
+    expect(incidentMeta(type).impact).toBeTruthy()
+  })
   const fallback = incidentMeta('SOMETHING_NEW')
   expect(fallback.icon).toBeTruthy()
   expect(fallback.label).toBe('Incident')
@@ -21,7 +30,7 @@ test('affected summary lists link types, link ids and node ids', () => {
   expect(affectedSummary({ affectedLinkTypes: ['RADIO', 'MMWAVE'] })).toBe('RADIO, MMWAVE')
   expect(affectedSummary({ affectedLinkIds: ['l1', 'l2'] })).toBe('2 links')
   expect(affectedSummary({ affectedNodeIds: ['n1'] })).toBe('1 node')
-  expect(affectedSummary({})).toBe('—')
+  expect(affectedSummary({})).toBe('-')
 })
 
 test('remaining seconds uses the server clock and never goes negative', () => {

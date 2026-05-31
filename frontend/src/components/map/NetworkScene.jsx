@@ -110,16 +110,12 @@ function SceneContent({ state, onSelect, routePath, selectedPacket, layers }) {
       const weather = isWeather(inc.eventType)
       if (weather ? !showWeather : !showIncidents) return
       const color = incidentColor(inc.eventType)
-      const types = new Set(inc.affectedLinkTypes || [])
-      ;(inc.affectedLinkIds || []).forEach((id) => { if (!map.has(id)) map.set(id, color) })
-      if (types.size) {
-        ;(state.links || []).forEach((l) => {
-          if (types.has(l.linkType) && !map.has(l.id)) map.set(l.id, color)
-        })
-      }
+      ;(state.links || []).forEach((link) => {
+        if (incidentTouchesLink(inc, link, nodeIndex) && !map.has(link.id)) map.set(link.id, color)
+      })
     })
     return map
-  }, [state.incidents, state.links, showWeather, showIncidents])
+  }, [state.incidents, state.links, nodeIndex, showWeather, showIncidents])
 
   const playerColor = useMemo(() => {
     const map = {}
@@ -908,6 +904,31 @@ function MapRouteAssist({ state, selectedPacket, routeAssist }) {
       )}
     </div>
   )
+}
+
+function incidentTouchesLink(incident, link, nodeIndex) {
+  const affectedIds = new Set(incident.affectedLinkIds || [])
+  if (affectedIds.has(link.id)) return true
+
+  const affectedTypes = new Set(incident.affectedLinkTypes || [])
+  if (!affectedTypes.has(link.linkType)) return false
+
+  const zone = incident.visualZone
+  if (!zone || !Number.isFinite(zone.x) || !Number.isFinite(zone.z)) return true
+
+  const a = nodeIndex[link.sourceNodeId]
+  const b = nodeIndex[link.targetNodeId]
+  if (!a || !b) return false
+
+  const radius = Math.max(0, zone.radius || 0) + 4
+  const mid = { x: (a.x + b.x) / 2, z: (a.z + b.z) / 2 }
+  return pointInZone(a, zone, radius) || pointInZone(b, zone, radius) || pointInZone(mid, zone, radius)
+}
+
+function pointInZone(point, zone, radius) {
+  const dx = (point.x || 0) - zone.x
+  const dz = (point.z || 0) - zone.z
+  return Math.sqrt(dx * dx + dz * dz) <= radius
 }
 
 function nodeAnchor(node) {

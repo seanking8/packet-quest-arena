@@ -20,6 +20,7 @@ export default function TopBar({ state, transport, panels, onToggle }) {
       <div className="hud-top-left">
         <strong>Packet Quest Arena</strong>
         <span className="pill">{state.status}</span>
+        <span className="pill difficulty-pill">{state.difficulty || 'MEDIUM'}</span>
         <span className="transport" title="state transport">{transport}</span>
       </div>
 

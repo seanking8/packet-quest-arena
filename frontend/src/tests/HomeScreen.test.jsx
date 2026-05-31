@@ -23,9 +23,10 @@ test('create button is disabled until a name is entered', () => {
   expect(createBtn).toBeEnabled()
 })
 
-test('creating a session calls the backend', async () => {
+test('creating a session sends selected difficulty', async () => {
   renderHome()
   fireEvent.change(screen.getByPlaceholderText(/Alice/i), { target: { value: 'Alice' } })
+  fireEvent.click(screen.getByRole('button', { name: /Medium/i }))
   fireEvent.click(screen.getByRole('button', { name: /create session/i }))
-  await waitFor(() => expect(createSession).toHaveBeenCalled())
+  await waitFor(() => expect(createSession).toHaveBeenCalledWith('MEDIUM'))
 })

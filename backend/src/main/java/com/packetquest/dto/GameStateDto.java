@@ -1,6 +1,7 @@
 package com.packetquest.dto;
 
 import com.packetquest.model.GameSession;
+import com.packetquest.model.GameDifficulty;
 import com.packetquest.model.IncidentEvent;
 import com.packetquest.model.MapObject;
 import com.packetquest.model.NetworkLink;
@@ -22,6 +23,7 @@ import java.util.List;
 public record GameStateDto(
         String sessionId,
         SessionStatus status,
+        GameDifficulty difficulty,
         long remainingSeconds,
         List<Player> players,
         List<NetworkNode> nodes,
@@ -42,6 +44,7 @@ public record GameStateDto(
         return new GameStateDto(
                 session.getId(),
                 session.getStatus(),
+                session.getDifficulty(),
                 session.remainingSeconds(now),
                 List.copyOf(session.getPlayers()),
                 List.copyOf(session.getNodes()),

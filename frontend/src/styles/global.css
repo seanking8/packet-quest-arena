@@ -55,6 +55,9 @@ code.pill, .pill {
   border-radius: 999px;
   font-size: 12px;
 }
+.difficulty-pill {
+  color: #c7f8ff;
+}
 .muted { color: var(--muted); }
 .tag { font-size: 11px; background: var(--accent); color: #fff; border-radius: 6px; padding: 1px 6px; margin-left: 6px; }
 
@@ -79,6 +82,36 @@ code.pill, .pill {
 }
 .tutorial-button {
   flex: 0 0 auto;
+}
+.difficulty-picker {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin: 12px 0;
+}
+.difficulty-option {
+  display: grid;
+  gap: 2px;
+  min-height: 54px;
+  padding: 7px 8px;
+  border: 1px solid var(--panel-border);
+  background: rgba(255,255,255,0.05);
+  color: var(--text);
+  border-radius: 8px;
+  text-align: left;
+}
+.difficulty-option.on {
+  border-color: rgba(122, 255, 196, 0.65);
+  background: rgba(54, 201, 141, 0.16);
+}
+.difficulty-option span {
+  font-size: 12px;
+  font-weight: 800;
+}
+.difficulty-option small {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.2;
 }
 .card {
   background: var(--panel);
@@ -113,6 +146,131 @@ code.pill, .pill {
 .map-placeholder-inner { text-align: center; opacity: 0.6; }
 .scene-wrap { position: absolute; inset: 0; }
 .scene-wrap canvas { display: block; }
+.tactical-map {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(7, 12, 24, 0.78), rgba(6, 18, 19, 0.76)),
+    radial-gradient(circle at 50% 40%, rgba(82, 151, 255, 0.16), transparent 45%);
+}
+.tactical-map svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.tactical-link {
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  opacity: 0.82;
+  cursor: pointer;
+}
+.tactical-link.BUSY { stroke-width: 3.2; }
+.tactical-link.CONGESTED,
+.tactical-link.OVERLOADED {
+  stroke-width: 4;
+  stroke-dasharray: 4 3;
+}
+.tactical-link.FAILED,
+.tactical-link.EXPIRED {
+  stroke: var(--bad);
+  stroke-dasharray: 3 4;
+  opacity: 0.55;
+}
+.tactical-link.route {
+  stroke: #ffffff;
+  stroke-width: 5;
+  opacity: 0.95;
+}
+.tactical-zone {
+  opacity: 0.16;
+  stroke: currentColor;
+  stroke-width: 1;
+  pointer-events: none;
+}
+.tactical-zone.incident {
+  opacity: 0.2;
+  stroke-dasharray: 3 3;
+}
+.tactical-node {
+  cursor: pointer;
+}
+.tactical-node circle {
+  fill: rgba(8, 12, 28, 0.9);
+  stroke: rgba(216, 227, 255, 0.75);
+  stroke-width: 1.5;
+}
+.tactical-node.SATELLITE circle { stroke: #ffd479; }
+.tactical-node.RADIO_TOWER circle,
+.tactical-node.SMALL_CELL circle,
+.tactical-node.O_RU circle { stroke: #5fd0ff; }
+.tactical-node.O_DU circle,
+.tactical-node.O_CU circle { stroke: #9b8cff; }
+.tactical-node.EDGE circle,
+.tactical-node.UPF circle,
+.tactical-node.CORE circle,
+.tactical-node.DATA_CENTRE circle { stroke: #7affc4; }
+.tactical-node.FAILED circle {
+  stroke: var(--bad);
+  fill: rgba(80, 16, 28, 0.95);
+}
+.tactical-node.current circle,
+.tactical-node.next circle {
+  stroke: #66e6ff;
+  stroke-width: 3;
+  filter: drop-shadow(0 0 5px rgba(102, 230, 255, 0.8));
+}
+.tactical-node.source circle {
+  stroke: var(--ok);
+  stroke-width: 3;
+}
+.tactical-node.destination circle {
+  stroke: #ff7cb8;
+  stroke-width: 3;
+}
+.tactical-node-icon {
+  fill: #f6f9ff;
+  font-size: 5px;
+  font-weight: 900;
+  pointer-events: none;
+}
+.tactical-node-label {
+  fill: #e9f1ff;
+  font-size: 5px;
+  font-weight: 800;
+  paint-order: stroke;
+  stroke: rgba(5, 8, 16, 0.9);
+  stroke-width: 2;
+  pointer-events: none;
+}
+.tactical-legend {
+  position: absolute;
+  left: 12px;
+  bottom: 108px;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  pointer-events: none;
+}
+.tactical-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid rgba(170, 195, 255, 0.22);
+  background: rgba(9, 14, 26, 0.7);
+  color: #d8e3ff;
+  border-radius: 7px;
+  padding: 4px 7px;
+  font-size: 11px;
+  backdrop-filter: blur(8px);
+}
+.tactical-legend i {
+  display: inline-block;
+  width: 16px;
+  height: 3px;
+  border-radius: 999px;
+}
 .view-controls { position: absolute; left: 12px; bottom: 112px; z-index: 3; display: flex; gap: 6px; }
 .layer-controls { position: absolute; left: 12px; bottom: 150px; z-index: 3; display: flex; gap: 6px; }
 
@@ -133,9 +291,12 @@ code.pill, .pill {
   background: rgba(8,12,28,0.85);
   border: 1px solid;
   border-radius: 999px;
-  width: 24px; height: 24px;
+  min-width: 34px;
+  height: 22px;
+  padding: 0 6px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 14px;
+  font-size: 9px;
+  font-weight: 900;
 }
 .zone-tooltip {
   width: 230px;
@@ -392,6 +553,27 @@ code.pill, .pill {
 .tutorial-coach .tutorial-tip {
   color: #b9c9ee;
 }
+.tutorial-conditions {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 10px;
+}
+.tutorial-condition {
+  display: grid;
+  gap: 2px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 7px;
+  padding: 6px 8px;
+  background: rgba(255,255,255,0.045);
+  font-size: 12px;
+}
+.tutorial-condition strong {
+  font-size: 11px;
+}
+.tutorial-condition span {
+  color: var(--muted);
+  font-size: 11px;
+}
 .tutorial-actions {
   display: flex;
   flex-wrap: wrap;
@@ -448,6 +630,57 @@ code.pill, .pill {
 .st-pending { color: var(--warn); }
 .st-ok { color: var(--ok); }
 .st-bad { color: var(--bad); }
+.job-deadline {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+.job-deadline-track {
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.1);
+  overflow: hidden;
+}
+.job-deadline-fill {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  border-radius: inherit;
+  background: var(--ok);
+  box-shadow: 0 0 10px rgba(54, 201, 141, 0.45);
+  transition: width 240ms linear, background 160ms ease;
+}
+.job-time-badge {
+  min-width: 52px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 999px;
+  padding: 1px 7px;
+  color: #d8e3ff;
+  background: rgba(255,255,255,0.05);
+  font-size: 10px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.job-deadline.warning .job-deadline-fill {
+  background: var(--warn);
+  box-shadow: 0 0 10px rgba(255, 180, 84, 0.5);
+}
+.job-deadline.warning .job-time-badge {
+  color: #ffe0ae;
+}
+.job-deadline.urgent .job-deadline-fill,
+.job-deadline.expired .job-deadline-fill {
+  background: var(--bad);
+  box-shadow: 0 0 10px rgba(255, 93, 108, 0.5);
+}
+.job-deadline.urgent .job-time-badge,
+.job-deadline.expired .job-time-badge {
+  color: #ffd1d6;
+}
 
 .leaderboard li { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
 .leaderboard .rank { width: 18px; color: var(--muted); }
@@ -629,9 +862,6 @@ code.pill, .pill {
   }
   .view-controls button {
     padding: 7px 10px;
-  }
-  .tutorial-mode .view-controls {
-    display: none;
   }
   .map-route-assist {
     left: 10px;

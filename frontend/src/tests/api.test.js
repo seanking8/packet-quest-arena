@@ -5,10 +5,13 @@ beforeEach(() => {
   global.fetch = vi.fn()
 })
 
-test('createSession posts to /api/sessions', async () => {
-  fetch.mockResolvedValue({ ok: true, status: 200, json: async () => ({ sessionId: 's1', status: 'WAITING' }) })
-  const res = await createSession()
+test('createSession posts difficulty to /api/sessions', async () => {
+  fetch.mockResolvedValue({ ok: true, status: 200, json: async () => ({ sessionId: 's1', status: 'WAITING', difficulty: 'EASY' }) })
+  const res = await createSession('EASY')
   expect(fetch).toHaveBeenCalledWith('/api/sessions', expect.objectContaining({ method: 'POST' }))
+  expect(fetch).toHaveBeenCalledWith('/api/sessions', expect.objectContaining({
+    body: JSON.stringify({ difficulty: 'EASY' }),
+  }))
   expect(res.sessionId).toBe('s1')
 })
 

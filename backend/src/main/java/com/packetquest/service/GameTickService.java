@@ -86,7 +86,7 @@ public class GameTickService {
                 session.complete(now); // stop generating; keep final scores
             } else {
                 packetFlowGenerator.replenishPendingJobs(
-                        session, PacketFlowGenerationService.MIN_PENDING_PER_PLAYER);
+                        session, session.getDifficulty().minPendingJobsPerPlayer());
             }
 
             sessionRepo.save(session);
@@ -139,8 +139,9 @@ public class GameTickService {
 
     private void recoverExpiredIncident(GameSession session, IncidentEvent incident) {
         for (NetworkLink link : session.getLinks()) {
+            boolean hasResolvedIds = !incident.getAffectedLinkIds().isEmpty();
             boolean affectedById = incident.getAffectedLinkIds().contains(link.getId());
-            boolean affectedByType = incident.getAffectedLinkTypes().contains(link.getLinkType());
+            boolean affectedByType = !hasResolvedIds && incident.getAffectedLinkTypes().contains(link.getLinkType());
             if (affectedById || affectedByType) {
                 restoreLink(link);
             }
