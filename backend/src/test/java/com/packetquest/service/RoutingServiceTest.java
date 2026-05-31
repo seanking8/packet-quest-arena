@@ -1,6 +1,7 @@
 package com.packetquest.service;
 
 import com.packetquest.config.TrafficProfiles;
+import com.packetquest.dto.RoutePreviewResponse;
 import com.packetquest.dto.RouteResultResponse;
 import com.packetquest.dto.RouteSubmissionRequest;
 import com.packetquest.exception.InvalidRouteException;
@@ -68,6 +69,11 @@ class RoutingServiceTest {
 
         RouteResultResponse route(List<String> path) {
             return routing.submitRoute(session.getId(),
+                    new RouteSubmissionRequest(player.getId(), packet.getId(), path));
+        }
+
+        RoutePreviewResponse preview(List<String> path) {
+            return routing.previewRoute(session.getId(),
                     new RouteSubmissionRequest(player.getId(), packet.getId(), path));
         }
     }
@@ -243,6 +249,56 @@ class RoutingServiceTest {
         assertThatThrownBy(() -> s.routing.submitRoute("missing",
                 new RouteSubmissionRequest(s.player.getId(), s.packet.getId(), List.of("A", "B"))))
                 .isInstanceOf(SessionNotFoundException.class);
+    }
+
+    @Test
+    void preview_estimatesWithoutMutatingState() {
+        Scenario s = new Scenario(TrafficType.VIDEO, 100, 4);
+
+        RoutePreviewResponse preview = s.preview(List.of("A", "B"));
+
+        assertThat(preview.valid()).isTrue();
+        assertThat(preview.estimatedLatencyMs()).isEqualTo(4.0);
+        assertThat(preview.packetLossRisk()).isEqualTo("LOW");
+        // Clean delivery: min == max == the same score a real submission would give.
+        assertThat(preview.estimatedScoreRange().min()).isEqualTo(120);
+        assertThat(preview.estimatedScoreRange().max()).isEqualTo(120);
+        // No state changed: link load is untouched and the packet is still PENDING.
+        assertThat(s.link.getCurrentLoad()).isEqualTo(0.0);
+        assertThat(s.packet.getStatus()).isEqualTo(PacketStatus.PENDING);
+        assertThat(s.player.getScore()).isEqualTo(0);
+    }
+
+    @Test
+    void preview_warnsAndBandsScoreForTooSlowRoute() {
+        Scenario s = new Scenario(TrafficType.EMERGENCY, 100, 500); // 500ms >> 60ms SLA
+
+        RoutePreviewResponse preview = s.preview(List.of("A", "B"));
+
+        assertThat(preview.valid()).isTrue();
+        assertThat(preview.warnings()).anyMatch(w -> w.contains("SLA"));
+        assertThat(preview.estimatedScoreRange().min()).isEqualTo(-100); // certain drop
+        assertThat(preview.estimatedScoreRange().max()).isEqualTo(-100);
+    }
+
+    @Test
+    void preview_warnsWhenRouteUsesCongestedLink() {
+        Scenario s = new Scenario(TrafficType.VIDEO, 100, 4);
+        s.link.setStatus(LinkStatus.CONGESTED);
+
+        RoutePreviewResponse preview = s.preview(List.of("A", "B"));
+
+        assertThat(preview.warnings()).anyMatch(w -> w.contains("CONGESTED"));
+    }
+
+    @Test
+    void preview_returnsInvalidInsteadOfThrowing() {
+        Scenario s = new Scenario(TrafficType.VIDEO, 100, 4);
+
+        RoutePreviewResponse preview = s.preview(List.of("B", "B")); // wrong source
+
+        assertThat(preview.valid()).isFalse();
+        assertThat(preview.warnings()).anyMatch(w -> w.contains("start at the packet source"));
     }
 
     @Test
