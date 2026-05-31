@@ -4,9 +4,11 @@ import HomeScreen from './screens/HomeScreen'
 import LobbyScreen from './screens/LobbyScreen'
 import GameScreen from './screens/GameScreen'
 import CompletedScreen from './screens/CompletedScreen'
+import TutorialScreen from './screens/TutorialScreen'
 
 export default function App() {
-  const { sessionId } = useGame()
+  const { sessionId, mode } = useGame()
+  if (mode === 'tutorial') return <TutorialScreen />
   if (!sessionId) return <HomeScreen />
   return <SessionRouter sessionId={sessionId} />
 }

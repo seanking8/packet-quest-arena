@@ -3,7 +3,7 @@ import { useGame } from '../state/GameContext'
 import ErrorBanner from '../components/common/ErrorBanner'
 
 export default function HomeScreen() {
-  const { host, join, error, setError, busy } = useGame()
+  const { host, join, startTutorial, error, setError, busy } = useGame()
   const [name, setName] = useState('')
   const [joinId, setJoinId] = useState('')
 
@@ -29,6 +29,14 @@ export default function HomeScreen() {
             maxLength={24}
           />
         </label>
+
+        <div className="tutorial-card card">
+          <div>
+            <h2>Quick tutorial</h2>
+            <p className="muted">Practice routing with hints, paused guidance, and forgiving clicks before the real match.</p>
+          </div>
+          <button className="tutorial-button" onClick={startTutorial}>Start tutorial</button>
+        </div>
 
         <div className="home-cards">
           <section className="card">

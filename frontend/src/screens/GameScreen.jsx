@@ -7,6 +7,8 @@ import IncidentFeedPanel from '../components/hud/IncidentFeedPanel'
 import RouteControlsPanel from '../components/hud/RouteControlsPanel'
 import SelectedDetailPanel from '../components/hud/SelectedDetailPanel'
 import NetworkScene from '../components/map/NetworkScene'
+import { isUsableLink } from '../utils/routeAssist'
+import { friendlyNodeName } from '../utils/mapDisplay'
 
 const DEFAULT_PANELS = { jobs: true, leaderboard: true, incidents: true, route: true }
 
@@ -37,9 +39,15 @@ export default function GameScreen({ state, transport }) {
       return
     }
 
-    if (item.kind === 'node' && selectedPacket) {
+    if ((item.kind === 'node' || item.kind === 'link') && selectedPacket) {
       setRoutePath((prev) => {
-        const nodeId = item.data.id
+        const nodeId = item.kind === 'node'
+          ? item.data.id
+          : nextNodeFromLink(item.data, prev[prev.length - 1])
+        if (!nodeId) {
+          setRouteNotice('Click a highlighted next-hop link connected to your current node.')
+          return prev
+        }
         const existingIndex = prev.indexOf(nodeId)
         if (existingIndex >= 0) {
           setRouteNotice(null)
@@ -52,7 +60,7 @@ export default function GameScreen({ state, transport }) {
           return [...prev, nodeId]
         }
 
-        setRouteNotice(`${nodeId} is not connected to ${last}. Pick a neighbouring node.`)
+        setRouteNotice(`${friendlyNodeName(nodeId)} is not connected to ${friendlyNodeName(last)}. Pick a glowing cyan neighbour.`)
         return prev
       })
       return
@@ -124,8 +132,15 @@ export default function GameScreen({ state, transport }) {
 }
 
 function connected(links, a, b) {
-  return links.some((link) =>
+  return links.some((link) => isUsableLink(link) && (
     (link.sourceNodeId === a && link.targetNodeId === b)
     || (link.sourceNodeId === b && link.targetNodeId === a)
-  )
+  ))
+}
+
+function nextNodeFromLink(link, currentNodeId) {
+  if (!isUsableLink(link)) return null
+  if (link.sourceNodeId === currentNodeId) return link.targetNodeId
+  if (link.targetNodeId === currentNodeId) return link.sourceNodeId
+  return null
 }

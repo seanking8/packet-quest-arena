@@ -11,6 +11,7 @@ export function GameProvider({ children }) {
   const [sessionId, setSessionId] = useState(null)
   const [playerId, setPlayerId] = useState(null)
   const [playerName, setPlayerName] = useState('')
+  const [mode, setMode] = useState('live')
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
 
@@ -53,6 +54,15 @@ export function GameProvider({ children }) {
     setSessionId(null)
     setPlayerId(null)
     setPlayerName('')
+    setMode('live')
+    setError(null)
+  }
+
+  const startTutorial = () => {
+    setSessionId(null)
+    setPlayerId('tutorial-player')
+    setPlayerName('Trainee')
+    setMode('tutorial')
     setError(null)
   }
 
@@ -60,12 +70,14 @@ export function GameProvider({ children }) {
     sessionId,
     playerId,
     playerName,
+    mode,
     error,
     busy,
     setError,
     host,
     join,
     start,
+    startTutorial,
     leave,
   }
 
