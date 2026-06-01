@@ -102,18 +102,31 @@ function deadlineState(flow, now) {
   const derivedTotalMs = Number.isNaN(created) ? 0 : end - created
   const totalMs = Math.max(1, declaredDeadlineMs || derivedTotalMs)
   const remainingMs = Math.max(0, end - now)
-  const percent = Math.max(0, Math.min(100, (remainingMs / totalMs) * 100))
   const remainingSeconds = Math.ceil(remainingMs / 1000)
 
+  // Finished packets show a full bar (the deadline window is fully resolved):
+  // green when delivered, red when expired/dropped. Only PENDING packets
+  // visibly deplete toward zero.
+  if (flow.status !== 'PENDING') {
+    const delivered = flow.status === 'DELIVERED'
+    return {
+      percent: 100,
+      tone: delivered ? 'done' : 'expired',
+      label: flow.status,
+    }
+  }
+
+  const percent = Math.max(0, Math.min(100, (remainingMs / totalMs) * 100))
+
   let tone = 'safe'
-  if (flow.status === 'EXPIRED' || remainingSeconds <= 0) tone = 'expired'
+  if (remainingSeconds <= 0) tone = 'expired'
   else if (remainingSeconds <= 5 || percent <= 15) tone = 'urgent'
   else if (remainingSeconds <= 15 || percent <= 35) tone = 'warning'
 
   return {
     percent,
     tone,
-    label: flow.status === 'PENDING' ? `${remainingSeconds}s left` : flow.status,
+    label: `${remainingSeconds}s left`,
   }
 }
 

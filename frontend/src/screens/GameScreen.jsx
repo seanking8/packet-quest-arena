@@ -95,7 +95,13 @@ export default function GameScreen({ state, transport }) {
           return [...prev, nodeId]
         }
 
-        setRouteNotice(`${friendlyNodeName(nodeId)} is not connected to ${friendlyNodeName(last)}. Pick a glowing cyan neighbour.`)
+        // Explain why this node can't be added: either there's no link at all,
+        // or the only link to it is down (FAILED/EXPIRED) and unusable.
+        if (linkExists(state.links || [], last, nodeId)) {
+          setRouteNotice(`The link from ${friendlyNodeName(last)} to ${friendlyNodeName(nodeId)} is down — pick a glowing cyan neighbour instead.`)
+        } else {
+          setRouteNotice(`${friendlyNodeName(nodeId)} isn't connected to ${friendlyNodeName(last)}. Pick a glowing cyan neighbour.`)
+        }
         return prev
       })
       return
@@ -262,6 +268,15 @@ function canUseWebGL() {
 
 function connected(links, a, b) {
   return links.some((link) => isUsableLink(link) && (
+    (link.sourceNodeId === a && link.targetNodeId === b)
+    || (link.sourceNodeId === b && link.targetNodeId === a)
+  ))
+}
+
+// Like connected(), but ignores link status — used to tell "no link at all"
+// apart from "link exists but is down" when explaining a blocked pick.
+function linkExists(links, a, b) {
+  return links.some((link) => (
     (link.sourceNodeId === a && link.targetNodeId === b)
     || (link.sourceNodeId === b && link.targetNodeId === a)
   ))

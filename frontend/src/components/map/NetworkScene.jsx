@@ -151,10 +151,12 @@ function linkPoints(a, b, arc) {
   return [start, mid, end]
 }
 
-function LinkLine({ link, a, b, onSelect, inRoute, affectedColor }) {
+function LinkLine({ link, a, b, onSelect, inRoute, candidate, affectedColor }) {
   const arc = isArcLink(link.linkType)
   const points = useMemo(() => linkPoints(a, b, arc), [a, b, arc])
-  const color = inRoute ? '#ffd479' : linkColor(link)
+  // Route edges glow yellow; valid next-hop candidates glow cyan (matching the
+  // node HopMarkers); everything else keeps its normal link colour.
+  const color = inRoute ? '#ffd479' : candidate ? '#4fe0ff' : linkColor(link)
   const broken = isBrokenLink(link.status)
   const mid = points[Math.floor(points.length / 2)]
   return (
@@ -162,12 +164,12 @@ function LinkLine({ link, a, b, onSelect, inRoute, affectedColor }) {
       <Line
         points={points}
         color={color}
-        lineWidth={inRoute ? 4 : link.status === 'OVERLOADED' || link.status === 'CONGESTED' ? 3 : 1.6}
+        lineWidth={inRoute ? 4 : candidate ? 3 : link.status === 'OVERLOADED' || link.status === 'CONGESTED' ? 3 : 1.6}
         dashed={broken}
         dashSize={1}
         gapSize={0.6}
         transparent
-        opacity={inRoute ? 1 : broken ? 0.6 : 0.9}
+        opacity={inRoute ? 1 : candidate ? 0.95 : broken ? 0.6 : 0.9}
       />
       {/* At-risk overlay: this link is touched by an active weather/incident. */}
       {affectedColor && !inRoute && (
@@ -326,14 +328,26 @@ function SceneContent({ state, onSelect, routePath, selectedPacket, layers }) {
   // While building a route, the nodes you're actually allowed to click next:
   // neighbours of the current path end that aren't already on the path.
   const lastInPath = routePath[routePath.length - 1]
-  const nextHops = useMemo(() => {
-    const set = new Set()
-    if (!selectedPacket || !lastInPath || lastInPath === destId) return set
+  // While building a route, the valid next moves from the current path end:
+  // usable links to unvisited neighbours. We track both the neighbour node ids
+  // (for the cyan markers) and the candidate edges (so the links glow too).
+  const { nextHops, nextHopEdges } = useMemo(() => {
+    const nodes = new Set()
+    const edges = new Set()
+    if (!selectedPacket || !lastInPath || lastInPath === destId) {
+      return { nextHops: nodes, nextHopEdges: edges }
+    }
     ;(state.links || []).forEach((l) => {
-      if (l.sourceNodeId === lastInPath && !pathSet.has(l.targetNodeId)) set.add(l.targetNodeId)
-      else if (l.targetNodeId === lastInPath && !pathSet.has(l.sourceNodeId)) set.add(l.sourceNodeId)
+      if (isBrokenLink(l.status)) return // can't route through a dead link
+      let neighbour = null
+      if (l.sourceNodeId === lastInPath && !pathSet.has(l.targetNodeId)) neighbour = l.targetNodeId
+      else if (l.targetNodeId === lastInPath && !pathSet.has(l.sourceNodeId)) neighbour = l.sourceNodeId
+      if (neighbour) {
+        nodes.add(neighbour)
+        edges.add(edgeKey(l.sourceNodeId, l.targetNodeId))
+      }
     })
-    return set
+    return { nextHops: nodes, nextHopEdges: edges }
   }, [selectedPacket, lastInPath, destId, state.links, pathSet])
 
   return (
@@ -365,6 +379,7 @@ function SceneContent({ state, onSelect, routePath, selectedPacket, layers }) {
             b={b}
             onSelect={onSelect}
             inRoute={routeEdges.has(edgeKey(link.sourceNodeId, link.targetNodeId))}
+            candidate={nextHopEdges.has(edgeKey(link.sourceNodeId, link.targetNodeId))}
             affectedColor={affectedLinkColor.get(link.id)}
           />
         )

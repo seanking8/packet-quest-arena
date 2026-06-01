@@ -182,6 +182,11 @@ code.pill, .pill {
   stroke-width: 5;
   opacity: 0.95;
 }
+.tactical-link.candidate {
+  stroke-width: 3.4;
+  opacity: 0.95;
+  filter: drop-shadow(0 0 4px rgba(102, 230, 255, 0.85));
+}
 .tactical-zone {
   opacity: 0.16;
   stroke: currentColor;
@@ -306,6 +311,7 @@ code.pill, .pill {
   cursor: pointer;
 }
 .city2d-link.route { stroke: #1b2740; opacity: 0.95; }
+.city2d-link.candidate { opacity: 0.95; filter: drop-shadow(0 0 3px rgba(79, 224, 255, 0.8)); }
 .city2d-link.CONGESTED,
 .city2d-link.OVERLOADED { stroke-dasharray: 4 3; }
 .city2d-node { cursor: pointer; }
@@ -770,6 +776,13 @@ code.pill, .pill {
 .job-deadline.urgent .job-time-badge,
 .job-deadline.expired .job-time-badge {
   color: #ffd1d6;
+}
+.job-deadline.done .job-deadline-fill {
+  background: var(--ok);
+  box-shadow: 0 0 10px rgba(54, 201, 141, 0.45);
+}
+.job-deadline.done .job-time-badge {
+  color: #b8f5d8;
 }
 
 .leaderboard li { display: flex; align-items: center; gap: 8px; padding: 6px 0; }

@@ -35,8 +35,8 @@ export default function CityMap2D({ state, onSelect, routePath = [], selectedPac
     () => affectedLinkColors(state.incidents || [], links, nodeIndex, showWeather, showIncidents),
     [state.incidents, links, nodeIndex, showWeather, showIncidents]
   )
-  const nextHopIds = useMemo(
-    () => nextHopSet(links, routePath, selectedPacket),
+  const { nextHopIds, nextHopEdges } = useMemo(
+    () => nextHopSets(links, routePath, selectedPacket),
     [links, routePath, selectedPacket]
   )
   const currentNodeId = routePath[routePath.length - 1]
@@ -108,19 +108,20 @@ export default function CityMap2D({ state, onSelect, routePath = [], selectedPac
           if (!source || !target) return null
           const a = project(source)
           const b = project(target)
-          const color = affectedLinks.get(link.id) || linkColor(link)
           const routeEdge = routeEdges.has(edgeKey(link.sourceNodeId, link.targetNodeId))
+          const candidate = !routeEdge && nextHopEdges.has(edgeKey(link.sourceNodeId, link.targetNodeId))
+          const color = routeEdge ? '#1b2740' : candidate ? '#4fe0ff' : (affectedLinks.get(link.id) || linkColor(link))
           const broken = isBrokenLink(link.status)
           return (
             <line
               key={link.id}
-              className={`city2d-link ${link.status || ''} ${routeEdge ? 'route' : ''}`}
+              className={`city2d-link ${link.status || ''} ${routeEdge ? 'route' : ''} ${candidate ? 'candidate' : ''}`}
               x1={a.x}
               y1={a.y}
               x2={b.x}
               y2={b.y}
               stroke={color}
-              strokeWidth={routeEdge ? 2.6 : 1.4}
+              strokeWidth={routeEdge ? 2.6 : candidate ? 2.2 : 1.4}
               strokeDasharray={broken ? '3 3' : undefined}
               onClick={() => onSelect?.({ kind: 'link', data: link })}
             >
@@ -194,17 +195,23 @@ function edgeKey(a, b) {
   return [a, b].sort().join('::')
 }
 
-function nextHopSet(links, routePath, selectedPacket) {
-  if (!selectedPacket) return new Set()
+function nextHopSets(links, routePath, selectedPacket) {
+  const nextHopIds = new Set()
+  const nextHopEdges = new Set()
+  if (!selectedPacket) return { nextHopIds, nextHopEdges }
   const current = routePath[routePath.length - 1] || selectedPacket.sourceNodeId
   const visited = new Set(routePath)
-  const result = new Set()
   links.forEach((link) => {
     if (!isUsableLink(link)) return
-    if (link.sourceNodeId === current && !visited.has(link.targetNodeId)) result.add(link.targetNodeId)
-    if (link.targetNodeId === current && !visited.has(link.sourceNodeId)) result.add(link.sourceNodeId)
+    let neighbour = null
+    if (link.sourceNodeId === current && !visited.has(link.targetNodeId)) neighbour = link.targetNodeId
+    else if (link.targetNodeId === current && !visited.has(link.sourceNodeId)) neighbour = link.sourceNodeId
+    if (neighbour) {
+      nextHopIds.add(neighbour)
+      nextHopEdges.add(edgeKey(link.sourceNodeId, link.targetNodeId))
+    }
   })
-  return result
+  return { nextHopIds, nextHopEdges }
 }
 
 function nodeRole(id, sourceId, destId, currentNodeId, nextHopIds) {

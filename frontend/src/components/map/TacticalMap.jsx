@@ -41,6 +41,21 @@ export default function TacticalMap({ state, onSelect, routePath = [], selectedP
     [links, routePath, selectedPacket]
   )
   const currentNodeId = routePath[routePath.length - 1]
+  // Edges from the current node to a valid next hop, so candidate links glow
+  // (not just the candidate nodes).
+  const nextHopEdges = useMemo(() => {
+    const edges = new Set()
+    if (!selectedPacket) return edges
+    const current = currentNodeId || selectedPacket.sourceNodeId
+    const visited = new Set(routePath)
+    links.forEach((link) => {
+      if (!isUsableLink(link)) return
+      const hitsCurrent = link.sourceNodeId === current || link.targetNodeId === current
+      const other = link.sourceNodeId === current ? link.targetNodeId : link.sourceNodeId
+      if (hitsCurrent && !visited.has(other)) edges.add(edgeKey(link.sourceNodeId, link.targetNodeId))
+    })
+    return edges
+  }, [links, routePath, selectedPacket, currentNodeId])
 
   const project = (node) => ({ x: node.x, y: -node.z })
 
@@ -81,12 +96,13 @@ export default function TacticalMap({ state, onSelect, routePath = [], selectedP
           if (!source || !target) return null
           const a = project(source)
           const b = project(target)
-          const color = affectedLinks.get(link.id) || LINK_COLORS[link.linkType] || '#d8e3ff'
           const routeEdge = routeEdges.has(edgeKey(link.sourceNodeId, link.targetNodeId))
+          const candidate = !routeEdge && nextHopEdges.has(edgeKey(link.sourceNodeId, link.targetNodeId))
+          const color = candidate ? '#66e6ff' : (affectedLinks.get(link.id) || LINK_COLORS[link.linkType] || '#d8e3ff')
           return (
             <line
               key={link.id}
-              className={`tactical-link ${link.status || ''} ${routeEdge ? 'route' : ''}`}
+              className={`tactical-link ${link.status || ''} ${routeEdge ? 'route' : ''} ${candidate ? 'candidate' : ''}`}
               x1={a.x}
               y1={a.y}
               x2={b.x}
