@@ -16,7 +16,7 @@ export default function HomeScreen() {
   }
 
   return (
-    <div className="screen center home-screen">
+    <div className="screen center pregame-screen home-screen">
       <div className="home">
         <ErrorBanner message={error} onDismiss={() => setError(null)} />
 

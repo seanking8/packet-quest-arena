@@ -26,7 +26,7 @@ export default function LobbyScreen({ state, transport }) {
   }
 
   return (
-    <div className="screen center">
+    <div className="screen center pregame-screen lobby-screen">
       <div className="lobby">
         <header className="home-header">
           <h1>Lobby</h1>
