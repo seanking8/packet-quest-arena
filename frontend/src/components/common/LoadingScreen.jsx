@@ -21,28 +21,32 @@ export default function LoadingScreen({ message = 'Loading session state.', erro
         </defs>
 
         <g className="loading-route-lines">
-          <path className="route-line route-line-a" pathLength="1" d="M188 292 L294 236 L414 259 L528 204 L650 236 L768 183" />
-          <path className="route-line route-line-b" pathLength="1" d="M230 350 L340 305 L486 330 L615 292 L740 342" />
-          <path className="route-line route-line-c" pathLength="1" d="M348 186 L414 259 L486 330 L610 388 L792 378" />
-          <path className="route-line route-line-d" pathLength="1" d="M132 224 L294 236 L340 305 L528 204 L615 292" />
+          <path className="route-line route-line-a" pathLength="1" d="M154 205 L223 176 L294 90 L362 140 L445 188 L541 258" />
+          <path className="route-line route-line-b" pathLength="1" d="M225 250 L309 219 L422 250 L486 220 L615 354 L664 401" />
+          <path className="route-line route-line-c" pathLength="1" d="M246 149 L294 90 L360 181 L445 188 L542 358 L779 421" />
+          <path className="route-line route-line-d" pathLength="1" d="M541 258 L611 233 L752 238 L774 284 L664 401" />
         </g>
 
         <g className="loading-route-nodes" filter="url(#node-glow)">
-          <circle cx="132" cy="224" r="7" />
-          <circle cx="188" cy="292" r="8" />
-          <circle cx="230" cy="350" r="7" />
-          <circle cx="294" cy="236" r="9" />
-          <circle cx="340" cy="305" r="8" />
-          <circle cx="348" cy="186" r="7" />
-          <circle cx="414" cy="259" r="10" />
-          <circle cx="486" cy="330" r="8" />
-          <circle cx="528" cy="204" r="9" />
-          <circle cx="610" cy="388" r="7" />
-          <circle cx="615" cy="292" r="9" />
-          <circle cx="650" cy="236" r="8" />
-          <circle cx="740" cy="342" r="7" />
-          <circle cx="768" cy="183" r="8" />
-          <circle cx="792" cy="378" r="7" />
+          <circle cx="154" cy="205" r="6" />
+          <circle cx="223" cy="176" r="7" />
+          <circle cx="225" cy="250" r="6" />
+          <circle cx="246" cy="149" r="7" />
+          <circle cx="294" cy="90" r="8" />
+          <circle cx="309" cy="219" r="6" />
+          <circle cx="360" cy="181" r="7" />
+          <circle cx="362" cy="140" r="7" />
+          <circle cx="422" cy="250" r="6" />
+          <circle cx="445" cy="188" r="8" />
+          <circle cx="486" cy="220" r="6" />
+          <circle cx="541" cy="258" r="7" />
+          <circle cx="542" cy="358" r="7" />
+          <circle cx="611" cy="233" r="6" />
+          <circle cx="615" cy="354" r="7" />
+          <circle cx="664" cy="401" r="7" />
+          <circle cx="752" cy="238" r="7" />
+          <circle cx="774" cy="284" r="6" />
+          <circle cx="779" cy="421" r="7" />
         </g>
       </svg>
 
