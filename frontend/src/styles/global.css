@@ -61,6 +61,25 @@ code.pill, .pill {
 /* ---- pre-game centered screens ---- */
 .screen.center { display: flex; align-items: center; justify-content: center; height: 100%; padding: 24px; }
 .home, .lobby { width: min(720px, 92vw); }
+.home-screen {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(8, 12, 28, 0.62), rgba(8, 12, 28, 0.78)),
+    radial-gradient(circle at center, rgba(8, 12, 28, 0.18), rgba(8, 12, 28, 0.72) 68%),
+    url('../assets/loading-city-bg.png') center / cover no-repeat;
+}
+.home-screen::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 9, 18, 0.22);
+  pointer-events: none;
+}
+.home-screen > * {
+  position: relative;
+  z-index: 1;
+}
 .home-header h1 { margin: 0 0 4px; font-size: 30px; }
 .home-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
 .card {
@@ -677,17 +696,6 @@ code.pill, .pill {
   inset: 0;
   color: transparent;
   -webkit-text-stroke: 1px rgba(255,255,255,0.28);
-}
-
-.loading-title::after {
-  content: "";
-  position: absolute;
-  inset: 22% 6% 28%;
-  background:
-    linear-gradient(132deg, transparent 0 12%, rgba(8,12,28,0.82) 12% 18%, transparent 18% 34%, rgba(8,12,28,0.78) 34% 39%, transparent 39% 100%);
-  opacity: 0.88;
-  mix-blend-mode: multiply;
-  pointer-events: none;
 }
 
 .loading-progress {

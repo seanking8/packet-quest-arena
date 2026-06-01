@@ -16,7 +16,7 @@ export default function HomeScreen() {
   }
 
   return (
-    <div className="screen center">
+    <div className="screen center home-screen">
       <div className="home">
         <header className="home-header">
           <h1>Packet Quest Arena</h1>
