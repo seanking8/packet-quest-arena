@@ -32,12 +32,22 @@ class GameTickServiceTest {
     @BeforeEach
     void setUp() {
         repo = new GameSessionRepository();
+        GameStateBroadcaster noop = (id, state) -> { /* no-op broadcaster */ };
+        // Weather generator that never fires, so tick tests stay deterministic.
+        WeatherGenerationService noWeather = new WeatherGenerationService() {
+            @Override
+            public boolean shouldGenerate(com.packetquest.model.GameDifficulty difficulty) {
+                return false;
+            }
+        };
         tick = new GameTickService(
                 repo,
                 new PacketFlowGenerationService(new TrafficProfiles()),
                 new TrafficProfiles(),
                 new ScoreCalculator(),
-                (id, state) -> { /* no-op broadcaster */ });
+                noop,
+                noWeather,
+                new IncidentService(repo, noop));
     }
 
     private NetworkLink link(GameSession s, double capacity, double load) {
@@ -58,6 +68,37 @@ class GameTickServiceTest {
         tick.tick(s.getId());
 
         assertThat(l.getCurrentLoad()).isEqualTo(60.0); // 80 * 0.75
+    }
+
+    @Test
+    void tickGeneratesWeatherWhenGeneratorFires() {
+        GameSessionRepository wRepo = new GameSessionRepository();
+        GameStateBroadcaster noop = (id, state) -> { };
+        // Generator that always fires, producing a deterministic storm.
+        WeatherGenerationService alwaysStorm = new WeatherGenerationService() {
+            @Override
+            public boolean shouldGenerate(com.packetquest.model.GameDifficulty difficulty) {
+                return true;
+            }
+        };
+        GameTickService wTick = new GameTickService(
+                wRepo,
+                new PacketFlowGenerationService(new TrafficProfiles()),
+                new TrafficProfiles(),
+                new ScoreCalculator(),
+                noop,
+                alwaysStorm,
+                new IncidentService(wRepo, noop));
+
+        GameSession s = new GameSession();
+        s.start();
+        wRepo.save(s);
+
+        wTick.tick(s.getId());
+
+        assertThat(s.getIncidents()).isNotEmpty();
+        assertThat(s.getIncidents())
+                .allMatch(i -> i.getEventType() != null && i.getEventType().name().startsWith("WEATHER_"));
     }
 
     @Test

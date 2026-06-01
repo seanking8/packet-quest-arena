@@ -5,6 +5,7 @@ import com.packetquest.dto.GameStateDto;
 import com.packetquest.exception.SessionNotFoundException;
 import com.packetquest.model.GameSession;
 import com.packetquest.model.IncidentEvent;
+import com.packetquest.model.IncidentType;
 import com.packetquest.model.LinkStatus;
 import com.packetquest.model.LinkType;
 import com.packetquest.model.NetworkLink;
@@ -36,23 +37,31 @@ public class GameTickService {
     public static final double LOAD_DECAY_RATE = 0.25;
     /** Loads below this snap to zero so congestion can fully clear. */
     private static final double LOAD_ZERO_EPSILON = 1.0;
+    /** Cap on simultaneous active (non-clear) weather events per session. */
+    private static final int MAX_CONCURRENT_WEATHER = 2;
 
     private final GameSessionRepository sessionRepo;
     private final PacketFlowGenerationService packetFlowGenerator;
     private final TrafficProfiles trafficProfiles;
     private final ScoreCalculator scoreCalculator;
     private final GameStateBroadcaster broadcaster;
+    private final WeatherGenerationService weatherGenerator;
+    private final IncidentService incidentService;
 
     public GameTickService(GameSessionRepository sessionRepo,
                            PacketFlowGenerationService packetFlowGenerator,
                            TrafficProfiles trafficProfiles,
                            ScoreCalculator scoreCalculator,
-                           GameStateBroadcaster broadcaster) {
+                           GameStateBroadcaster broadcaster,
+                           WeatherGenerationService weatherGenerator,
+                           IncidentService incidentService) {
         this.sessionRepo = sessionRepo;
         this.packetFlowGenerator = packetFlowGenerator;
         this.trafficProfiles = trafficProfiles;
         this.scoreCalculator = scoreCalculator;
         this.broadcaster = broadcaster;
+        this.weatherGenerator = weatherGenerator;
+        this.incidentService = incidentService;
     }
 
     @Scheduled(fixedRateString = "${packetquest.tick.fixed-rate-ms:1000}")
@@ -87,6 +96,7 @@ public class GameTickService {
             } else {
                 packetFlowGenerator.replenishPendingJobs(
                         session, session.getDifficulty().minPendingJobsPerPlayer());
+                maybeGenerateWeather(session);
             }
 
             sessionRepo.save(session);
@@ -94,6 +104,26 @@ public class GameTickService {
             broadcaster.broadcast(sessionId, state);
             return state;
         }
+    }
+
+    /**
+     * Occasionally roll live weather so a match always has changing conditions
+     * without the external simulator. Frequency scales with difficulty. We cap
+     * concurrent weather so storms don't pile up, then let IncidentService
+     * apply it (zone→link resolution, severity scaling, broadcast).
+     */
+    private void maybeGenerateWeather(GameSession session) {
+        long activeWeather = session.getIncidents().stream()
+                .filter(i -> i.getEventType() != null && i.getEventType().name().startsWith("WEATHER_"))
+                .filter(i -> i.getEventType() != IncidentType.WEATHER_CLEAR)
+                .count();
+        if (activeWeather >= MAX_CONCURRENT_WEATHER) {
+            return;
+        }
+        if (!weatherGenerator.shouldGenerate(session.getDifficulty())) {
+            return;
+        }
+        incidentService.applyIncident(session.getId(), weatherGenerator.nextWeather());
     }
 
     private void decayLinkLoad(GameSession session) {
