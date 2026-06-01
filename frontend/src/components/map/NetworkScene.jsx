@@ -54,8 +54,9 @@ function CameraRig({ view, focus }) {
 }
 
 // A tall, pulsing light column + floating marker so the sender / receiver of a
-// selected packet are impossible to miss in the busy city.
-function Beacon({ color }) {
+// selected packet are impossible to miss in the busy city. A "START"/"END"
+// label floats above the beam so it's clear which end is which.
+function Beacon({ color, label }) {
   const beam = useRef()
   const marker = useRef()
   useFrame((state) => {
@@ -73,6 +74,11 @@ function Beacon({ color }) {
         <octahedronGeometry args={[1.8, 0]} />
         <meshBasicMaterial color={color} transparent opacity={0.95} />
       </mesh>
+      {label && (
+        <Html position={[0, 46, 0]} center distanceFactor={140} style={{ pointerEvents: 'none' }}>
+          <div className="route-endpoint-label" style={{ '--label-color': color }}>{label}</div>
+        </Html>
+      )}
     </group>
   )
 }
@@ -138,8 +144,11 @@ function NodeMesh({ node, onSelect, inPath, isSource, isDest, isNextHop }) {
         <NodeModel type={node.type} />
       </group>
 
-      {/* Sender / receiver of the packet being routed get a tall light beam. */}
-      {(isSource || isDest) && <Beacon color={isSource ? '#36c98d' : '#ff7ab6'} />}
+      {/* Sender / receiver of the packet being routed get a tall light beam
+          with a START / END label so each end is unmistakable. */}
+      {(isSource || isDest) && (
+        <Beacon color={isSource ? '#36c98d' : '#ff7ab6'} label={isSource ? 'START' : 'END'} />
+      )}
 
       {/* Valid next click while building the route. */}
       {isNextHop && !inPath && !isSource && !isDest && <HopMarker />}

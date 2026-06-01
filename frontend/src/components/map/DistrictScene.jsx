@@ -326,7 +326,7 @@ function NodeMesh({
         <RouteBeacon
           node={node}
           color={color}
-          label={isSource ? 'START' : 'DESTINATION'}
+          label={isSource ? 'START' : 'END'}
           onSelect={handleSelect}
         />
       )}

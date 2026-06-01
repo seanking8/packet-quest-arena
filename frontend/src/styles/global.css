@@ -407,6 +407,21 @@ code.pill, .pill {
   transform: translateY(-50%);
 }
 
+/* START / END label floating above a selected packet's source/dest beacon. */
+.route-endpoint-label {
+  background: var(--label-color, #36c98d);
+  color: #06121d;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  border-radius: 999px;
+  padding: 3px 11px;
+  white-space: nowrap;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  pointer-events: none;
+}
+
 /* weather/incident zone marker chip + hover tooltip (rendered in-canvas) */
 .zone-chip {
   background: rgba(8,12,28,0.85);
