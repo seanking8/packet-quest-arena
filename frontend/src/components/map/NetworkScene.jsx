@@ -7,6 +7,7 @@ import { isWeather, incidentColor } from './incidents'
 import IncidentZones from './IncidentZones'
 import PlanetScene from './PlanetScene'
 import { DecorBuildings, NodeModel, Roads, Greenery, StreetTrees, TrafficLights, Bridges, Cars, anchorY } from './cityDetails'
+import { friendlyNodeName, friendlyNodeType } from '../../utils/mapDisplay'
 
 // Camera presets — y is up, matching backend coordinates.
 const VIEWS = {
@@ -426,8 +427,11 @@ function SceneContent({ state, onSelect, routePath, selectedPacket, layers }) {
       ))}
 
       {showLabels && (state.nodes || []).map((n) => (
-        <Html key={`lbl-${n.id}`} position={[n.x, (nodeSize(n.type) || 1) * 2 + 2, n.z]} center distanceFactor={120} style={{ pointerEvents: 'none' }}>
-          <div className="node-label">{n.label || n.id}</div>
+        <Html key={`lbl-${n.id}`} position={[n.x, anchorY(n) + 4, n.z]} center distanceFactor={120} style={{ pointerEvents: 'none' }}>
+          <div className="node-label">
+            <span className="node-label-name">{friendlyNodeName(n)}</span>
+            <span className="node-label-type">{friendlyNodeType(n.type)}</span>
+          </div>
         </Html>
       ))}
 
