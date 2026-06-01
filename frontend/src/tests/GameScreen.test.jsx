@@ -35,12 +35,22 @@ const STATE = {
   mapObjects: [],
 }
 
+const originalWebGLRenderingContext = window.WebGLRenderingContext
+
 beforeEach(() => {
   vi.useFakeTimers()
   vi.setSystemTime(new Date('2026-05-31T12:00:00.000Z'))
+  window.WebGLRenderingContext = function WebGLRenderingContext() {}
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({})
 })
 
 afterEach(() => {
+  vi.restoreAllMocks()
+  if (originalWebGLRenderingContext) {
+    window.WebGLRenderingContext = originalWebGLRenderingContext
+  } else {
+    delete window.WebGLRenderingContext
+  }
   vi.useRealTimers()
 })
 

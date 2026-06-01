@@ -1,3 +1,4 @@
+import { Component } from 'react'
 import { useGame } from './state/GameContext'
 import useGameState from './hooks/useGameState'
 import HomeScreen from './screens/HomeScreen'
@@ -30,5 +31,39 @@ function SessionRouter({ sessionId }) {
 
   if (state.status === 'WAITING') return <LobbyScreen state={state} transport={transport} />
   if (state.status === 'COMPLETED') return <CompletedScreen state={state} />
-  return <GameScreen state={state} transport={transport} />
+  return (
+    <GameErrorBoundary>
+      <GameScreen state={state} transport={transport} />
+    </GameErrorBoundary>
+  )
+}
+
+class GameErrorBoundary extends Component {
+  constructor(props) {
+    super(props)
+    this.state = { error: null }
+  }
+
+  static getDerivedStateFromError(error) {
+    return { error }
+  }
+
+  componentDidCatch(error) {
+    console.error('Game screen failed to render', error)
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="screen center">
+          <div className="card">
+            <h2>Game screen failed to render</h2>
+            <p className="muted">{this.state.error.message}</p>
+          </div>
+        </div>
+      )
+    }
+
+    return this.props.children
+  }
 }
