@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { nodeColor, linkColor, isBrokenLink, nodeSize } from './colors'
 import { incidentColor, isWeather, zoneCenter } from './incidents'
+import useSvgZoom from './useSvgZoom'
 
 // Our own 2D map — a daytime top-down schematic that mirrors the realistic
 // 3D city (light streets, building footprints) rather than the dark tactical
@@ -44,10 +45,14 @@ export default function CityMap2D({ state, onSelect, routePath = [], selectedPac
   const destId = selectedPacket?.destinationNodeId
 
   const project = (node) => ({ x: node.x, y: -node.z })
+  const { viewBox, zoomed, reset, handlers } = useSvgZoom(bounds)
 
   return (
     <div className="city2d-map" aria-label="2D city network map">
-      <svg viewBox={`${bounds.minX} ${bounds.minY} ${bounds.width} ${bounds.height}`} role="img">
+      {zoomed && (
+        <button className="map2d-reset" onClick={reset}>Reset view</button>
+      )}
+      <svg viewBox={viewBox} role="img" {...handlers} style={{ touchAction: 'none', cursor: 'grab' }}>
         <defs>
           <pattern id="city2d-blocks" width="26" height="26" patternUnits="userSpaceOnUse">
             <rect width="26" height="26" fill="none" />

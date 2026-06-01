@@ -14,6 +14,13 @@ const VIEWS = {
   iso: { pos: [70, 60, 70], target: [10, 0, 0] },
 }
 
+// The backend topology now spans roughly ±150, but the realistic city + its
+// camera were tuned for a tighter map. Render the whole city scene inside one
+// uniformly-scaled group so nodes sit closer together and the camera frames
+// them well. Everything (nodes, links, buildings, weather zones) scales by the
+// same factor, so weather stays glued to the nodes it affects.
+const CITY_SCALE = 0.45
+
 function CameraRig({ view, focus }) {
   const camera = useThree((s) => s.camera)
   const controls = useThree((s) => s.controls)
@@ -32,12 +39,15 @@ function CameraRig({ view, focus }) {
   // a click that changes both view and focus lands the camera on the incident.
   useEffect(() => {
     if (!focus) return
-    camera.position.set(focus.x + 22, 26, focus.z + 22)
+    // focus.x/z are backend coords; the scene is rendered scaled, so map them in.
+    const fx = focus.x * CITY_SCALE
+    const fz = focus.z * CITY_SCALE
+    camera.position.set(fx + 22, 26, fz + 22)
     if (controls) {
-      controls.target.set(focus.x, 0, focus.z)
+      controls.target.set(fx, 0, fz)
       controls.update()
     } else {
-      camera.lookAt(focus.x, 0, focus.z)
+      camera.lookAt(fx, 0, fz)
     }
   }, [focus?.key]) // eslint-disable-line react-hooks/exhaustive-deps
   return null
@@ -115,6 +125,15 @@ function NodeMesh({ node, onSelect, inPath, isSource, isDest, isNextHop }) {
       }}
       onPointerOut={() => setHovered(false)}
     >
+      {/* Invisible click/hover target. A tall, wide cylinder so the node stays
+          easy to select even when buildings sit between it and the camera —
+          fixes "can't click the next node" in dense parts of the city. It's
+          a bit wider while this node is a valid next hop. */}
+      <mesh position={[0, 12, 0]}>
+        <cylinderGeometry args={[isNextHop ? s * 3.2 : s * 2.4, isNextHop ? s * 3.2 : s * 2.4, 24, 12]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
+
       <group scale={failed ? 0.95 : 1}>
         <NodeModel type={node.type} />
       </group>
@@ -351,7 +370,7 @@ function SceneContent({ state, onSelect, routePath, selectedPacket, layers }) {
   }, [selectedPacket, lastInPath, destId, state.links, pathSet])
 
   return (
-    <>
+    <group scale={CITY_SCALE}>
       <hemisphereLight args={['#dce8ff', '#5b6446', 0.7]} />
       <ambientLight intensity={0.5} />
       <directionalLight position={[60, 95, 35]} intensity={1.5} color="#fff4dc" />
@@ -414,7 +433,7 @@ function SceneContent({ state, onSelect, routePath, selectedPacket, layers }) {
       {packets.map((p) => (
         <Packet key={p.id} points={p.points} color={p.color} />
       ))}
-    </>
+    </group>
   )
 }
 
