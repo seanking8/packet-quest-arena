@@ -7,6 +7,8 @@ import IncidentFeedPanel from '../components/hud/IncidentFeedPanel'
 import RouteControlsPanel from '../components/hud/RouteControlsPanel'
 import SelectedDetailPanel from '../components/hud/SelectedDetailPanel'
 import NetworkScene from '../components/map/NetworkScene'
+import DistrictScene from '../components/map/DistrictScene'
+import CityMap2D from '../components/map/CityMap2D'
 import TacticalMap from '../components/map/TacticalMap'
 import { isUsableLink } from '../utils/routeAssist'
 import { friendlyNodeName } from '../utils/mapDisplay'
@@ -20,6 +22,10 @@ export default function GameScreen({ state, transport }) {
   const [webglAvailable, setWebglAvailable] = useState(canUseWebGL)
   const [panels, setPanels] = useState(DEFAULT_PANELS)
   const [layers, setLayers] = useState(DEFAULT_LAYERS)
+  // mapFamily picks the visual style: 'city' = our realistic city, 'district'
+  // = teammate's district map. Each family has its own 3D scene and its own 2D
+  // map; the 2D toggle shows the current family's 2D view.
+  const [mapFamily, setMapFamily] = useState('city')
   const [view, setView] = useState(() => (canUseWebGL() ? 'iso' : 'tactical'))
   const [focus, setFocus] = useState(null)
   const [selected, setSelected] = useState(null)
@@ -109,34 +115,73 @@ export default function GameScreen({ state, transport }) {
     <div className="hud">
       <div className="map-layer">
         {view === 'tactical' ? (
-          <TacticalMap
-            state={state}
-            onSelect={handleSelect}
-            routePath={routePath}
-            selectedPacket={selectedPacket}
-            layers={layers}
-          />
-        ) : (
-          <SceneErrorBoundary onError={handleSceneError}>
-            <NetworkScene
+          mapFamily === 'district' ? (
+            <TacticalMap
               state={state}
               onSelect={handleSelect}
               routePath={routePath}
               selectedPacket={selectedPacket}
-              view={view}
               layers={layers}
-              focus={focus}
             />
+          ) : (
+            <CityMap2D
+              state={state}
+              onSelect={handleSelect}
+              routePath={routePath}
+              selectedPacket={selectedPacket}
+              layers={layers}
+            />
+          )
+        ) : (
+          <SceneErrorBoundary onError={handleSceneError}>
+            {mapFamily === 'district' ? (
+              <DistrictScene
+                state={state}
+                onSelect={handleSelect}
+                routePath={routePath}
+                selectedPacket={selectedPacket}
+                view={view}
+                layers={layers}
+                focus={focus}
+              />
+            ) : (
+              <NetworkScene
+                state={state}
+                onSelect={handleSelect}
+                routePath={routePath}
+                selectedPacket={selectedPacket}
+                view={view}
+                layers={layers}
+                focus={focus}
+              />
+            )}
           </SceneErrorBoundary>
         )}
       </div>
 
+      <div className="map-family-controls">
+        <button
+          className={`toggle ${mapFamily === 'city' ? 'on' : ''}`}
+          aria-pressed={mapFamily === 'city'}
+          onClick={() => setMapFamily('city')}
+        >
+          City map
+        </button>
+        <button
+          className={`toggle ${mapFamily === 'district' ? 'on' : ''}`}
+          aria-pressed={mapFamily === 'district'}
+          onClick={() => setMapFamily('district')}
+        >
+          District map
+        </button>
+      </div>
+
       <div className="view-controls">
         <button className={`toggle ${view === 'close' ? 'on' : ''}`} disabled={!webglAvailable} onClick={() => show3d('close')}>Close</button>
-        <button className={`toggle ${view === 'iso' ? 'on' : ''}`} disabled={!webglAvailable} onClick={() => show3d('iso')}>City</button>
+        <button className={`toggle ${view === 'iso' ? 'on' : ''}`} disabled={!webglAvailable} onClick={() => show3d('iso')}>3D</button>
         <button className={`toggle ${view === 'tactical' ? 'on' : ''}`} onClick={() => setView('tactical')}>2D</button>
         <button className={`toggle ${view === 'planet' ? 'on' : ''}`} disabled={!webglAvailable} onClick={() => show3d('planet')}>Planet</button>
-        <button className="ghost" onClick={() => setView(webglAvailable ? 'iso' : 'tactical')}>{view === 'planet' ? 'Back to City' : 'Reset'}</button>
+        <button className="ghost" onClick={() => setView(webglAvailable ? 'iso' : 'tactical')}>{view === 'planet' ? 'Back to 3D' : 'Reset'}</button>
       </div>
 
       <div className="layer-controls">

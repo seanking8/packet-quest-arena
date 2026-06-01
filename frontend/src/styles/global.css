@@ -271,6 +271,95 @@ code.pill, .pill {
   height: 3px;
   border-radius: 999px;
 }
+/* Our own 2D map — daytime top-down schematic that mirrors the 3D city. */
+.city2d-map {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, #dbe6f4 0%, #cdddee 60%, #c3d7e6 100%);
+}
+.city2d-map svg { width: 100%; height: 100%; display: block; }
+.city2d-ground { fill: #d6e3f0; }
+.city2d-object {
+  fill: rgba(120, 140, 168, 0.42);
+  stroke: rgba(86, 108, 140, 0.55);
+  stroke-width: 0.6;
+  pointer-events: none;
+}
+.city2d-object.tall_obstruction { fill: rgba(96, 116, 150, 0.55); }
+.city2d-object.construction_zone {
+  fill: rgba(255, 180, 84, 0.32);
+  stroke: rgba(214, 142, 40, 0.6);
+  stroke-dasharray: 3 2;
+}
+.city2d-zone {
+  opacity: 0.16;
+  stroke: currentColor;
+  stroke-width: 1;
+  pointer-events: none;
+}
+.city2d-zone.incident { opacity: 0.2; stroke-dasharray: 3 3; }
+.city2d-link {
+  stroke-linecap: round;
+  opacity: 0.85;
+  cursor: pointer;
+}
+.city2d-link.route { stroke: #1b2740; opacity: 0.95; }
+.city2d-link.CONGESTED,
+.city2d-link.OVERLOADED { stroke-dasharray: 4 3; }
+.city2d-node { cursor: pointer; }
+.city2d-node circle { stroke: rgba(20, 34, 58, 0.55); stroke-width: 1; }
+.city2d-hop {
+  fill: none;
+  stroke: #4fe0ff;
+  stroke-width: 2;
+  opacity: 0.9;
+}
+.city2d-node.source circle { stroke: var(--ok); stroke-width: 3; }
+.city2d-node.destination circle { stroke: #ff7ab6; stroke-width: 3; }
+.city2d-node.current circle { stroke: #4fe0ff; stroke-width: 3; }
+.city2d-node.FAILED circle { stroke: var(--bad); stroke-width: 2.5; }
+.city2d-node-icon {
+  fill: #11203a;
+  font-size: 5px;
+  font-weight: 900;
+  pointer-events: none;
+}
+.city2d-node-label {
+  fill: #16263f;
+  font-size: 5px;
+  font-weight: 800;
+  paint-order: stroke;
+  stroke: rgba(235, 242, 250, 0.85);
+  stroke-width: 2;
+  pointer-events: none;
+}
+.city2d-legend {
+  position: absolute;
+  left: 12px;
+  bottom: 108px;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  pointer-events: none;
+}
+.city2d-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid rgba(60, 90, 130, 0.3);
+  background: rgba(245, 249, 255, 0.78);
+  color: #1c2c47;
+  border-radius: 7px;
+  padding: 4px 7px;
+  font-size: 11px;
+  backdrop-filter: blur(8px);
+}
+.city2d-legend i { display: inline-block; width: 16px; height: 8px; border-radius: 3px; }
+
+.map-family-controls { position: absolute; left: 12px; bottom: 188px; z-index: 3; display: flex; gap: 6px; }
 .view-controls { position: absolute; left: 12px; bottom: 112px; z-index: 3; display: flex; gap: 6px; }
 .layer-controls { position: absolute; left: 12px; bottom: 150px; z-index: 3; display: flex; gap: 6px; }
 
