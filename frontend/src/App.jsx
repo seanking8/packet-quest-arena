@@ -12,7 +12,7 @@ export default function App() {
   const [booting, setBooting] = useState(true)
 
   useEffect(() => {
-    const timer = setTimeout(() => setBooting(false), 2800)
+    const timer = setTimeout(() => setBooting(false), 3800)
     return () => clearTimeout(timer)
   }, [])
 
