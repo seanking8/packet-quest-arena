@@ -226,7 +226,7 @@ export default function GameScreen({ state, transport }) {
       </div>
 
       <aside className="hud-right">
-        <SelectedDetailPanel selected={selected} onClear={() => setSelected(null)} />
+        {selected && <SelectedDetailPanel selected={selected} onClear={() => setSelected(null)} />}
         {panels.leaderboard && <LeaderboardPanel state={state} playerId={playerId} />}
         {panels.incidents && <IncidentFeedPanel state={state} onFocus={handleFocusIncident} />}
       </aside>

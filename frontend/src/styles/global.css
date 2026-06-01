@@ -146,11 +146,11 @@ code.pill, .pill {
   position: fixed;
   inset: 0;
   display: grid;
-  grid-template-columns: 290px minmax(0, 1fr) 310px;
+  grid-template-columns: 290px minmax(0, 1fr);
   grid-template-rows: 52px minmax(0, 1fr);
   grid-template-areas:
-    "top    top    top"
-    "left   center right";
+    "top    top"
+    "left   center";
 }
 .hud-center { grid-area: center; position: relative; overflow: hidden; min-width: 0; }
 .map-layer { position: absolute; inset: 0; z-index: 0; }
@@ -726,14 +726,17 @@ code.pill, .pill {
   border-right: 1px solid var(--panel-border);
   background: rgba(8, 12, 28, 0.55);
 }
+/* Right-side panels float over the map's right edge (less boxed-in than a
+   full column, gives the map more width). */
 .hud-right {
-  grid-area: right;
-  z-index: 2;
+  position: absolute;
+  top: 60px;
+  right: 12px;
+  bottom: 96px;
+  width: 300px;
+  z-index: 3;
   overflow: auto;
   display: flex; flex-direction: column; gap: 12px;
-  padding: 12px;
-  border-left: 1px solid var(--panel-border);
-  background: rgba(8, 12, 28, 0.55);
 }
 /* Route controls sit at the bottom of the map column. */
 .hud-bottom { position: absolute; left: 12px; right: 12px; bottom: 12px; z-index: 3; }
@@ -979,13 +982,14 @@ code.pill, .pill {
   }
 }
 
-/* Narrower screens: give the map room by letting the side columns shrink. */
+/* Narrower screens: shrink the jobs column to give the map room. */
 @media (max-width: 1100px) {
-  .hud { grid-template-columns: 230px minmax(0, 1fr) 240px; }
+  .hud { grid-template-columns: 240px minmax(0, 1fr); }
+  .hud-right { width: 250px; }
 }
 
 @media (max-width: 720px) {
-  /* Stack everything: top bar, then a tall map, then the panels below it. */
+  /* Stack: top bar, then a tall map, then the jobs panel below it. */
   .hud {
     grid-template-columns: 1fr;
     grid-template-rows: auto 1fr auto;
