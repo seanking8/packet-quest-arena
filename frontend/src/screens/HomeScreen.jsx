@@ -18,11 +18,6 @@ export default function HomeScreen() {
   return (
     <div className="screen center home-screen">
       <div className="home">
-        <header className="home-header">
-          <h1>Packet Quest Arena</h1>
-          <p className="muted">Route packets across a live 5G city network. Fastest, smartest router wins.</p>
-        </header>
-
         <ErrorBanner message={error} onDismiss={() => setError(null)} />
 
         <label className="field">
