@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useGame } from '../state/GameContext'
 import ErrorBanner from '../components/common/ErrorBanner'
+import LoadingScreen from '../components/common/LoadingScreen'
 
 export default function HomeScreen() {
   const { host, join, error, setError, busy } = useGame()
@@ -9,6 +10,10 @@ export default function HomeScreen() {
 
   const canHost = name.trim().length > 0
   const canJoin = name.trim().length > 0 && joinId.trim().length > 0
+
+  if (busy) {
+    return <LoadingScreen message="Opening an arena session." />
+  }
 
   return (
     <div className="screen center">

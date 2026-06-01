@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useGame } from '../state/GameContext'
 import ErrorBanner from '../components/common/ErrorBanner'
+import LoadingScreen from '../components/common/LoadingScreen'
 
 export default function LobbyScreen({ state, transport }) {
   const { sessionId, playerId, start, leave, error, setError, busy } = useGame()
@@ -9,6 +10,11 @@ export default function LobbyScreen({ state, transport }) {
 
   const [copied, setCopied] = useState(false)
   const shortCode = sessionId ? sessionId.slice(0, 8) : ''
+
+  if (busy) {
+    return <LoadingScreen message="Starting match systems." />
+  }
+
   const copyCode = async () => {
     try {
       await navigator.clipboard.writeText(sessionId)
