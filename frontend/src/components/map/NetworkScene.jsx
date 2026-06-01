@@ -19,7 +19,7 @@ const VIEWS = {
 // uniformly-scaled group so nodes sit closer together and the camera frames
 // them well. Everything (nodes, links, buildings, weather zones) scales by the
 // same factor, so weather stays glued to the nodes it affects.
-const CITY_SCALE = 0.45
+const CITY_SCALE = 0.32
 
 function CameraRig({ view, focus }) {
   const camera = useThree((s) => s.camera)

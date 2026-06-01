@@ -119,6 +119,20 @@ export default function GameScreen({ state, transport }) {
 
   return (
     <div className="hud">
+      <TopBar state={state} transport={transport} panels={panels} onToggle={toggle} />
+
+      {panels.jobs && (
+        <aside className="hud-left">
+          <PacketJobsPanel
+            state={state}
+            playerId={playerId}
+            selectedPacketId={selectedPacket?.id}
+            onSelectPacket={handleSelectPacket}
+          />
+        </aside>
+      )}
+
+      <div className="hud-center">
       <div className="map-layer">
         {view === 'tactical' ? (
           mapFamily === 'district' ? (
@@ -196,38 +210,26 @@ export default function GameScreen({ state, transport }) {
         <button className={`toggle ${layers.labels ? 'on' : ''}`} aria-pressed={layers.labels} onClick={() => toggleLayer('labels')}>Labels</button>
       </div>
 
-      <TopBar state={state} transport={transport} panels={panels} onToggle={toggle} />
-
-      {panels.jobs && (
-        <aside className="hud-left">
-          <PacketJobsPanel
-            state={state}
-            playerId={playerId}
-            selectedPacketId={selectedPacket?.id}
-            onSelectPacket={handleSelectPacket}
-          />
-        </aside>
-      )}
+        {panels.route && (
+          <div className="hud-bottom">
+            <RouteControlsPanel
+              state={state}
+              playerId={playerId}
+              selectedPacket={selectedPacket}
+              routePath={routePath}
+              onRoutePath={setRoutePath}
+              routeNotice={routeNotice}
+              onClearPacket={() => handleSelectPacket(null)}
+            />
+          </div>
+        )}
+      </div>
 
       <aside className="hud-right">
         <SelectedDetailPanel selected={selected} onClear={() => setSelected(null)} />
         {panels.leaderboard && <LeaderboardPanel state={state} playerId={playerId} />}
         {panels.incidents && <IncidentFeedPanel state={state} onFocus={handleFocusIncident} />}
       </aside>
-
-      {panels.route && (
-        <div className="hud-bottom">
-          <RouteControlsPanel
-            state={state}
-            playerId={playerId}
-            selectedPacket={selectedPacket}
-            routePath={routePath}
-            onRoutePath={setRoutePath}
-            routeNotice={routeNotice}
-            onClearPacket={() => handleSelectPacket(null)}
-          />
-        </div>
-      )}
     </div>
   )
 }
