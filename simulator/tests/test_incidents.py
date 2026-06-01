@@ -52,6 +52,7 @@ def test_weather_events_include_affected_link_types():
     for incident in _many():
         if is_weather(incident["eventType"]) and incident["eventType"] != "WEATHER_CLEAR":
             assert incident["affectedLinkTypes"], "storm/wind must affect some link types"
+            assert incident["affectedLinkIds"], "storm/wind must name affected nearby links"
             assert incident["visualZone"] is not None
 
 
@@ -63,16 +64,51 @@ def test_construction_and_fibre_cut_are_not_weather():
             seen_non_weather = True
             assert not is_weather(incident["eventType"])
             assert incident["eventType"] not in WEATHER_TYPES
+            assert incident["affectedLinkTypes"] == ["FIBRE"]
+            assert incident["affectedLinkIds"]
     assert seen_non_weather, "expected some construction/fibre-cut events across the run"
+
+
+def test_link_failures_target_one_link():
+    seen = False
+    for incident in _many(seed=321, n=500):
+        if incident["eventType"] in ("FIBRE_CUT", "LINK_FAILURE"):
+            seen = True
+            assert incident["targetType"] == "LINK"
+            assert incident["targetId"] in incident["affectedLinkIds"]
+            assert len(incident["affectedLinkIds"]) == 1
+    assert seen, "expected at least one link-targeted failure"
+
+
+def test_recovery_carries_targeted_links_when_possible():
+    seen = False
+    for incident in _many(seed=55, n=300):
+        if incident["eventType"] == RECOVERY_TYPE and incident["affectedLinkIds"]:
+            seen = True
+            assert incident["visualZone"] is not None
+    assert seen, "expected recovery to carry affected links from remembered incidents"
 
 
 def test_seed_is_repeatable():
     assert _many(seed=555, n=20) == _many(seed=555, n=20)
 
 
+def test_easy_difficulty_is_gentler_than_hard():
+    easy = IncidentGenerator(seed=4, difficulty="EASY")
+    hard = IncidentGenerator(seed=4, difficulty="HARD")
+
+    assert easy.next_interval_seconds() >= hard.next_interval_seconds()
+    easy_incidents = [easy.next_incident() for _ in range(80)]
+    hard_incidents = [hard.next_incident() for _ in range(80)]
+
+    assert max(i["severity"] for i in easy_incidents) <= 0.45
+    assert max(i["severity"] for i in hard_incidents) >= 0.5
+    assert not any(i["eventType"] == "NODE_FAILURE" for i in easy_incidents)
+
+
 def test_incident_is_json_serializable_with_exact_schema():
     # The incident must round-trip through JSON unchanged (it is POSTed as JSON)
-    # and expose exactly the schema fields the backend expects — no more.
+    # and expose exactly the schema fields the backend expects, no more.
     for incident in _many(n=50):
         restored = json.loads(json.dumps(incident))
         assert restored == incident

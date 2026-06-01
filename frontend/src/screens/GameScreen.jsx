@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Component, useEffect, useState } from 'react'
 import { useGame } from '../state/GameContext'
 import TopBar from '../components/hud/TopBar'
 import PacketJobsPanel from '../components/hud/PacketJobsPanel'
@@ -7,6 +7,9 @@ import IncidentFeedPanel from '../components/hud/IncidentFeedPanel'
 import RouteControlsPanel from '../components/hud/RouteControlsPanel'
 import SelectedDetailPanel from '../components/hud/SelectedDetailPanel'
 import NetworkScene from '../components/map/NetworkScene'
+import TacticalMap from '../components/map/TacticalMap'
+import { isUsableLink } from '../utils/routeAssist'
+import { friendlyNodeName } from '../utils/mapDisplay'
 import { zoneCenter } from '../components/map/incidents'
 
 const DEFAULT_PANELS = { jobs: true, leaderboard: true, incidents: true, route: true }
@@ -14,9 +17,10 @@ const DEFAULT_LAYERS = { weather: true, incidents: true, labels: false }
 
 export default function GameScreen({ state, transport }) {
   const { playerId } = useGame()
+  const [webglAvailable, setWebglAvailable] = useState(canUseWebGL)
   const [panels, setPanels] = useState(DEFAULT_PANELS)
   const [layers, setLayers] = useState(DEFAULT_LAYERS)
-  const [view, setView] = useState('iso')
+  const [view, setView] = useState(() => (canUseWebGL() ? 'iso' : 'tactical'))
   const [focus, setFocus] = useState(null)
   const [selected, setSelected] = useState(null)
   const [selectedPacket, setSelectedPacket] = useState(null)
@@ -25,6 +29,18 @@ export default function GameScreen({ state, transport }) {
 
   const toggle = (name) => setPanels((p) => ({ ...p, [name]: !p[name] }))
   const toggleLayer = (name) => setLayers((l) => ({ ...l, [name]: !l[name] }))
+  const show3d = (nextView) => {
+    if (!webglAvailable) {
+      setView('tactical')
+      return
+    }
+    setView(nextView)
+  }
+
+  const handleSceneError = () => {
+    setWebglAvailable(false)
+    setView('tactical')
+  }
 
   // Click an incident in the feed → bring the city view to its zone.
   const handleFocusIncident = (incident) => {
@@ -32,7 +48,7 @@ export default function GameScreen({ state, transport }) {
     ;(state.nodes || []).forEach((n) => (nodeIndex[n.id] = n))
     const center = zoneCenter(incident, nodeIndex)
     if (!center) return
-    setView('iso')
+    setView((current) => (current === 'tactical' ? 'tactical' : 'iso'))
     setFocus({ x: center.x, z: center.z, key: (focus?.key || 0) + 1 })
   }
 
@@ -52,9 +68,15 @@ export default function GameScreen({ state, transport }) {
       return
     }
 
-    if (item.kind === 'node' && selectedPacket) {
+    if ((item.kind === 'node' || item.kind === 'link') && selectedPacket) {
       setRoutePath((prev) => {
-        const nodeId = item.data.id
+        const nodeId = item.kind === 'node'
+          ? item.data.id
+          : nextNodeFromLink(item.data, prev[prev.length - 1])
+        if (!nodeId) {
+          setRouteNotice('Click a highlighted next-hop link connected to your current node.')
+          return prev
+        }
         const existingIndex = prev.indexOf(nodeId)
         if (existingIndex >= 0) {
           setRouteNotice(null)
@@ -67,7 +89,7 @@ export default function GameScreen({ state, transport }) {
           return [...prev, nodeId]
         }
 
-        setRouteNotice(`${nodeId} is not connected to ${last}. Pick a neighbouring node.`)
+        setRouteNotice(`${friendlyNodeName(nodeId)} is not connected to ${friendlyNodeName(last)}. Pick a glowing cyan neighbour.`)
         return prev
       })
       return
@@ -86,22 +108,35 @@ export default function GameScreen({ state, transport }) {
   return (
     <div className="hud">
       <div className="map-layer">
-        <NetworkScene
-          state={state}
-          onSelect={handleSelect}
-          routePath={routePath}
-          selectedPacket={selectedPacket}
-          view={view}
-          layers={layers}
-          focus={focus}
-        />
+        {view === 'tactical' ? (
+          <TacticalMap
+            state={state}
+            onSelect={handleSelect}
+            routePath={routePath}
+            selectedPacket={selectedPacket}
+            layers={layers}
+          />
+        ) : (
+          <SceneErrorBoundary onError={handleSceneError}>
+            <NetworkScene
+              state={state}
+              onSelect={handleSelect}
+              routePath={routePath}
+              selectedPacket={selectedPacket}
+              view={view}
+              layers={layers}
+              focus={focus}
+            />
+          </SceneErrorBoundary>
+        )}
       </div>
 
       <div className="view-controls">
-        <button className={`toggle ${view === 'close' ? 'on' : ''}`} onClick={() => setView('close')}>Close</button>
-        <button className={`toggle ${view === 'iso' ? 'on' : ''}`} onClick={() => setView('iso')}>City</button>
-        <button className={`toggle ${view === 'planet' ? 'on' : ''}`} onClick={() => setView('planet')}>Planet</button>
-        <button className="ghost" onClick={() => setView('iso')}>{view === 'planet' ? 'Back to City' : 'Reset'}</button>
+        <button className={`toggle ${view === 'close' ? 'on' : ''}`} disabled={!webglAvailable} onClick={() => show3d('close')}>Close</button>
+        <button className={`toggle ${view === 'iso' ? 'on' : ''}`} disabled={!webglAvailable} onClick={() => show3d('iso')}>City</button>
+        <button className={`toggle ${view === 'tactical' ? 'on' : ''}`} onClick={() => setView('tactical')}>2D</button>
+        <button className={`toggle ${view === 'planet' ? 'on' : ''}`} disabled={!webglAvailable} onClick={() => show3d('planet')}>Planet</button>
+        <button className="ghost" onClick={() => setView(webglAvailable ? 'iso' : 'tactical')}>{view === 'planet' ? 'Back to City' : 'Reset'}</button>
       </div>
 
       <div className="layer-controls">
@@ -146,9 +181,50 @@ export default function GameScreen({ state, transport }) {
   )
 }
 
+class SceneErrorBoundary extends Component {
+  constructor(props) {
+    super(props)
+    this.state = { failed: false }
+  }
+
+  static getDerivedStateFromError() {
+    return { failed: true }
+  }
+
+  componentDidCatch(error) {
+    if (error?.message?.includes('WebGL')) this.props.onError?.(error)
+    else throw error
+  }
+
+  render() {
+    if (this.state.failed) return null
+    return this.props.children
+  }
+}
+
+function canUseWebGL() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return true
+  try {
+    const canvas = document.createElement('canvas')
+    return Boolean(
+      window.WebGLRenderingContext
+      && (canvas.getContext('webgl2') || canvas.getContext('webgl') || canvas.getContext('experimental-webgl'))
+    )
+  } catch {
+    return false
+  }
+}
+
 function connected(links, a, b) {
-  return links.some((link) =>
+  return links.some((link) => isUsableLink(link) && (
     (link.sourceNodeId === a && link.targetNodeId === b)
     || (link.sourceNodeId === b && link.targetNodeId === a)
-  )
+  ))
+}
+
+function nextNodeFromLink(link, currentNodeId) {
+  if (!isUsableLink(link)) return null
+  if (link.sourceNodeId === currentNodeId) return link.targetNodeId
+  if (link.targetNodeId === currentNodeId) return link.sourceNodeId
+  return null
 }

@@ -37,8 +37,12 @@ async function request(path, options = {}) {
   return res.json()
 }
 
-/** POST /api/sessions -> { sessionId, status } */
-export const createSession = () => request('/sessions', { method: 'POST' })
+/** POST /api/sessions -> { sessionId, status, difficulty } */
+export const createSession = (difficulty = 'MEDIUM') =>
+  request('/sessions', {
+    method: 'POST',
+    body: JSON.stringify({ difficulty }),
+  })
 
 /** POST /api/sessions/{id}/players -> { player, state } */
 export const joinSession = (sessionId, displayName) =>

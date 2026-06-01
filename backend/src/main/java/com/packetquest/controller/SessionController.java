@@ -1,6 +1,7 @@
 package com.packetquest.controller;
 
 import com.packetquest.dto.CreateSessionResponse;
+import com.packetquest.dto.CreateSessionRequest;
 import com.packetquest.dto.GameStateDto;
 import com.packetquest.dto.JoinPlayerRequest;
 import com.packetquest.dto.JoinPlayerResponse;
@@ -36,10 +37,11 @@ public class SessionController {
     }
 
     @PostMapping
-    public ResponseEntity<CreateSessionResponse> create() {
-        GameSession session = gameService.createSession();
+    public ResponseEntity<CreateSessionResponse> create(
+            @RequestBody(required = false) CreateSessionRequest request) {
+        GameSession session = gameService.createSession(request != null ? request.difficulty() : null);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new CreateSessionResponse(session.getId(), session.getStatus()));
+                .body(new CreateSessionResponse(session.getId(), session.getStatus(), session.getDifficulty()));
     }
 
     @PostMapping("/{sessionId}/players")

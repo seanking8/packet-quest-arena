@@ -2,10 +2,17 @@ import { useState } from 'react'
 import { useGame } from '../state/GameContext'
 import ErrorBanner from '../components/common/ErrorBanner'
 
+const DIFFICULTIES = [
+  { id: 'EASY', label: 'Easy', note: 'Longer deadlines, gentler incidents' },
+  { id: 'MEDIUM', label: 'Medium', note: 'Current challenge level' },
+  { id: 'HARD', label: 'Hard', note: 'Short deadlines, sharper chaos' },
+]
+
 export default function HomeScreen() {
-  const { host, join, error, setError, busy } = useGame()
+  const { host, join, startTutorial, error, setError, busy } = useGame()
   const [name, setName] = useState('')
   const [joinId, setJoinId] = useState('')
+  const [difficulty, setDifficulty] = useState('EASY')
 
   const canHost = name.trim().length > 0
   const canJoin = name.trim().length > 0 && joinId.trim().length > 0
@@ -30,12 +37,34 @@ export default function HomeScreen() {
           />
         </label>
 
+        <div className="tutorial-card card">
+          <div>
+            <h2>Quick tutorial</h2>
+            <p className="muted">Practice routing with hints, paused guidance, and forgiving clicks before the real match.</p>
+          </div>
+          <button className="tutorial-button" onClick={startTutorial}>Start tutorial</button>
+        </div>
+
         <div className="home-cards">
           <section className="card">
             <h2>Create a match</h2>
             <p className="muted">Start a new session and invite others with the session id.</p>
-            <button disabled={!canHost || busy} onClick={() => host(name.trim())}>
-              {busy ? 'Working…' : 'Create session'}
+            <div className="difficulty-picker" role="group" aria-label="Match difficulty">
+              {DIFFICULTIES.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  className={`difficulty-option ${difficulty === option.id ? 'on' : ''}`}
+                  aria-pressed={difficulty === option.id}
+                  onClick={() => setDifficulty(option.id)}
+                >
+                  <span>{option.label}</span>
+                  <small>{option.note}</small>
+                </button>
+              ))}
+            </div>
+            <button disabled={!canHost || busy} onClick={() => host(name.trim(), difficulty)}>
+              {busy ? 'Working...' : 'Create session'}
             </button>
           </section>
 
@@ -50,7 +79,7 @@ export default function HomeScreen() {
               />
             </label>
             <button disabled={!canJoin || busy} onClick={() => join(joinId.trim(), name.trim()).catch(() => {})}>
-              {busy ? 'Working…' : 'Join session'}
+              {busy ? 'Working...' : 'Join session'}
             </button>
           </section>
         </div>

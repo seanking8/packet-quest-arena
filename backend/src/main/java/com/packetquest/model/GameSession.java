@@ -22,6 +22,7 @@ public class GameSession {
 
     private final String id = UUID.randomUUID().toString();
     private SessionStatus status = SessionStatus.WAITING;
+    private GameDifficulty difficulty = GameDifficulty.MEDIUM;
     private int durationSeconds = DEFAULT_DURATION_SECONDS;
 
     private final Instant createdAt = Instant.now();
@@ -139,6 +140,14 @@ public class GameSession {
 
     public void setStatus(SessionStatus status) {
         this.status = status;
+    }
+
+    public GameDifficulty getDifficulty() {
+        return difficulty;
+    }
+
+    public void setDifficulty(GameDifficulty difficulty) {
+        this.difficulty = difficulty != null ? difficulty : GameDifficulty.MEDIUM;
     }
 
     public int getDurationSeconds() {

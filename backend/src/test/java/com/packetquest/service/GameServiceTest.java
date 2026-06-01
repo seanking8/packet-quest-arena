@@ -4,6 +4,7 @@ import com.packetquest.config.TrafficProfiles;
 import com.packetquest.dto.GameStateDto;
 import com.packetquest.exception.GameRuleException;
 import com.packetquest.exception.SessionNotFoundException;
+import com.packetquest.model.GameDifficulty;
 import com.packetquest.model.GameSession;
 import com.packetquest.model.Player;
 import com.packetquest.model.SessionStatus;
@@ -37,7 +38,15 @@ class GameServiceTest {
         GameSession session = service.createSession();
 
         assertThat(session.getStatus()).isEqualTo(SessionStatus.WAITING);
+        assertThat(session.getDifficulty()).isEqualTo(GameDifficulty.MEDIUM);
         assertThat(session.getPlayers()).isEmpty();
+    }
+
+    @Test
+    void createSession_acceptsDifficulty() {
+        GameSession session = service.createSession(GameDifficulty.EASY);
+
+        assertThat(session.getDifficulty()).isEqualTo(GameDifficulty.EASY);
     }
 
     @Test
@@ -95,6 +104,7 @@ class GameServiceTest {
 
         assertThat(state.status()).isEqualTo(SessionStatus.ACTIVE);
         assertThat(state.remainingSeconds()).isEqualTo(GameSession.DEFAULT_DURATION_SECONDS);
+        assertThat(state.difficulty()).isEqualTo(GameDifficulty.MEDIUM);
         assertThat(state.nodes()).isNotEmpty();
         assertThat(state.links()).isNotEmpty();
         // INITIAL_JOBS_PER_PLAYER jobs per player, 2 players

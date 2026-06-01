@@ -2,6 +2,7 @@ package com.packetquest.service;
 
 import com.packetquest.config.TrafficProfile;
 import com.packetquest.config.TrafficProfiles;
+import com.packetquest.model.GameDifficulty;
 import com.packetquest.model.GameSession;
 import com.packetquest.model.PacketFlow;
 import com.packetquest.model.PacketStatus;
@@ -92,6 +93,24 @@ class PacketFlowGenerationServiceTest {
             assertThat(flow.getPacketSize()).isEqualTo(profile.packetSize());
             long gap = Duration.between(flow.getCreatedAt(), flow.getExpiresAt()).getSeconds();
             assertThat(gap).isEqualTo(profile.deadlineSeconds());
+        });
+    }
+
+    @Test
+    void easyDifficultyGivesFewerLongerJobs() {
+        GameSession easy = new GameSession();
+        easy.setDifficulty(GameDifficulty.EASY);
+        new TopologyGeneratorService().populate(easy);
+        easy.addPlayer("Alice", "blue");
+
+        generator.generateInitialJobs(easy);
+
+        assertThat(easy.getPacketFlows()).hasSize(GameDifficulty.EASY.initialJobsPerPlayer());
+        TrafficProfiles profiles = new TrafficProfiles();
+        assertThat(easy.getPacketFlows()).allSatisfy(flow -> {
+            TrafficProfile profile = profiles.profileFor(flow.getTrafficType());
+            assertThat(flow.getDeadlineSeconds())
+                    .isEqualTo(GameDifficulty.EASY.scaleDeadlineSeconds(profile.deadlineSeconds()));
         });
     }
 

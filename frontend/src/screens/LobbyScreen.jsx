@@ -31,6 +31,7 @@ export default function LobbyScreen({ state, transport }) {
             </button>
             <span className="transport"> · {transport}</span>
           </p>
+          <p className="muted">Difficulty <code className="pill">{state.difficulty || 'MEDIUM'}</code></p>
           <p className="muted">Copy the session code and share it so others can join (2–4 players).</p>
         </header>
 
@@ -46,7 +47,7 @@ export default function LobbyScreen({ state, transport }) {
                 {p.id === playerId && <span className="tag">you</span>}
               </li>
             ))}
-            {players.length === 0 && <li className="muted">Waiting for players…</li>}
+            {players.length === 0 && <li className="muted">Waiting for players...</li>}
           </ul>
         </section>
 

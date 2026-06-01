@@ -18,12 +18,15 @@ WEATHER_LINK_TYPES = {
     "WEATHER_CLEAR": [],
 }
 
-# Circular zones over districts of the city map (x/z ground plane, radius).
+# Circular zones over districts of the backend city map (x/z ground plane, radius).
 ZONES = [
-    {"id": "zone-downtown", "x": 20, "z": -10, "radius": 18},
-    {"id": "zone-north", "x": -30, "z": 30, "radius": 20},
-    {"id": "zone-harbor", "x": 20, "z": -25, "radius": 15},
-    {"id": "zone-west", "x": -50, "z": 0, "radius": 16},
+    {"id": "zone-downtown", "x": -10, "z": 25, "radius": 45},
+    {"id": "zone-north", "x": -55, "z": 72, "radius": 38},
+    {"id": "zone-harbor", "x": 24, "z": -70, "radius": 34},
+    {"id": "zone-west", "x": -112, "z": 0, "radius": 38},
+    {"id": "zone-airport", "x": 88, "z": 76, "radius": 34},
+    {"id": "zone-core", "x": 112, "z": 12, "radius": 40},
+    {"id": "zone-south", "x": -42, "z": -72, "radius": 42},
 ]
 
 WEATHER_MESSAGES = {
