@@ -52,8 +52,11 @@ export const joinSession = (sessionId, displayName) =>
   })
 
 /** POST /api/sessions/{id}/start -> GameStateDto */
-export const startMatch = (sessionId) =>
-  request(`/sessions/${sessionId}/start`, { method: 'POST' })
+export const startMatch = (sessionId, mapFamily = 'CITY') =>
+  request(`/sessions/${sessionId}/start`, {
+    method: 'POST',
+    body: JSON.stringify({ mapFamily }),
+  })
 
 /** GET /api/sessions/{id}/state -> GameStateDto */
 export const getState = (sessionId) => request(`/sessions/${sessionId}/state`)

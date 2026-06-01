@@ -47,8 +47,8 @@ export function GameProvider({ children }) {
       setPlayerName(name)
     })
 
-  /** Start the match (host action). */
-  const start = () => run(() => startMatch(sessionId))
+  /** Start the match with the host's chosen map family (host action). */
+  const start = (mapFamily = 'CITY') => run(() => startMatch(sessionId, mapFamily))
 
   const leave = () => {
     setSessionId(null)

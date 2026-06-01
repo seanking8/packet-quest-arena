@@ -330,8 +330,10 @@ function NodeMesh({
           onSelect={handleSelect}
         />
       )}
-      {isValidNext && !isSource && !isDest && (
-        <NextHopMarker node={node} suggested={isSuggestedNext} onSelect={handleSelect} />
+      {/* Show the "click to add" cue on any valid next hop — including the
+          destination, so it's obvious you can click it to finish the route. */}
+      {isValidNext && !isSource && (
+        <NextHopMarker node={node} suggested={isSuggestedNext || isDest} onSelect={handleSelect} />
       )}
       <NodeLabel
         node={node}

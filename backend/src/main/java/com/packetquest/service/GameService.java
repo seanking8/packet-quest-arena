@@ -89,6 +89,10 @@ public class GameService {
      * @throws GameRuleException        if too few players, or already started
      */
     public GameStateDto startSession(String sessionId) {
+        return startSession(sessionId, null);
+    }
+
+    public GameStateDto startSession(String sessionId, String mapFamily) {
         GameSession session = requireSession(sessionId);
         synchronized (session) {
             if (session.getStatus() != SessionStatus.WAITING) {
@@ -98,6 +102,7 @@ public class GameService {
                 throw new GameRuleException("Cannot start: need at least " + MIN_PLAYERS_TO_START
                         + " players (have " + session.getPlayers().size() + ")");
             }
+            session.setMapFamily(mapFamily); // host's chosen map (ignored if null/invalid)
             topologyGenerator.populate(session);
             packetFlowGenerator.generateInitialJobs(session);
             session.setDurationSeconds(session.getDifficulty().matchDurationSeconds());

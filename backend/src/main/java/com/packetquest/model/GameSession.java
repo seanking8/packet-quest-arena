@@ -24,6 +24,9 @@ public class GameSession {
     private SessionStatus status = SessionStatus.WAITING;
     private GameDifficulty difficulty = GameDifficulty.MEDIUM;
     private int durationSeconds = DEFAULT_DURATION_SECONDS;
+    /** Map family the host chose at start ("CITY" or "DISTRICT"); display-only,
+        broadcast so every player renders the same map. */
+    private String mapFamily = "CITY";
 
     private final Instant createdAt = Instant.now();
     /** Set when the match transitions to ACTIVE; null while WAITING. */
@@ -148,6 +151,18 @@ public class GameSession {
 
     public void setDifficulty(GameDifficulty difficulty) {
         this.difficulty = difficulty != null ? difficulty : GameDifficulty.MEDIUM;
+    }
+
+    public String getMapFamily() {
+        return mapFamily;
+    }
+
+    public void setMapFamily(String mapFamily) {
+        if (mapFamily == null) return;
+        String v = mapFamily.trim().toUpperCase();
+        if (v.equals("CITY") || v.equals("DISTRICT")) {
+            this.mapFamily = v;
+        }
     }
 
     public int getDurationSeconds() {

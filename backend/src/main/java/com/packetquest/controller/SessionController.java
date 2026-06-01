@@ -5,6 +5,7 @@ import com.packetquest.dto.CreateSessionRequest;
 import com.packetquest.dto.GameStateDto;
 import com.packetquest.dto.JoinPlayerRequest;
 import com.packetquest.dto.JoinPlayerResponse;
+import com.packetquest.dto.StartSessionRequest;
 import com.packetquest.model.GameSession;
 import com.packetquest.model.Player;
 import com.packetquest.service.GameService;
@@ -55,8 +56,10 @@ public class SessionController {
     }
 
     @PostMapping("/{sessionId}/start")
-    public ResponseEntity<GameStateDto> start(@PathVariable String sessionId) {
-        return ResponseEntity.ok(gameService.startSession(sessionId));
+    public ResponseEntity<GameStateDto> start(@PathVariable String sessionId,
+                                              @RequestBody(required = false) StartSessionRequest request) {
+        return ResponseEntity.ok(
+                gameService.startSession(sessionId, request != null ? request.mapFamily() : null));
     }
 
     @GetMapping("/{sessionId}/state")

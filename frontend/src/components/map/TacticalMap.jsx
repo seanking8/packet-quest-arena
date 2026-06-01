@@ -59,14 +59,14 @@ export default function TacticalMap({ state, onSelect, routePath = [], selectedP
   }, [links, routePath, selectedPacket, currentNodeId])
 
   const project = (node) => ({ x: node.x, y: -node.z })
-  const { viewBox, zoomed, reset, handlers } = useSvgZoom(bounds)
+  const { svgRef, viewBox, zoomed, reset, handlers } = useSvgZoom(bounds)
 
   return (
     <div className="tactical-map" aria-label="2D tactical network map">
       {zoomed && (
         <button className="map2d-reset" onClick={reset}>Reset view</button>
       )}
-      <svg viewBox={viewBox} role="img" {...handlers} style={{ touchAction: 'none', cursor: 'grab' }}>
+      <svg ref={svgRef} viewBox={viewBox} role="img" {...handlers} style={{ touchAction: 'none', cursor: 'grab' }}>
         <defs>
           <pattern id="tactical-grid" width="16" height="16" patternUnits="userSpaceOnUse">
             <path d="M 16 0 L 0 0 0 16" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="0.6" />

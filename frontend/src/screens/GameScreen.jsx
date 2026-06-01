@@ -22,10 +22,10 @@ export default function GameScreen({ state, transport }) {
   const [webglAvailable, setWebglAvailable] = useState(canUseWebGL)
   const [panels, setPanels] = useState(DEFAULT_PANELS)
   const [layers, setLayers] = useState(DEFAULT_LAYERS)
-  // mapFamily picks the visual style: 'city' = our realistic city, 'district'
-  // = teammate's district map. Each family has its own 3D scene and its own 2D
-  // map; the 2D toggle shows the current family's 2D view.
-  const [mapFamily, setMapFamily] = useState('city')
+  // The map family is chosen once by the host at start and stored on the
+  // session, so every player renders the same map for the whole match. There
+  // is no in-game switch between families.
+  const mapFamily = (state.mapFamily || 'CITY').toLowerCase() === 'district' ? 'district' : 'city'
   const [view, setView] = useState(() => (canUseWebGL() ? 'iso' : 'tactical'))
   const [focus, setFocus] = useState(null)
   const [selected, setSelected] = useState(null)
@@ -90,6 +90,12 @@ export default function GameScreen({ state, transport }) {
         }
 
         const last = prev[prev.length - 1]
+        // Once the path already reaches the destination, don't let further
+        // clicks extend past it — the route is finished at the destination.
+        if (last === selectedPacket.destinationNodeId) {
+          setRouteNotice('Route already reaches the destination — submit it, or Undo to change it.')
+          return prev
+        }
         if (!last || connected(state.links || [], last, nodeId)) {
           setRouteNotice(null)
           return [...prev, nodeId]
@@ -177,23 +183,6 @@ export default function GameScreen({ state, transport }) {
             )}
           </SceneErrorBoundary>
         )}
-      </div>
-
-      <div className="map-family-controls">
-        <button
-          className={`toggle ${mapFamily === 'city' ? 'on' : ''}`}
-          aria-pressed={mapFamily === 'city'}
-          onClick={() => setMapFamily('city')}
-        >
-          City map
-        </button>
-        <button
-          className={`toggle ${mapFamily === 'district' ? 'on' : ''}`}
-          aria-pressed={mapFamily === 'district'}
-          onClick={() => setMapFamily('district')}
-        >
-          District map
-        </button>
       </div>
 
       <div className="view-controls">

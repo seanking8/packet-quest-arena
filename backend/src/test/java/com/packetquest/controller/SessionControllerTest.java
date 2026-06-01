@@ -80,7 +80,7 @@ class SessionControllerTest {
         session.addPlayer("Alice", "blue");
         session.addPlayer("Bob", "green");
         session.start();
-        when(gameService.startSession(anyString())).thenReturn(GameStateDto.from(session));
+        when(gameService.startSession(anyString(), any())).thenReturn(GameStateDto.from(session));
 
         mockMvc.perform(post("/api/sessions/s1/start"))
                 .andExpect(status().isOk())

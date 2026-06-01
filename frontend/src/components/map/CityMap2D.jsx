@@ -1,12 +1,14 @@
 import { useMemo } from 'react'
 import { nodeColor, linkColor, isBrokenLink, nodeSize } from './colors'
 import { incidentColor, isWeather, zoneCenter } from './incidents'
+import { friendlyNodeName } from '../../utils/mapDisplay'
 import useSvgZoom from './useSvgZoom'
 
 // Our own 2D map — a daytime top-down schematic that mirrors the realistic
 // 3D city (light streets, building footprints) rather than the dark tactical
 // grid. Shares the exact prop interface of NetworkScene / TacticalMap so
 // GameScreen can swap it in as a player-selectable view.
+
 
 const NODE_BADGES = {
   RADIO_TOWER: 'T',
@@ -30,6 +32,8 @@ export default function CityMap2D({ state, onSelect, routePath = [], selectedPac
   const mapObjects = state.mapObjects || []
 
   const nodeIndex = useMemo(() => Object.fromEntries(nodes.map((n) => [n.id, n])), [nodes])
+  // Use the true topology proportions and auto-fit the viewBox to them, so the
+  // network fills the canvas with even spacing (no squashing / overlap).
   const bounds = useMemo(() => mapBounds(nodes, mapObjects), [nodes, mapObjects])
   const routeEdges = useMemo(() => routeEdgeSet(routePath), [routePath])
   const affectedLinks = useMemo(
@@ -45,14 +49,14 @@ export default function CityMap2D({ state, onSelect, routePath = [], selectedPac
   const destId = selectedPacket?.destinationNodeId
 
   const project = (node) => ({ x: node.x, y: -node.z })
-  const { viewBox, zoomed, reset, handlers } = useSvgZoom(bounds)
+  const { svgRef, viewBox, zoomed, reset, handlers } = useSvgZoom(bounds)
 
   return (
     <div className="city2d-map" aria-label="2D city network map">
       {zoomed && (
         <button className="map2d-reset" onClick={reset}>Reset view</button>
       )}
-      <svg viewBox={viewBox} role="img" {...handlers} style={{ touchAction: 'none', cursor: 'grab' }}>
+      <svg ref={svgRef} viewBox={viewBox} role="img" {...handlers} style={{ touchAction: 'none', cursor: 'grab' }}>
         <defs>
           <pattern id="city2d-blocks" width="26" height="26" patternUnits="userSpaceOnUse">
             <rect width="26" height="26" fill="none" />
@@ -152,12 +156,16 @@ export default function CityMap2D({ state, onSelect, routePath = [], selectedPac
               <text className="city2d-node-icon" textAnchor="middle" dominantBaseline="central">
                 {NODE_BADGES[node.type] || '?'}
               </text>
-              {(showLabels || role) && (
-                <text className="city2d-node-label" textAnchor="middle" y={-(r + 6)}>
-                  {shortName(node.name || node.id)}
-                </text>
-              )}
-              <title>{node.name || node.id} | {node.type}</title>
+              {/* Always show a readable name so the map isn't just cryptic
+                  letters; labels brighten for route roles / when toggled on. */}
+              <text
+                className={`city2d-node-label ${(showLabels || role) ? 'on' : ''}`}
+                textAnchor="middle"
+                y={-(r + 6)}
+              >
+                {friendlyNodeName(node)}
+              </text>
+              <title>{friendlyNodeName(node)} | {node.type}</title>
             </g>
           )
         })}
@@ -174,6 +182,8 @@ export default function CityMap2D({ state, onSelect, routePath = [], selectedPac
   )
 }
 
+// Fit the viewBox tightly to the actual nodes (+ a proportional margin) so the
+// network fills the canvas instead of clumping in the middle of a huge grid.
 function mapBounds(nodes, objects) {
   const xs = nodes.map((n) => n.x)
   const ys = nodes.map((n) => -n.z)
@@ -181,11 +191,23 @@ function mapBounds(nodes, objects) {
     xs.push(obj.x - (obj.width || 0), obj.x + (obj.width || 0))
     ys.push(-obj.z - (obj.depth || 0), -obj.z + (obj.depth || 0))
   })
-  const minX = Math.min(...xs, -160) - 24
-  const maxX = Math.max(...xs, 170) + 24
-  const minY = Math.min(...ys, -120) - 24
-  const maxY = Math.max(...ys, 120) + 24
-  return { minX, minY, width: maxX - minX, height: maxY - minY }
+  if (!xs.length) return { minX: -100, minY: -100, width: 200, height: 200 }
+  const rawMinX = Math.min(...xs)
+  const rawMaxX = Math.max(...xs)
+  const rawMinY = Math.min(...ys)
+  const rawMaxY = Math.max(...ys)
+  // ~12% margin around the network, with a small floor so single-axis layouts
+  // don't get a zero margin.
+  const padX = Math.max(12, (rawMaxX - rawMinX) * 0.12)
+  const padY = Math.max(12, (rawMaxY - rawMinY) * 0.12)
+  const minX = rawMinX - padX
+  const minY = rawMinY - padY
+  return {
+    minX,
+    minY,
+    width: (rawMaxX - rawMinX) + padX * 2,
+    height: (rawMaxY - rawMinY) + padY * 2,
+  }
 }
 
 function routeEdgeSet(routePath) {
@@ -269,14 +291,4 @@ function pointInZone(point, zone, radius) {
 
 function isUsableLink(link) {
   return link.status !== 'FAILED' && link.status !== 'EXPIRED'
-}
-
-function shortName(value = '') {
-  return value
-    .replace('Emergency Satellite ', 'Sat ')
-    .replace('Carrier ', '')
-    .replace('Regional ', '')
-    .replace('Metro ', '')
-    .replace('Data Centre', 'DC')
-    .replace('Control Centre', 'Control')
 }
