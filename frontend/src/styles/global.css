@@ -100,7 +100,7 @@ code.pill, .pill {
   gap: 8px;
 }
 .pregame-screen .field span {
-  color: #d0f5e8;
+  color: #b8dacf;
   font-size: 13px;
   font-weight: 700;
   text-transform: uppercase;
@@ -165,13 +165,13 @@ code.pill, .pill {
 }
 .pregame-screen .card h2 {
   margin-top: 34px;
-  color: #d4ebe7;
+  color: #bfdcd6;
   font-size: 25px;
   line-height: 1.05;
   text-shadow: 0 2px 0 rgba(27,214,178,0.26);
 }
 .pregame-screen .card .muted {
-  color: #b8d7ce;
+  color: #a9c8c0;
   font-size: 17px;
   line-height: 1.45;
 }
@@ -217,17 +217,17 @@ code.pill, .pill {
 }
 .lobby-screen .home-header h1 {
   margin: 0 0 12px;
-  color: #d4ebe7;
+  color: #bfdcd6;
   font-size: 36px;
   line-height: 1;
   text-shadow: 0 2px 0 rgba(27,214,178,0.26), 0 18px 32px rgba(0,0,0,0.44);
 }
 .lobby-screen .home-header .muted {
-  color: #b8d7ce;
+  color: #a9c8c0;
   font-size: 16px;
 }
 .lobby-screen .transport {
-  color: #9fead7;
+  color: #8ed7c4;
   font-size: 12px;
   text-transform: uppercase;
 }
@@ -241,20 +241,21 @@ code.pill, .pill {
   box-shadow: 0 10px 18px rgba(199,122,43,0.18);
 }
 .lobby-screen .card {
-  min-height: 155px;
-  padding: 18px 24px;
+  min-height: 136px;
+  padding: 16px 24px;
 }
 .lobby-screen .card h2 {
-  margin-top: 22px;
+  margin-top: 18px;
+  font-size: 24px;
 }
 .lobby-screen .player-list {
   display: grid;
-  gap: 10px;
-  margin-top: 14px;
+  gap: 8px;
+  margin-top: 10px;
 }
 .lobby-screen .player-list li {
-  min-height: 46px;
-  padding: 10px 12px;
+  min-height: 38px;
+  padding: 8px 12px;
   border: 1px solid rgba(122,255,196,0.16);
   border-radius: 8px;
   background: rgba(5, 10, 22, 0.34);
