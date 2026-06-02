@@ -21,26 +21,37 @@ export default function App() {
     return () => clearTimeout(timer)
   }, [])
 
-  // Menu music: play on home/lobby/tutorial; stop when a live game is active.
+  // Menu music plays everywhere except the active game and tutorial.
+  // SessionRouter takes over stopping/starting music when the game goes live.
   useEffect(() => {
     if (booting) return
-    const inGame = sessionId && mode === 'live'
-    if (inGame) {
+    if (mode === 'tutorial') {
       stopMusic()
-    } else {
+    } else if (!sessionId) {
       playMusic('menuMusic')
     }
+    // When sessionId is set, SessionRouter controls music based on game status.
   }, [booting, sessionId, mode, playMusic, stopMusic])
 
   if (booting) return <LoadingScreen message="Booting the 5G arena network." />
   if (mode === 'tutorial') return <TutorialScreen />
   if (!sessionId) return <HomeScreen />
-  return <SessionRouter sessionId={sessionId} />
+  return <SessionRouter sessionId={sessionId} playMusic={playMusic} stopMusic={stopMusic} />
 }
 
 /** Routes between lobby / active / intermission / completed based on status. */
-function SessionRouter({ sessionId }) {
+function SessionRouter({ sessionId, playMusic, stopMusic }) {
   const { state, transport, error } = useGameState(sessionId)
+
+  // Play menu music on all session screens except the active game.
+  useEffect(() => {
+    if (!state) return
+    if (state.status === 'ACTIVE') {
+      stopMusic()  // GameScreen starts its own in-game music
+    } else {
+      playMusic('menuMusic')  // WAITING, INTERMISSION, COMPLETED
+    }
+  }, [state?.status, playMusic, stopMusic])
 
   if (!state) {
     return <LoadingScreen message="Syncing live session state." error={error} />
