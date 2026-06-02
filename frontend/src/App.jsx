@@ -1,6 +1,7 @@
 import { Component, useEffect, useState } from 'react'
 import { useGame } from './state/GameContext'
 import useGameState from './hooks/useGameState'
+import useAudio from './hooks/useAudio'
 import HomeScreen from './screens/HomeScreen'
 import LobbyScreen from './screens/LobbyScreen'
 import GameScreen from './screens/GameScreen'
@@ -12,12 +13,24 @@ import LoadingScreen from './components/common/LoadingScreen'
 export default function App() {
   const { sessionId, mode } = useGame()
   const [booting, setBooting] = useState(true)
+  const { playMusic, stopMusic } = useAudio()
 
   // Brief boot animation on first load.
   useEffect(() => {
     const timer = setTimeout(() => setBooting(false), 3800)
     return () => clearTimeout(timer)
   }, [])
+
+  // Menu music: play on home/lobby/tutorial; stop when a live game is active.
+  useEffect(() => {
+    if (booting) return
+    const inGame = sessionId && mode === 'live'
+    if (inGame) {
+      stopMusic()
+    } else {
+      playMusic('menuMusic')
+    }
+  }, [booting, sessionId, mode, playMusic, stopMusic])
 
   if (booting) return <LoadingScreen message="Booting the 5G arena network." />
   if (mode === 'tutorial') return <TutorialScreen />

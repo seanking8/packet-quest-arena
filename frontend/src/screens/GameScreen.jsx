@@ -1,5 +1,6 @@
-import { Component, useEffect, useState } from 'react'
+import { Component, useEffect, useRef, useState } from 'react'
 import { useGame } from '../state/GameContext'
+import useAudio from '../hooks/useAudio'
 import TopBar from '../components/hud/TopBar'
 import PacketJobsPanel from '../components/hud/PacketJobsPanel'
 import LeaderboardPanel from '../components/hud/LeaderboardPanel'
@@ -19,6 +20,7 @@ const DEFAULT_LAYERS = { weather: true, incidents: true, labels: false }
 
 export default function GameScreen({ state, transport }) {
   const { playerId } = useGame()
+  const { play, playMusic } = useAudio()
   const [webglAvailable, setWebglAvailable] = useState(canUseWebGL)
   const [panels, setPanels] = useState(DEFAULT_PANELS)
   const [jobsCollapsed, setJobsCollapsed] = useState(false)
@@ -27,6 +29,11 @@ export default function GameScreen({ state, transport }) {
   // session, so every player renders the same map for the whole match. There
   // is no in-game switch between families.
   const mapFamily = (state.mapFamily || 'CITY').toLowerCase() === 'district' ? 'district' : 'city'
+
+  // Background music — pick track based on map family, start once on mount.
+  useEffect(() => {
+    playMusic(mapFamily === 'district' ? 'districtMusic' : 'cityMusic')
+  }, [mapFamily, playMusic])
   const [view, setView] = useState(() => (canUseWebGL() ? 'iso' : 'tactical'))
   const [focus, setFocus] = useState(null)
   const [selected, setSelected] = useState(null)
@@ -69,6 +76,15 @@ export default function GameScreen({ state, transport }) {
     }
   }, [state.packetFlows, selectedPacket])
 
+  // Play a sound when a new incident arrives.
+  const incidentIdsRef = useRef(new Set())
+  useEffect(() => {
+    const ids = (state.incidents || []).map((i) => i.id)
+    const newOnes = ids.filter((id) => !incidentIdsRef.current.has(id))
+    if (newOnes.length > 0) play('incident')
+    incidentIdsRef.current = new Set(ids)
+  }, [state.incidents, play])
+
   const handleSelect = (item) => {
     if (!item) {
       setSelected(null)
@@ -81,11 +97,13 @@ export default function GameScreen({ state, transport }) {
           ? item.data.id
           : nextNodeFromLink(item.data, prev[prev.length - 1])
         if (!nodeId) {
+          play('hopInvalid')
           setRouteNotice('Click a highlighted next-hop link connected to your current node.')
           return prev
         }
         const existingIndex = prev.indexOf(nodeId)
         if (existingIndex >= 0) {
+          play('hopValid')
           setRouteNotice(null)
           return prev.slice(0, existingIndex + 1)
         }
@@ -94,16 +112,19 @@ export default function GameScreen({ state, transport }) {
         // Once the path already reaches the destination, don't let further
         // clicks extend past it — the route is finished at the destination.
         if (last === selectedPacket.destinationNodeId) {
+          play('hopInvalid')
           setRouteNotice('Route already reaches the destination — submit it, or Undo to change it.')
           return prev
         }
         if (!last || connected(state.links || [], last, nodeId)) {
+          play('hopValid')
           setRouteNotice(null)
           return [...prev, nodeId]
         }
 
         // Explain why this node can't be added: either there's no link at all,
         // or the only link to it is down (FAILED/EXPIRED) and unusable.
+        play('hopInvalid')
         if (linkExists(state.links || [], last, nodeId)) {
           setRouteNotice(`The link from ${friendlyNodeName(last)} to ${friendlyNodeName(nodeId)} is down — pick a glowing cyan neighbour instead.`)
         } else {
