@@ -844,7 +844,15 @@ export default function DistrictScene({ state, onSelect, routePath = [], selecte
           <color attach="background" args={['#17251d']} />
           <fog attach="fog" args={['#17251d', 175, 420]} />
           <CameraRig view={view} focusNodes={focusNodes} focusKey={focusKey} focus={focus} />
-          <OrbitControls makeDefault enablePan enableZoom enableRotate minDistance={35} maxDistance={330} />
+          <OrbitControls
+            makeDefault
+            enablePan
+            enableZoom
+            enableRotate
+            minDistance={35}
+            maxDistance={330}
+            maxPolarAngle={Math.PI / 2 - 0.05}
+          />
           <SceneContent state={state} onSelect={onSelect} routePath={routePath} selectedPacket={selectedPacket} layers={layers} />
         </Canvas>
         <MapLegend />

@@ -538,7 +538,13 @@ export default function NetworkScene({ state, onSelect, routePath = [], selected
         <Canvas camera={{ position: VIEWS.iso.pos, fov: 45 }} onPointerMissed={() => onSelect(null)}>
           <color attach="background" args={['#9fb3cf']} />
           <CameraRig view={view} focus={focus} />
-          <OrbitControls makeDefault enablePan enableZoom enableRotate />
+          <OrbitControls
+            makeDefault
+            enablePan
+            enableZoom
+            enableRotate
+            maxPolarAngle={Math.PI / 2 - 0.05}
+          />
           <SceneContent state={cityState} onSelect={onSelect} routePath={routePath} selectedPacket={selectedPacket} layers={layers} />
         </Canvas>
       </div>

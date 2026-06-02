@@ -6,8 +6,7 @@ import LeaderboardPanel from '../components/hud/LeaderboardPanel'
 import IncidentFeedPanel from '../components/hud/IncidentFeedPanel'
 import RouteControlsPanel from '../components/hud/RouteControlsPanel'
 import SelectedDetailPanel from '../components/hud/SelectedDetailPanel'
-import NetworkScene from '../components/map/NetworkScene'
-import TacticalMap from '../components/map/TacticalMap'
+import DistrictScene from '../components/map/DistrictScene'
 import { createTutorialState } from '../tutorial/tutorialState'
 import { buildRouteAssist, isUsableLink } from '../utils/routeAssist'
 import { friendlyNodeName } from '../utils/mapDisplay'
@@ -25,7 +24,6 @@ export default function TutorialScreen() {
   const [packetStatus, setPacketStatus] = useState('PENDING')
   const [paused, setPaused] = useState(true)
   const [panels, setPanels] = useState(DEFAULT_PANELS)
-  const [view, setView] = useState('iso')
   const [selected, setSelected] = useState(null)
   const [selectedPacket, setSelectedPacket] = useState(null)
   const [routePath, setRoutePath] = useState([])
@@ -196,32 +194,16 @@ export default function TutorialScreen() {
   return (
     <div className="hud tutorial-mode">
       <div className="map-layer">
-        {view === 'tactical' ? (
-          <TacticalMap
-            state={state}
-            onSelect={handleSelect}
-            routePath={routePath}
-            selectedPacket={selectedPacket}
-            layers={TUTORIAL_LAYERS}
-          />
-        ) : (
-          <NetworkScene
-            state={state}
-            onSelect={handleSelect}
-            routePath={routePath}
-            selectedPacket={selectedPacket}
-            view={view}
-            layers={TUTORIAL_LAYERS}
-          />
-        )}
-      </div>
-
-      <div className="view-controls">
-        <button className={`toggle ${view === 'close' ? 'on' : ''}`} onClick={() => setView('close')}>Close</button>
-        <button className={`toggle ${view === 'iso' ? 'on' : ''}`} onClick={() => setView('iso')}>City</button>
-        <button className={`toggle ${view === 'tactical' ? 'on' : ''}`} onClick={() => setView('tactical')}>2D</button>
-        <button className={`toggle ${view === 'planet' ? 'on' : ''}`} onClick={() => setView('planet')}>Planet</button>
-        <button className="ghost" onClick={() => setView('iso')}>{view === 'planet' ? 'Back to City' : 'Reset'}</button>
+        {/* Tutorial is locked to the district map (its coaching was authored
+            for this view). */}
+        <DistrictScene
+          state={state}
+          onSelect={handleSelect}
+          routePath={routePath}
+          selectedPacket={selectedPacket}
+          view="iso"
+          layers={TUTORIAL_LAYERS}
+        />
       </div>
 
       <TopBar state={state} transport={paused ? 'tutorial paused' : 'tutorial'} panels={panels} onToggle={toggle} />
