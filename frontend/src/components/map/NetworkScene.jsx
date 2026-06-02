@@ -17,6 +17,7 @@ import {
   Bridges,
   Cars,
   anchorY,
+  roadSafeFootprint,
   roadSafePosition,
 } from './cityDetails'
 import { friendlyNodeName } from '../../utils/mapDisplay'
@@ -33,12 +34,37 @@ const VIEWS = {
 // pre-merge proportions — without shrinking the models themselves — so the
 // city reads like it did before the merge. Backend + district map are
 // untouched; both axes use one factor each so everything stays aligned.
-const CITY_SX = 0.42
-const CITY_SZ = 0.34
+const CITY_SX = 0.52
+const CITY_SZ = 0.44
 
 // Remap a backend (x,z) into the compact city layout.
 const cx = (x) => (x || 0) * CITY_SX
 const cz = (z) => (z || 0) * CITY_SZ
+
+function nodeFootprint(type) {
+  switch (type) {
+    case 'RADIO_TOWER':
+    case 'O_RU':
+      return { w: 13, d: 13 }
+    case 'CORE':
+    case 'DATA_CENTRE':
+      return { w: 13, d: 13 }
+    case 'UPF':
+      return { w: 11, d: 11 }
+    case 'SMALL_CELL':
+      return { w: 8, d: 8 }
+    default:
+      return { w: 10, d: 10 }
+  }
+}
+
+function cityNodePosition(node) {
+  if (node.type === 'SATELLITE') return { x: cx(node.x), z: cz(node.z) }
+  const x = cx(node.x)
+  const z = cz(node.z)
+  const { w, d } = nodeFootprint(node.type)
+  return roadSafePosition(x, z, w, d, Math.floor(Math.abs(x * 3 + z * 5)))
+}
 
 // Return a copy of game state with node / map-object / weather-zone positions
 // compressed into the compact city layout. Memoised by the caller.
@@ -47,7 +73,10 @@ function toCityLayout(state) {
   const r = (CITY_SX + CITY_SZ) / 2
   return {
     ...state,
-    nodes: (state.nodes || []).map((n) => ({ ...n, x: cx(n.x), z: cz(n.z) })),
+    nodes: (state.nodes || []).map((n) => {
+      const pos = cityNodePosition(n)
+      return { ...n, x: pos.x, z: pos.z }
+    }),
     mapObjects: (state.mapObjects || []).map((o) => ({
       ...o, x: cx(o.x), z: cz(o.z),
       sizeX: (o.sizeX || 0) * CITY_SX, sizeZ: (o.sizeZ || 0) * CITY_SZ,
@@ -269,6 +298,7 @@ function Building({ obj }) {
   const w = obj.sizeX || 6
   const d = obj.sizeZ || 6
   const safe = roadSafePosition(obj.x, obj.z, w, d, Math.floor((obj.x || 0) + (obj.z || 0)))
+  if (!roadSafeFootprint(safe.x, safe.z, w, d, 1.2)) return null
   return (
     <mesh position={[safe.x, h / 2, safe.z]}>
       <boxGeometry args={[w, h, d]} />
@@ -470,7 +500,7 @@ function SceneContent({ state, onSelect, routePath, selectedPacket, layers }) {
       <ambientLight intensity={0.5} />
       <directionalLight position={[60, 95, 35]} intensity={1.5} color="#fff4dc" />
       <CityGround />
-      <Roads nodes={state.nodes || []} />
+      <Roads />
       <Bridges />
       <TrafficLights />
       <Cars />

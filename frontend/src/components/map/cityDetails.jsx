@@ -227,7 +227,7 @@ function hash2(i, j) {
 // wide avenues and narrow side streets (not a perfect grid), and buildings are
 // kept off them. The same ROAD_X / ROAD_Z lines drive <Roads/> and the skipping
 // in <DecorBuildings/> so blocks and streets always line up.
-const CITY = { x0: -120, x1: 135, z0: -66, z1: 40, step: 10 }
+const CITY = { x0: -150, x1: 165, z0: -112, z1: 42, step: 10 }
 
 function roadLines(min, max) {
   const lines = []
@@ -245,58 +245,37 @@ function roadLines(min, max) {
 
 const ROAD_X = roadLines(CITY.x0, CITY.x1)
 const ROAD_Z = roadLines(CITY.z0, CITY.z1)
-const insideCityLand = (x, z) => x >= -150 && x <= 165 && z >= -112 && z <= 42
+const insideCityLand = (x, z) => x >= CITY.x0 && x <= CITY.x1 && z >= CITY.z0 && z <= CITY.z1
 const roadHit = (v, lines, half = 0, pad = 0.8) => lines.some((L) => Math.abs(v - L.p) < L.width / 2 + half + pad)
 const footprintOnRoad = (x, z, w = 2, d = 2, pad = 0.8) => (
   roadHit(x, ROAD_X, w / 2, pad) || roadHit(z, ROAD_Z, d / 2, pad)
 )
 
-function nodeRoadRadius(type) {
-  switch (type) {
-    case 'RADIO_TOWER':
-    case 'O_RU':
-      return 8
-    case 'CORE':
-    case 'DATA_CENTRE':
-      return 8.5
-    case 'UPF':
-      return 7
-    case 'SMALL_CELL':
-      return 4.5
-    default:
-      return 6.5
-  }
-}
-
-function roadRangesForNodes(nodes, line, axis) {
-  const ranges = []
-  nodes
-    .filter((node) => node.type !== 'SATELLITE')
-    .forEach((node) => {
-      const radius = nodeRoadRadius(node.type)
-      const cross = axis === 'x' ? node.x : node.z
-      const along = axis === 'x' ? node.z : node.x
-      if (Math.abs(cross - line.p) < line.width / 2 + radius * 0.72) {
-        ranges.push([along - radius, along + radius])
-      }
-    })
-  return ranges
-}
-
-function roadSegments(min, max, ranges) {
-  const clipped = ranges
-    .map(([a, b]) => [Math.max(min, a), Math.min(max, b)])
-    .filter(([a, b]) => b > min && a < max)
+function nearestSafeAxisValue(v, lines, min, max, half, pad) {
+  const intervals = lines
+    .map((L) => [Math.max(min, L.p - L.width / 2 - half - pad), Math.min(max, L.p + L.width / 2 + half + pad)])
     .sort((a, b) => a[0] - b[0])
 
-  const segments = []
+  const gaps = []
   let cursor = min
-  clipped.forEach(([a, b]) => {
-    if (a - cursor > 1.2) segments.push([cursor, a])
+  intervals.forEach(([a, b]) => {
+    if (a - cursor > 0.5) gaps.push([cursor, a])
     cursor = Math.max(cursor, b)
   })
-  if (max - cursor > 1.2) segments.push([cursor, max])
-  return segments
+  if (max - cursor > 0.5) gaps.push([cursor, max])
+  if (!gaps.length) return Math.max(min, Math.min(max, v))
+
+  let bestValue = Math.max(gaps[0][0] + 0.25, Math.min(gaps[0][1] - 0.25, v))
+  let bestDistance = Math.abs(bestValue - v)
+  gaps.forEach((gap) => {
+    const candidate = Math.max(gap[0] + 0.25, Math.min(gap[1] - 0.25, v))
+    const distance = Math.abs(candidate - v)
+    if (distance < bestDistance) {
+      bestValue = candidate
+      bestDistance = distance
+    }
+  })
+  return bestValue
 }
 
 export function roadSafePosition(x, z, w = 3, d = 3, seed = 0) {
@@ -315,7 +294,14 @@ export function roadSafePosition(x, z, w = 3, d = 3, seed = 0) {
       }
     }
   }
-  return { x, z }
+  return {
+    x: nearestSafeAxisValue(x, ROAD_X, CITY.x0, CITY.x1, w / 2, 1.2),
+    z: nearestSafeAxisValue(z, ROAD_Z, CITY.z0, CITY.z1, d / 2, 1.2),
+  }
+}
+
+export function roadSafeFootprint(x, z, w = 3, d = 3, pad = 1.2) {
+  return insideCityLand(x, z) && !footprintOnRoad(x, z, w, d, pad)
 }
 
 function distToSeg(px, pz, ax, az, bx, bz) {
@@ -360,6 +346,7 @@ export function DecorBuildings({ nodes, links, nodeIndex }) {
         const approxW = downtown && r3 > 0.42 ? 2.8 + r2 * 2 : r3 > 0.5 ? 3.4 + r2 * 2 : 3 + r2 * 1.6
         const approxD = approxW * aspect
         const safe = roadSafePosition(rawX, rawZ, approxW, approxD, Math.floor(r1 * 10))
+        if (!roadSafeFootprint(safe.x, safe.z, approxW, approxD, 1.2)) continue
         if (nearCurve(safe.x, safe.z)) continue // ...and off the curved avenues
         if (nearNode(safe.x, safe.z, 14)) continue
         if (nearLink(safe.x, safe.z, 7)) continue
@@ -499,65 +486,41 @@ export function EdgeBuildings({ nodes }) {
 // Streets — a grid of asphalt strips aligned to the building blocks, with a
 // dashed centre line so they read as real roads.
 // ---------------------------------------------------------------------------
-export function Roads({ nodes = [] }) {
-  const minX = CITY.x0 - CITY.step / 2
-  const maxX = CITY.x1 + CITY.step / 2
-  const minZ = CITY.z0 - CITY.step / 2
-  const maxZ = CITY.z1 + CITY.step / 2
-  const roadX = useMemo(() => (
-    ROAD_X.map((L) => ({
-      ...L,
-      segments: roadSegments(minZ, maxZ, roadRangesForNodes(nodes, L, 'x')),
-    }))
-  ), [nodes, minZ, maxZ])
-  const roadZ = useMemo(() => (
-    ROAD_Z.map((L) => ({
-      ...L,
-      segments: roadSegments(minX, maxX, roadRangesForNodes(nodes, L, 'z')),
-    }))
-  ), [nodes, minX, maxX])
+export function Roads() {
+  const cx = (CITY.x0 + CITY.x1) / 2
+  const cz = (CITY.z0 + CITY.z1) / 2
+  const lenX = CITY.x1 - CITY.x0 + CITY.step
+  const lenZ = CITY.z1 - CITY.z0 + CITY.step
 
   return (
     <group>
-      {roadX.map((L, i) => (
-        L.segments.map(([a, b], si) => {
-          const len = b - a
-          const mid = (a + b) / 2
-          return (
-            <group key={`x${i}-${si}`}>
-              <mesh position={[L.p, 0.05, mid]} rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
-                <planeGeometry args={[L.width, len]} />
-                <meshStandardMaterial color={L.main ? '#3c4149' : '#33373e'} roughness={1} />
-              </mesh>
-              {L.main && (
-                <mesh position={[L.p, 0.07, mid]} rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
-                  <planeGeometry args={[0.22, len]} />
-                  <meshStandardMaterial color="#d8c873" roughness={1} />
-                </mesh>
-              )}
-            </group>
-          )
-        })
+      {ROAD_X.map((L, i) => (
+        <group key={`x${i}`}>
+          <mesh position={[L.p, 0.05, cz]} rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
+            <planeGeometry args={[L.width, lenZ]} />
+            <meshStandardMaterial color={L.main ? '#3c4149' : '#33373e'} roughness={1} />
+          </mesh>
+          {L.main && (
+            <mesh position={[L.p, 0.07, cz]} rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
+              <planeGeometry args={[0.22, lenZ]} />
+              <meshStandardMaterial color="#d8c873" roughness={1} />
+            </mesh>
+          )}
+        </group>
       ))}
-      {roadZ.map((L, i) => (
-        L.segments.map(([a, b], si) => {
-          const len = b - a
-          const mid = (a + b) / 2
-          return (
-            <group key={`z${i}-${si}`}>
-              <mesh position={[mid, 0.06, L.p]} rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
-                <planeGeometry args={[len, L.width]} />
-                <meshStandardMaterial color={L.main ? '#3c4149' : '#33373e'} roughness={1} />
-              </mesh>
-              {L.main && (
-                <mesh position={[mid, 0.08, L.p]} rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
-                  <planeGeometry args={[len, 0.22]} />
-                  <meshStandardMaterial color="#d8c873" roughness={1} />
-                </mesh>
-              )}
-            </group>
-          )
-        })
+      {ROAD_Z.map((L, i) => (
+        <group key={`z${i}`}>
+          <mesh position={[cx, 0.06, L.p]} rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
+            <planeGeometry args={[lenX, L.width]} />
+            <meshStandardMaterial color={L.main ? '#3c4149' : '#33373e'} roughness={1} />
+          </mesh>
+          {L.main && (
+            <mesh position={[cx, 0.08, L.p]} rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
+              <planeGeometry args={[lenX, 0.22]} />
+              <meshStandardMaterial color="#d8c873" roughness={1} />
+            </mesh>
+          )}
+        </group>
       ))}
 
       {/* Curved avenues, drawn as short rotated road segments along each curve. */}
