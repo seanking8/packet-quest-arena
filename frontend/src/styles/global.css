@@ -2079,3 +2079,162 @@ button:not(.ghost):not(.toggle):not(.link-btn) {
   background: linear-gradient(180deg, rgba(54, 219, 202, 0.96), rgba(32, 128, 177, 0.96));
   box-shadow: 0 10px 24px rgba(32, 208, 190, 0.24);
 }
+
+/* ---- active game HUD glass + compact controls ---- */
+.hud {
+  --hud-glass-top: rgba(6, 24, 35, 0.64);
+  --hud-glass-bottom: rgba(3, 10, 22, 0.52);
+  --hud-glass-border: rgba(34, 217, 228, 0.42);
+}
+
+.hud-top {
+  background: linear-gradient(180deg, rgba(3, 8, 17, 0.82), rgba(3, 8, 17, 0.48));
+  backdrop-filter: blur(7px);
+  border-bottom: 1px solid rgba(34, 217, 228, 0.16);
+}
+
+.hud-left {
+  background:
+    linear-gradient(180deg, rgba(4, 17, 29, 0.46), rgba(3, 9, 19, 0.30)),
+    rgba(3, 9, 19, 0.22);
+  border-right-color: rgba(34, 217, 228, 0.26);
+  backdrop-filter: blur(5px);
+}
+
+.hud .panel {
+  border-color: var(--hud-glass-border);
+  background:
+    linear-gradient(180deg, var(--hud-glass-top), var(--hud-glass-bottom)),
+    rgba(3, 10, 22, 0.42);
+  box-shadow:
+    inset 0 1px 0 rgba(90, 255, 235, 0.06),
+    0 16px 34px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(6px);
+}
+
+.hud .panel::before {
+  opacity: 0.68;
+}
+
+.hud .panel::after {
+  opacity: 0.72;
+}
+
+.hud .panel h3 {
+  color: #b7d4d0;
+  text-shadow: 0 1px 0 rgba(67, 224, 184, 0.18);
+  letter-spacing: 0;
+}
+
+.hud .job-list li,
+.hud .leaderboard li,
+.hud .incident-row,
+.hud .route-quality {
+  background:
+    linear-gradient(180deg, rgba(5, 19, 31, 0.38), rgba(2, 8, 18, 0.30)),
+    rgba(2, 8, 18, 0.28);
+  border-color: rgba(34, 217, 228, 0.24);
+}
+
+.hud .job-selected {
+  background:
+    linear-gradient(180deg, rgba(36, 220, 216, 0.18), rgba(3, 10, 22, 0.36)),
+    rgba(3, 10, 22, 0.32);
+  border-color: rgba(67, 224, 184, 0.48);
+}
+
+button,
+.job-select-btn,
+.map2d-reset {
+  font-family: var(--display-font);
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+button:not(.link-btn),
+.job-select-btn,
+.map2d-reset {
+  border: 1px solid rgba(90, 255, 235, 0.22);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(36, 210, 196, 0.92), rgba(22, 144, 158, 0.88)),
+    rgba(16, 118, 138, 0.78);
+  color: #d9f4ee;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 10px 22px rgba(14, 127, 150, 0.22);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.24);
+}
+
+.hud button,
+.hud .job-select-btn,
+.hud .map2d-reset {
+  min-height: 36px;
+  padding: 8px 13px;
+  font-size: 12px;
+}
+
+.hud-top-right button,
+.view-controls button,
+.layer-controls button {
+  min-width: 0;
+  min-height: 38px;
+  padding: 9px 14px;
+  font-size: 12px;
+}
+
+.hud .job-select-btn {
+  min-height: 24px;
+  padding: 4px 12px;
+  font-size: 11px;
+}
+
+button.ghost,
+.hud button.ghost {
+  border-color: rgba(88, 172, 223, 0.48);
+  background:
+    linear-gradient(180deg, rgba(6, 25, 40, 0.46), rgba(3, 10, 22, 0.34)),
+    rgba(3, 10, 22, 0.28);
+  color: #d2eee8;
+  box-shadow: inset 0 1px 0 rgba(90, 255, 235, 0.05);
+}
+
+button.toggle,
+.hud button.toggle {
+  border-color: rgba(34, 151, 205, 0.36);
+  background:
+    linear-gradient(180deg, rgba(19, 84, 116, 0.54), rgba(8, 38, 62, 0.42)),
+    rgba(8, 38, 62, 0.32);
+  color: #a9c9c8;
+  box-shadow: inset 0 1px 0 rgba(90, 255, 235, 0.06);
+}
+
+button.toggle.on,
+.hud button.toggle.on,
+.job-select-btn.on {
+  border-color: rgba(90, 255, 235, 0.42);
+  background:
+    linear-gradient(180deg, rgba(39, 219, 198, 0.96), rgba(24, 161, 174, 0.92)),
+    rgba(21, 138, 158, 0.86);
+  color: #effffb;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 12px 24px rgba(24, 178, 181, 0.26);
+}
+
+button:not(:disabled):hover,
+.job-select-btn:not(:disabled):hover,
+.map2d-reset:not(:disabled):hover {
+  border-color: rgba(122, 255, 221, 0.52);
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+button:disabled,
+.hud button:disabled,
+.job-select-btn:disabled {
+  opacity: 0.48;
+  filter: saturate(0.7);
+  transform: none;
+}
