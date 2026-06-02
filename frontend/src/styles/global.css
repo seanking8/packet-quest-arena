@@ -1180,7 +1180,15 @@ code.pill, .pill {
   border-color: rgba(102, 230, 255, 0.8);
 }
 .district-node-label {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  color: transparent;
   min-width: 0;
+  padding: 0;
+  text-shadow: none;
+  backdrop-filter: none;
 }
 .district-node-label span,
 .district-node-label.active span,
