@@ -111,22 +111,44 @@ route over the real topology → assert the packet status and score change.
 exclusions (`node_modules`, `target`, `dist`, `build`, coverage, `__pycache__`).
 Coverage reports must be generated before a scan:
 
-```bash
-cd frontend && npm run coverage          # writes frontend/coverage/lcov.info
-cd backend && mvn test                   # add the JaCoCo plugin for backend XML coverage
-pip install pytest-cov                    # simulator coverage needs this extra dep
-python3 -m pytest simulator/tests --cov=simulator --cov-report=xml
+Generate the three coverage reports from the **repo root**:
 
-# then, with a SonarQube/SonarCloud token + server URL:
+```bash
+# Frontend (Vitest) -> frontend/coverage/lcov.info
+cd frontend && npm run coverage && cd ..
+
+# Backend (JaCoCo) -> backend/target/site/jacoco/{jacoco.xml,index.html}
+cd backend && mvn test && cd ..
+
+# Simulator (pytest-cov) -> simulator/coverage.xml  (run from repo root so the
+# `simulator` package imports resolve)
+pip install -r simulator/requirements.txt
+python3 -m pytest simulator/tests --cov=simulator \
+  --cov-report=xml:simulator/coverage.xml --cov-report=term
+```
+
+Then run a scan against your SonarQube/SonarCloud server:
+
+```bash
 sonar-scanner -Dsonar.host.url=<url> -Dsonar.login=<token>
 ```
 
-> Note: the JaCoCo (backend) and `pytest-cov` (simulator) coverage tooling is
-> referenced in `sonar-project.properties` but not yet added to the build —
-> generate those reports (or add the plugins) before relying on coverage.
+**Viewing JaCoCo locally** (no Sonar needed): open
+`backend/target/site/jacoco/index.html` in a browser for the line/branch
+coverage report.
 
-Quality-gate results are **to be completed after running SonarQube** — no
-results are committed to the repo yet.
+Latest locally-measured coverage (regenerate to confirm):
+
+| Suite | Tests | Coverage |
+|---|---|---|
+| Backend (JaCoCo) | 112 pass | ~82% instructions, ~82% lines, ~64% branches |
+| Simulator (pytest-cov) | 18 pass | ~98% lines |
+| Frontend (Vitest) | 26 pass | run `npm run coverage` to measure |
+
+A real local SonarQube scan has been run — **Quality Gate: PASSED** (8 bugs,
+0 vulnerabilities, ~36% overall coverage, dragged down by unmeasured frontend).
+Full results and how to reproduce them are in
+[`Docs/quality-gate-notes.md`](Docs/quality-gate-notes.md).
 
 ## Project Structure
 
