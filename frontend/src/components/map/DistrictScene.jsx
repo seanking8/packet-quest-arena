@@ -7,7 +7,7 @@ import { isWeather, incidentColor } from './incidents'
 import IncidentZones from './IncidentZones'
 import PlanetScene from './PlanetScene'
 import { buildRouteAssist, edgeKey } from '../../utils/routeAssist'
-import { districtForNode, friendlyNodeName, friendlyNodeType } from '../../utils/mapDisplay'
+import { districtForNode, friendlyNodeName } from '../../utils/mapDisplay'
 
 // Camera presets. y is up, matching backend coordinates.
 const VIEWS = {
@@ -632,7 +632,6 @@ function NodeLabel({ node, color, active, dimmed, role, onSelect }) {
     >
       <button type="button" onClick={onSelect}>
         <span>{friendlyNodeName(node)}</span>
-        <small>{role === 'start' ? 'source node' : role === 'dest' ? 'destination node' : friendlyNodeType(node.type)}</small>
       </button>
     </Html>
   )
