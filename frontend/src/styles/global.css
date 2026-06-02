@@ -2238,3 +2238,165 @@ button:disabled,
   filter: saturate(0.7);
   transform: none;
 }
+
+/* ---- final difficulty + tactical outline pass ---- */
+.card,
+.panel,
+.map-chooser,
+.map-card,
+.tutorial-card,
+.error-banner {
+  --frame-notch: 18px;
+  border-color: rgba(35, 225, 232, 0.48);
+  border-radius: 0;
+  clip-path: polygon(
+    0 var(--frame-notch),
+    var(--frame-notch) 0,
+    calc(100% - var(--frame-notch)) 0,
+    100% var(--frame-notch),
+    100% calc(100% - var(--frame-notch)),
+    calc(100% - var(--frame-notch)) 100%,
+    var(--frame-notch) 100%,
+    0 calc(100% - var(--frame-notch))
+  );
+}
+
+.card::before,
+.panel::before,
+.map-chooser::before,
+.map-card::before,
+.tutorial-card::before,
+.error-banner::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  height: auto;
+  background:
+    linear-gradient(90deg, transparent, rgba(35, 225, 232, 0.95), transparent) 28px 0 / 116px 2px no-repeat,
+    linear-gradient(90deg, transparent, rgba(35, 225, 232, 0.72), transparent) calc(100% - 144px) 0 / 116px 2px no-repeat,
+    linear-gradient(rgba(35, 225, 232, 0.88), rgba(35, 225, 232, 0.18)) 0 28px / 2px 82px no-repeat,
+    linear-gradient(rgba(35, 225, 232, 0.18), rgba(35, 225, 232, 0.82)) 100% calc(100% - 110px) / 2px 82px no-repeat,
+    linear-gradient(90deg, transparent, rgba(67, 224, 184, 0.72), transparent) 34px 100% / 92px 2px no-repeat,
+    linear-gradient(90deg, transparent, rgba(67, 224, 184, 0.56), transparent) calc(100% - 126px) 100% / 92px 2px no-repeat;
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.card::after,
+.panel::after,
+.map-chooser::after,
+.map-card::after,
+.tutorial-card::after,
+.error-banner::after {
+  content: "";
+  position: absolute;
+  right: 13px;
+  bottom: 13px;
+  width: 48px;
+  height: 36px;
+  border-right: 1px solid rgba(35, 225, 232, 0.58);
+  border-bottom: 1px solid rgba(67, 224, 184, 0.48);
+  background:
+    linear-gradient(90deg, rgba(35, 225, 232, 0.42), transparent) 0 100% / 28px 1px no-repeat,
+    linear-gradient(rgba(35, 225, 232, 0.34), transparent) 100% 0 / 1px 22px no-repeat;
+  pointer-events: none;
+}
+
+button:not(.link-btn),
+.job-select-btn,
+.map2d-reset {
+  border-color: rgba(42, 205, 206, 0.34);
+  background:
+    linear-gradient(180deg, rgba(26, 158, 151, 0.88), rgba(10, 82, 107, 0.90)),
+    rgba(8, 59, 78, 0.88);
+  color: #d4eee9;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 9px 18px rgba(5, 69, 88, 0.22);
+}
+
+button:not(.link-btn):not(:disabled):hover,
+.job-select-btn:not(:disabled):hover,
+.map2d-reset:not(:disabled):hover {
+  border-color: rgba(79, 230, 216, 0.48);
+  background:
+    linear-gradient(180deg, rgba(31, 179, 168, 0.90), rgba(12, 93, 119, 0.92)),
+    rgba(8, 67, 86, 0.90);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    0 11px 22px rgba(7, 89, 105, 0.28);
+}
+
+button.difficulty-option,
+button.difficulty-option:not(.link-btn) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 43px;
+  padding: 10px 14px;
+  border-color: rgba(35, 225, 232, 0.34);
+  background:
+    linear-gradient(180deg, rgba(7, 28, 43, 0.82), rgba(3, 13, 28, 0.88)),
+    rgba(3, 13, 28, 0.82);
+  color: #9fbfbd;
+  box-shadow: inset 0 1px 0 rgba(90, 255, 235, 0.06);
+  text-align: center;
+}
+
+.difficulty-option span {
+  font-family: var(--display-font);
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.difficulty-option small {
+  display: none;
+}
+
+button.difficulty-option.on,
+button.difficulty-option.on:not(.link-btn) {
+  border-color: rgba(74, 234, 211, 0.72);
+  background:
+    linear-gradient(180deg, rgba(29, 161, 154, 0.86), rgba(12, 93, 119, 0.90)),
+    rgba(10, 78, 96, 0.90);
+  color: #e2fbf6;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 10px 22px rgba(20, 160, 151, 0.22);
+}
+
+button.ghost,
+.hud button.ghost {
+  border-color: rgba(73, 162, 206, 0.48);
+  background:
+    linear-gradient(180deg, rgba(5, 22, 36, 0.58), rgba(2, 10, 22, 0.48)),
+    rgba(2, 10, 22, 0.42);
+  color: #cce7e1;
+}
+
+button.toggle,
+.hud button.toggle {
+  border-color: rgba(32, 142, 185, 0.42);
+  background:
+    linear-gradient(180deg, rgba(13, 66, 91, 0.66), rgba(5, 28, 48, 0.58)),
+    rgba(5, 28, 48, 0.46);
+  color: #9fbdbc;
+}
+
+button.toggle.on,
+.hud button.toggle.on,
+.job-select-btn.on {
+  border-color: rgba(74, 234, 211, 0.68);
+  background:
+    linear-gradient(180deg, rgba(31, 174, 164, 0.88), rgba(13, 104, 125, 0.92)),
+    rgba(10, 82, 99, 0.88);
+  color: #e6fbf7;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 10px 22px rgba(20, 160, 151, 0.22);
+}
+
+.intermission-screen .lobby {
+  width: min(900px, 92vw);
+}

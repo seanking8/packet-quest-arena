@@ -19,7 +19,7 @@ export default function IntermissionScreen({ state }) {
   const preview = ROUND_PREVIEW[next]
 
   return (
-    <div className="screen center">
+    <div className="screen center pregame-screen intermission-screen">
       <div className="lobby">
         <header className="home-header">
           <h1>Round {current} complete</h1>
