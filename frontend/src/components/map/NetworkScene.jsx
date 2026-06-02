@@ -6,7 +6,19 @@ import { nodeColor, linkColor, nodeSize, isArcLink, isBrokenLink } from './color
 import { isWeather, incidentColor } from './incidents'
 import IncidentZones from './IncidentZones'
 import PlanetScene from './PlanetScene'
-import { DecorBuildings, NodeModel, Roads, Greenery, StreetTrees, TrafficLights, Bridges, Cars, anchorY } from './cityDetails'
+import {
+  DecorBuildings,
+  EdgeBuildings,
+  NodeModel,
+  Roads,
+  Greenery,
+  StreetTrees,
+  TrafficLights,
+  Bridges,
+  Cars,
+  anchorY,
+  roadSafePosition,
+} from './cityDetails'
 import { friendlyNodeName } from '../../utils/mapDisplay'
 
 // Camera presets — y is up, matching backend coordinates.
@@ -254,9 +266,12 @@ function Building({ obj }) {
   const tall = obj.type === 'TALL_OBSTRUCTION'
   const construction = obj.type === 'CONSTRUCTION_ZONE'
   const h = obj.sizeY || 6
+  const w = obj.sizeX || 6
+  const d = obj.sizeZ || 6
+  const safe = roadSafePosition(obj.x, obj.z, w, d, Math.floor((obj.x || 0) + (obj.z || 0)))
   return (
-    <mesh position={[obj.x, h / 2, obj.z]}>
-      <boxGeometry args={[obj.sizeX || 6, h, obj.sizeZ || 6]} />
+    <mesh position={[safe.x, h / 2, safe.z]}>
+      <boxGeometry args={[w, h, d]} />
       <meshStandardMaterial
         color={construction ? '#caa24a' : tall ? '#3a4775' : '#2b3358'}
         transparent
@@ -455,12 +470,13 @@ function SceneContent({ state, onSelect, routePath, selectedPacket, layers }) {
       <ambientLight intensity={0.5} />
       <directionalLight position={[60, 95, 35]} intensity={1.5} color="#fff4dc" />
       <CityGround />
-      <Roads />
+      <Roads nodes={state.nodes || []} />
       <Bridges />
       <TrafficLights />
       <Cars />
       <StreetTrees nodes={state.nodes || []} />
       <DecorBuildings nodes={state.nodes || []} links={state.links || []} nodeIndex={nodeIndex} />
+      <EdgeBuildings nodes={state.nodes || []} />
 
       {(state.mapObjects || []).map((o) => (
         <Building key={o.id} obj={o} />
@@ -537,6 +553,7 @@ export default function NetworkScene({ state, onSelect, routePath = [], selected
       <div style={{ position: 'absolute', inset: 0, visibility: planet ? 'hidden' : 'visible' }}>
         <Canvas camera={{ position: VIEWS.iso.pos, fov: 45 }} onPointerMissed={() => onSelect(null)}>
           <color attach="background" args={['#9fb3cf']} />
+          <fog attach="fog" args={['#9fb3cf', 105, 235]} />
           <CameraRig view={view} focus={focus} />
           <OrbitControls
             makeDefault
