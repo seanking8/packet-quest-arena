@@ -18,13 +18,17 @@ import com.packetquest.model.PacketFlow;
 import com.packetquest.model.PacketStatus;
 import com.packetquest.model.Player;
 import com.packetquest.model.SessionStatus;
+import com.packetquest.persistence.GamePersistenceService;
 import com.packetquest.repository.GameSessionRepository;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -56,17 +60,29 @@ public class RoutingService {
     private final ScoreCalculator scoreCalculator;
     private final PacketLossPolicy packetLossPolicy;
     private final GameStateBroadcaster broadcaster;
+    private final GamePersistenceService persistenceService;
 
     public RoutingService(GameSessionRepository sessionRepo,
                           TrafficProfiles trafficProfiles,
                           ScoreCalculator scoreCalculator,
                           PacketLossPolicy packetLossPolicy,
                           GameStateBroadcaster broadcaster) {
+        this(sessionRepo, trafficProfiles, scoreCalculator, packetLossPolicy, broadcaster, null);
+    }
+
+    @Autowired
+    public RoutingService(GameSessionRepository sessionRepo,
+                          TrafficProfiles trafficProfiles,
+                          ScoreCalculator scoreCalculator,
+                          PacketLossPolicy packetLossPolicy,
+                          GameStateBroadcaster broadcaster,
+                          ObjectProvider<GamePersistenceService> persistenceProvider) {
         this.sessionRepo = sessionRepo;
         this.trafficProfiles = trafficProfiles;
         this.scoreCalculator = scoreCalculator;
         this.packetLossPolicy = packetLossPolicy;
         this.broadcaster = broadcaster;
+        this.persistenceService = persistenceProvider != null ? persistenceProvider.getIfAvailable() : null;
     }
 
     public RouteResultResponse submitRoute(String sessionId, RouteSubmissionRequest request) {
@@ -127,6 +143,15 @@ public class RoutingService {
             }
 
             sessionRepo.save(session);
+            if (persistenceService != null) {
+                persistenceService.recordRouteAction(sessionId, request, outcome, latencyMs, scoreDelta);
+                persistenceService.recordEvent(sessionId, "PACKET_" + outcome.name(), packet.getId(), Map.of(
+                        "playerId", player.getId(),
+                        "packetFlowId", packet.getId(),
+                        "path", List.copyOf(path),
+                        "latencyMs", latencyMs,
+                        "scoreDelta", scoreDelta));
+            }
             GameStateDto state = GameStateDto.from(session, now);
             broadcaster.broadcast(sessionId, state);
             return new RouteResultResponse(message, outcome, latencyMs, scoreDelta, state);

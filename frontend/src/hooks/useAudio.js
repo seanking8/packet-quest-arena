@@ -16,10 +16,10 @@ const SOUNDS = {
 }
 
 const MUSIC_VOLUME = 0.35
-// Gain values — can exceed 1.0 using Web Audio API GainNode.
+// Gain values can exceed 1.0 using Web Audio API GainNode.
 const SFX_GAIN = 2.5
 
-// Shared AudioContext — created once on first interaction.
+// Shared AudioContext is created once on first interaction.
 let audioCtx = null
 function getAudioContext() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)()
@@ -55,9 +55,9 @@ function playWithGain(src, gain = SFX_GAIN) {
 
 /**
  * Central audio hook. Returns:
- *   play(name)          — play a one-shot SFX
- *   playMusic(name)     — start a looping background track (stops the current one)
- *   stopMusic()         — stop background music
+ *   play(name)          - play a one-shot SFX
+ *   playMusic(name)     - start a looping background track (stops the current one)
+ *   stopMusic()         - stop background music
  */
 export default function useAudio() {
   const bgRef  = useRef(null)
@@ -79,7 +79,8 @@ export default function useAudio() {
     const audio = new Audio(src)
     audio.loop   = true
     audio.volume = MUSIC_VOLUME
-    audio.play().catch(() => {})
+    const playResult = audio.play()
+    if (playResult?.catch) playResult.catch(() => {})
     bgRef.current  = audio
     bgName.current = name
   }, [])

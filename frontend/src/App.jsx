@@ -41,7 +41,8 @@ export default function App() {
 
 /** Routes between lobby / active / intermission / completed based on status. */
 function SessionRouter({ sessionId, playMusic, stopMusic }) {
-  const { state, transport, error } = useGameState(sessionId)
+  const { leave } = useGame()
+  const { state, transport, error, notFound } = useGameState(sessionId)
 
   // Play menu music on all session screens except the active game.
   useEffect(() => {
@@ -54,7 +55,7 @@ function SessionRouter({ sessionId, playMusic, stopMusic }) {
   }, [state?.status, playMusic, stopMusic])
 
   if (!state) {
-    return <LoadingScreen message="Syncing live session state." error={error} />
+    return <ResumeLoading error={error} notFound={notFound} onLeave={leave} />
   }
 
   if (state.status === 'WAITING') return <LobbyScreen state={state} transport={transport} />
@@ -65,6 +66,24 @@ function SessionRouter({ sessionId, playMusic, stopMusic }) {
       <GameScreen state={state} transport={transport} />
     </GameErrorBoundary>
   )
+}
+
+function ResumeLoading({ error, notFound, onLeave }) {
+  if (notFound) {
+    return (
+      <div className="screen center">
+        <div className="card resume-card">
+          <h2>Session no longer available</h2>
+          <p className="muted">
+            This browser remembered a match, but the backend no longer has that session.
+          </p>
+          <button onClick={onLeave}>Back to menu</button>
+        </div>
+      </div>
+    )
+  }
+
+  return <LoadingScreen message="Syncing live session state." error={error} />
 }
 
 class GameErrorBoundary extends Component {

@@ -1,92 +1,102 @@
 # Scalability Notes
 
 This document describes how Packet Quest Arena behaves as load grows, the
-bottlenecks in the **current** implementation, and the mitigations we would
-apply. It is written against the code as it actually exists today, not an
-idealised design.
+bottlenecks in the current implementation, and the mitigations we would apply.
+It is written against the code as it exists today, not an idealised design.
 
-## Current architecture (the starting point)
+## Current Architecture
 
-- **State store:** in-memory `ConcurrentHashMap` in `GameSessionRepository`.
-  Sessions are **not** persisted to MySQL during play (JPA/MySQL are wired for
-  future use but the live game state lives in memory on a single backend
-  instance).
-- **Real-time updates:** the backend recomputes the **full** `GameStateDto` and
-  broadcasts it over WebSocket (`/ws/game/{sessionId}`) on every change and on
-  every scheduled tick. Clients without a socket fall back to polling
-  `GET /state` every ~1.5s.
-- **Tick loop:** a single `@Scheduled` task (`GameTickService`, ~1s) iterates
-  all ACTIVE sessions and broadcasts.
-- **Topology size today:** ~17 nodes / ~25 links per session.
+- **Live state store:** in-memory `ConcurrentHashMap` in `GameSessionRepository`.
+  This keeps route validation, ticking, scoring, and broadcasts responsive.
+- **Persistence:** MySQL stores the latest session snapshot plus player action
+  audit rows and traffic/incident event audit rows. It is used for evidence and
+  auditability, not as the hot-path live state engine.
+- **Real-time updates:** the backend recomputes a full `GameStateDto` and
+  broadcasts it over WebSocket (`/ws/game/{sessionId}`) on state changes and
+  scheduled ticks. Clients without a socket fall back to polling `GET /state`.
+- **Tick loop:** a scheduled backend task iterates active sessions and advances
+  timers, packet jobs, link loads, and incidents.
+- **Topology size today:** the MVP maps are intentionally readable demo maps,
+  not 500-node production-scale maps.
 
-This is appropriate for classroom/demo scale (a handful of sessions, 2–4
-players each). The notes below project beyond that.
+## Target Scenario
 
-## Behaviour at target loads
+| Target | Current approach | Notes |
+| --- | --- | --- |
+| 100 players | Up to 10 players per session, across 10 simultaneous sessions. | The lobby cap is 10 players so 10 sessions can cover the target. |
+| 10 simultaneous sessions | Each session is isolated by `sessionId` in the backend repository and WebSocket channel. | Session work is independent, but a single backend instance still owns the live aggregate. |
+| 500 nodes | The model stores nodes as lists and route validation resolves by scanning. | Fine for MVP maps; for 500 nodes, add indexed maps per session for O(1) node lookup. |
+| 2,000 links | Link validation currently scans links to find each hop. | For larger maps, keep an adjacency map keyed by node pair to avoid repeated link scans. |
+| 100 packet flows/minute | Packet generation and ticking are server-owned and bounded per player. | Existing scheduled tick can handle demo load; higher load should batch broadcasts. |
 
-| Dimension | Target | Expected behaviour today | Main risk |
-|---|---|---|---|
-| Players | 100 | Works if spread over sessions; a single session broadcasts full state to every member each tick | WebSocket fan-out + payload size |
-| Network nodes | 500 | State payload and frontend scene grow ~30× vs. today | Payload size, 3D render cost |
-| Links | 2000 | Dijkstra route-assist and per-tick link recompute grow with edge count | CPU per tick, render cost |
-| Packet flows | 100 / min | Job generation + expiry are cheap; fine | Minor |
-| Simultaneous sessions | 10 | Single tick thread loops all sessions sequentially each second | Tick duration, single-instance memory |
+## Risks And Mitigations
 
-## Risks and mitigations
+### 1. WebSocket Fan-Out
 
-### 1. WebSocket fan-out
-**Risk:** every change broadcasts the *entire* game state to *every* connected
-client. With large topologies and many players this is O(players × stateSize)
-per tick.
+**Risk:** every change can broadcast the entire game state to every connected
+client. With large topologies and many players this becomes expensive.
+
 **Mitigations:**
-- Send **deltas** (changed links/nodes/packets) instead of the full snapshot.
-- **Throttle/batch** broadcasts (e.g. coalesce to a fixed 4–10 Hz cadence)
-  instead of broadcasting on every mutation.
-- Compress frames; only include layers a client is actually viewing.
 
-### 2. In-memory, single-instance state
-**Risk:** all live state is on one backend instance; it can't be horizontally
-scaled and is lost on restart. The k8s `backend` HPA can scale pods, but a
-session is pinned to whichever instance holds it in memory.
-**Mitigations:**
-- Move authoritative session state to a shared store (Redis) so any pod can
-  serve any session; or use sticky sessions + session affinity as a stopgap.
-- Persist periodic snapshots so a restart doesn't drop in-flight matches.
+- Send deltas for changed links, nodes, packets, and incidents instead of full snapshots.
+- Throttle and batch broadcasts on a fixed cadence.
+- Compress frames and avoid sending map layers a client is not viewing.
 
-### 3. Database indexing
-**Risk:** not exercised yet (gameplay is in-memory), but if sessions/results
-move to MySQL, unindexed lookups by `sessionId`/`playerId` would scan.
-**Mitigations:**
-- Index `session_id`, `player_id`, and `(session_id, status)` on packet/flow
-  tables; keep hot-path reads off the DB by caching active state in memory/Redis.
+### 2. In-Memory, Single-Instance Live State
 
-### 4. Event batching
-**Risk:** auto-weather + tick + route submissions can each trigger a broadcast,
-producing bursts.
-**Mitigations:**
-- Mark state "dirty" and flush on a fixed schedule rather than per-event.
-- Cap concurrent incidents (already done: `MAX_CONCURRENT_INCIDENTS`).
+**Risk:** live gameplay is held by one backend instance. Kubernetes can scale
+pods, but a session must stay on the instance that owns its in-memory aggregate.
 
-### 5. Frontend rendering performance
-**Risk:** the 3D scenes (react-three-fiber) re-render on every state push; at
-500 nodes / 2000 links the draw call count and per-frame work climb sharply.
 **Mitigations:**
-- **Instance** repeated meshes (nodes, buildings, links) instead of one mesh
-  each; the 2D map already auto-fits and is far cheaper for large graphs.
-- Memoise derived geometry; only update changed nodes/links.
-- Throttle state application on the client to animation frames.
 
-### 6. Link-state update frequency
-**Risk:** recomputing link status/utilisation and re-broadcasting every 1s
-scales with link count and session count.
+- Use sticky routing by `sessionId` as a near-term deployment strategy.
+- Move live session state to Redis or another shared low-latency store for real horizontal scaling.
+- Use the existing MySQL snapshots as restart evidence; add full restore-from-snapshot only if required.
+
+### 3. Database Access Pattern
+
+**Risk:** writing every tiny visual change as a normalized row would be too
+chatty and hard to query.
+
+**Current approach:**
+
+- one latest snapshot per session;
+- one row per submitted player route action;
+- one row per significant packet or incident event.
+
 **Mitigations:**
-- Only recompute links whose load actually changed since last tick.
-- Lower the tick rate for large sessions, or make it adaptive.
+
+- Index `session_id`, `player_id`, and event timestamps for assessor/reporting queries.
+- Keep hot-path route checks in memory or Redis instead of querying MySQL per click.
+
+### 4. Event Batching
+
+**Risk:** auto-weather, scheduled ticks, route submissions, and incident updates
+can each trigger state broadcasts.
+
+**Mitigations:**
+
+- Mark state dirty and flush on a fixed schedule rather than every mutation.
+- Cap active incidents and packet jobs per session.
+- Batch event audit writes if write volume grows.
+
+### 5. Frontend Rendering Performance
+
+**Risk:** the 3D scenes re-render when state arrives. At 500 nodes and 2,000
+links, the scene can become expensive and visually dense.
+
+**Mitigations:**
+
+- Use the 2D tactical map as the default for very large graphs.
+- Instance repeated meshes for nodes, links, and buildings.
+- Memoise derived geometry and update only changed graph objects.
+- Add clustering, filtering by packet source/destination, and level-of-detail rendering.
 
 ## Summary
 
-The game is correct and comfortable at demo scale. The first things that would
-break under real load are, in order: **WebSocket full-state fan-out**, the
-**single in-memory backend instance**, and **frontend 3D render cost** for very
-large topologies. The mitigations above (deltas + batching, shared/Redis state,
-mesh instancing) are the natural next steps and are not yet implemented.
+The current game is appropriate for classroom/demo scale and supports the
+assessment story for 100 players by distributing them across 10 sessions. The
+first things to improve for real high load are full-state WebSocket fan-out,
+single-instance in-memory live state, and dense 3D rendering. The database now
+provides useful persistence and audit evidence, but it is deliberately not the
+hot-path engine for moment-to-moment gameplay.

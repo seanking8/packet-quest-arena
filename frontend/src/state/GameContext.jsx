@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
 import { createSession, joinSession, startMatch, nextRound as nextRoundApi } from '../services/api'
 
 /**
@@ -7,13 +7,49 @@ import { createSession, joinSession, startMatch, nextRound as nextRoundApi } fro
  */
 const GameContext = createContext(null)
 
+const SESSION_STORAGE_KEY = 'packetQuest.liveSession.v1'
+
+function readStoredSession() {
+  if (typeof window === 'undefined') return {}
+  try {
+    const stored = JSON.parse(window.localStorage.getItem(SESSION_STORAGE_KEY) || '{}')
+    if (!stored.sessionId || !stored.playerId) return {}
+    return {
+      sessionId: stored.sessionId,
+      playerId: stored.playerId,
+      playerName: stored.playerName || '',
+    }
+  } catch {
+    return {}
+  }
+}
+
+function writeStoredSession(session) {
+  if (typeof window === 'undefined') return
+  window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session))
+}
+
+function clearStoredSession() {
+  if (typeof window === 'undefined') return
+  window.localStorage.removeItem(SESSION_STORAGE_KEY)
+}
+
 export function GameProvider({ children }) {
-  const [sessionId, setSessionId] = useState(null)
-  const [playerId, setPlayerId] = useState(null)
-  const [playerName, setPlayerName] = useState('')
+  const storedSession = readStoredSession()
+  const [sessionId, setSessionId] = useState(storedSession.sessionId || null)
+  const [playerId, setPlayerId] = useState(storedSession.playerId || null)
+  const [playerName, setPlayerName] = useState(storedSession.playerName || '')
   const [mode, setMode] = useState('live')
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    if (mode === 'live' && sessionId && playerId) {
+      writeStoredSession({ sessionId, playerId, playerName })
+    } else if (mode === 'live' && !sessionId) {
+      clearStoredSession()
+    }
+  }, [mode, sessionId, playerId, playerName])
 
   const run = async (fn) => {
     setError(null)
@@ -59,6 +95,7 @@ export function GameProvider({ children }) {
     setPlayerName('')
     setMode('live')
     setError(null)
+    clearStoredSession()
   }
 
   const startTutorial = () => {
@@ -67,6 +104,7 @@ export function GameProvider({ children }) {
     setPlayerName('Trainee')
     setMode('tutorial')
     setError(null)
+    clearStoredSession()
   }
 
   const value = {

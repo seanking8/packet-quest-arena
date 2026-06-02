@@ -26,10 +26,12 @@ public class GameService {
 
     /** Minimum players required to start a match. */
     public static final int MIN_PLAYERS_TO_START = 2;
-    /** Maximum players supported in a session (MVP). */
-    public static final int MAX_PLAYERS = 4;
+    /** Maximum players supported in a session. Ten sessions can cover the 100-player scale target. */
+    public static final int MAX_PLAYERS = 10;
     /** Colours assigned to players in join order. */
-    public static final List<String> PLAYER_COLORS = List.of("blue", "green", "orange", "purple");
+    public static final List<String> PLAYER_COLORS = List.of(
+            "blue", "green", "orange", "purple", "cyan",
+            "pink", "lime", "amber", "red", "slate");
 
     private final GameSessionRepository sessionRepo;
     private final TopologyGeneratorService topologyGenerator;
