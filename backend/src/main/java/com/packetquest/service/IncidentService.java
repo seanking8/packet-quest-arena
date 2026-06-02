@@ -13,7 +13,10 @@ import com.packetquest.model.NetworkLink;
 import com.packetquest.model.NetworkNode;
 import com.packetquest.model.NodeStatus;
 import com.packetquest.model.VisualZone;
+import com.packetquest.persistence.GamePersistenceService;
 import com.packetquest.repository.GameSessionRepository;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -39,10 +42,19 @@ public class IncidentService {
 
     private final GameSessionRepository sessionRepo;
     private final GameStateBroadcaster broadcaster;
+    private final GamePersistenceService persistenceService;
 
     public IncidentService(GameSessionRepository sessionRepo, GameStateBroadcaster broadcaster) {
+        this(sessionRepo, broadcaster, null);
+    }
+
+    @Autowired
+    public IncidentService(GameSessionRepository sessionRepo,
+                           GameStateBroadcaster broadcaster,
+                           ObjectProvider<GamePersistenceService> persistenceProvider) {
         this.sessionRepo = sessionRepo;
         this.broadcaster = broadcaster;
+        this.persistenceService = persistenceProvider != null ? persistenceProvider.getIfAvailable() : null;
     }
 
     public GameStateDto applyIncident(String sessionId, IncidentSubmissionRequest request) {
@@ -62,6 +74,9 @@ public class IncidentService {
             applyEffects(session, incident, links, nodes);
 
             sessionRepo.save(session);
+            if (persistenceService != null) {
+                persistenceService.recordEvent(sessionId, "INCIDENT_APPLIED", incident.getId(), incident);
+            }
             GameStateDto state = GameStateDto.from(session, now);
             broadcaster.broadcast(sessionId, state);
             return state;

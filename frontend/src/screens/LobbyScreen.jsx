@@ -56,7 +56,7 @@ export default function LobbyScreen({ state, transport }) {
             <span className="transport"> · {transport}</span>
           </p>
           <p className="muted">Difficulty <code className="pill">{state.difficulty || 'MEDIUM'}</code></p>
-          <p className="muted">Copy the session code and share it so others can join (2–4 players).</p>
+          <p className="muted">Copy the session code and share it so others can join (2-10 players).</p>
         </header>
 
         <ErrorBanner message={error} onDismiss={() => setError(null)} />

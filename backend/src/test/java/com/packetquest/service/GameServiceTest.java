@@ -59,23 +59,24 @@ class GameServiceTest {
         Player p2 = service.joinPlayer(id, "Bob");
         Player p3 = service.joinPlayer(id, "Cara");
         Player p4 = service.joinPlayer(id, "Dan");
+        Player p5 = service.joinPlayer(id, "Eve");
 
         assertThat(p1.getColor()).isEqualTo("blue");
         assertThat(p2.getColor()).isEqualTo("green");
         assertThat(p3.getColor()).isEqualTo("orange");
         assertThat(p4.getColor()).isEqualTo("purple");
+        assertThat(p5.getColor()).isEqualTo("cyan");
         assertThat(p1.getDisplayName()).isEqualTo("Alice");
     }
 
     @Test
-    void joinPlayer_fifthPlayer_isRejected() {
+    void joinPlayer_eleventhPlayer_isRejected() {
         String id = service.createSession().getId();
-        service.joinPlayer(id, "Alice");
-        service.joinPlayer(id, "Bob");
-        service.joinPlayer(id, "Cara");
-        service.joinPlayer(id, "Dan");
+        for (int i = 1; i <= GameService.MAX_PLAYERS; i++) {
+            service.joinPlayer(id, "Player " + i);
+        }
 
-        assertThatThrownBy(() -> service.joinPlayer(id, "Eve"))
+        assertThatThrownBy(() -> service.joinPlayer(id, "Player 11"))
                 .isInstanceOf(GameRuleException.class)
                 .hasMessageContaining("full");
     }

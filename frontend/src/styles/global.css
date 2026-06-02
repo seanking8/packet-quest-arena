@@ -55,6 +55,10 @@ button {
   padding: 9px 14px;
   font-weight: 600;
   cursor: pointer;
+  /* Always use the readable UI font on buttons — the display font is too
+     condensed to read at button sizes. */
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  letter-spacing: 0.01em;
 }
 button:disabled { opacity: 0.5; cursor: not-allowed; }
 button.ghost { background: transparent; border: 1px solid var(--panel-border); color: var(--text); }
@@ -971,7 +975,10 @@ code.pill, .pill {
 .view-controls { position: absolute; left: 12px; bottom: 112px; z-index: 3; display: flex; gap: 6px; }
 .layer-controls { position: absolute; left: 12px; bottom: 150px; z-index: 3; display: flex; gap: 6px; }
 
-/* map node labels (toggleable) */
+/* map node labels (toggleable) — the city map renders bare text here, so this
+   carries the small pill box. The district/tutorial scenes wrap the text in a
+   <span> (which is its own pill), so .node-label-3d strips this outer box to
+   avoid a double box. */
 .node-label {
   background: rgba(8,12,28,0.8);
   border: 1px solid var(--panel-border);
@@ -982,6 +989,12 @@ code.pill, .pill {
   color: var(--text);
   white-space: nowrap;
   transform: translateY(-50%);
+}
+.node-label-3d {
+  background: none;
+  border: none;
+  padding: 0;
+  border-radius: 0;
 }
 
 /* START / END label floating above a selected packet's source/dest beacon. */
@@ -1139,19 +1152,31 @@ code.pill, .pill {
   cursor: pointer;
 }
 .node-label {
-  min-width: 92px;
   transform: translate(-50%, -50%);
 }
 .node-label span {
-  display: block;
-  color: #f6f9ff;
-  border: 1px solid rgba(190, 215, 255, 0.28);
-  background: rgba(7, 10, 18, 0.72);
-  border-radius: 7px;
-  padding: 3px 6px;
-  font-size: 11px;
-  font-weight: 700;
+  display: inline-block;
+  white-space: nowrap;
+  color: #eaf1ff;
+  font-size: 9px;
+  font-weight: 600;
   line-height: 1.1;
+  /* Plain nodes: just legible text, no box. The pill box is added back only
+     for highlighted roles below, so the map isn't a wall of boxes. */
+  text-shadow: 0 1px 3px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.9);
+}
+/* Highlighted nodes (selected packet's endpoints, current, next hops) get a
+   small pill so they stand out. */
+.node-label.active span,
+.node-label.role-start span,
+.node-label.role-dest span,
+.node-label.role-current span,
+.node-label.role-next span,
+.node-label.role-suggested span {
+  border: 1px solid rgba(190, 215, 255, 0.28);
+  background: rgba(7, 10, 18, 0.78);
+  border-radius: 5px;
+  padding: 1px 5px;
 }
 .node-label small {
   display: block;
@@ -1224,13 +1249,12 @@ code.pill, .pill {
 }
 .node-mini-label {
   color: #eef5ff;
-  background: rgba(0,0,0,0.42);
-  border: 1px solid rgba(255,255,255,0.18);
-  border-radius: 5px;
-  padding: 1px 5px;
-  font-size: 10px;
-  font-weight: 800;
+  font-size: 9px;
+  font-weight: 700;
   letter-spacing: 0;
+  white-space: nowrap;
+  /* No box — just legible text, so node names don't clutter the map. */
+  text-shadow: 0 1px 3px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.9);
 }
 .route-beacon-label,
 .next-hop-marker {
@@ -2301,6 +2325,7 @@ button:not(.link-btn),
   min-height: 36px;
   padding: 8px 13px;
   font-size: 12px;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
 }
 
 .hud-top-right button,

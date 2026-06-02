@@ -25,13 +25,18 @@ export default function IncidentFeedPanel({ state, onFocus }) {
         </>
       )}
 
-      <div className="feed-group">Incidents</div>
-      <ul className="incident-list">
-        {others.map((i) => (
-          <IncidentRow key={i.id} incident={i} serverTime={state.serverTime} onFocus={onFocus} />
-        ))}
-        {others.length === 0 && <li className="muted">No active incidents.</li>}
-      </ul>
+      {others.length > 0 && (
+        <>
+          <div className="feed-group">Incidents</div>
+          <ul className="incident-list">
+            {others.map((i) => (
+              <IncidentRow key={i.id} incident={i} serverTime={state.serverTime} onFocus={onFocus} />
+            ))}
+          </ul>
+        </>
+      )}
+
+      {incidents.length === 0 && <p className="muted">No active incidents.</p>}
     </section>
   )
 }

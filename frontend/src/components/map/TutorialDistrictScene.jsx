@@ -627,7 +627,7 @@ function NodeLabel({ node, color, active, dimmed, role, onSelect }) {
     <Html
       center
       position={[0, anchor.y + (node.type === 'SATELLITE' ? 5 : 8), 0]}
-      className={`node-label ${active ? 'active' : ''} ${dimmed ? 'dimmed' : ''} ${role ? `role-${role}` : ''}`}
+      className={`node-label node-label-3d ${active ? 'active' : ''} ${dimmed ? 'dimmed' : ''} ${role ? `role-${role}` : ''}`}
       style={{ '--node-color': color }}
     >
       <button type="button" onClick={onSelect}>

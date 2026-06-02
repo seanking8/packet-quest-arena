@@ -1,6 +1,7 @@
 import { Component, useEffect, useState } from 'react'
 import { useGame } from './state/GameContext'
 import useGameState from './hooks/useGameState'
+import useAudio from './hooks/useAudio'
 import HomeScreen from './screens/HomeScreen'
 import LobbyScreen from './screens/LobbyScreen'
 import GameScreen from './screens/GameScreen'
@@ -12,6 +13,7 @@ import LoadingScreen from './components/common/LoadingScreen'
 export default function App() {
   const { sessionId, mode } = useGame()
   const [booting, setBooting] = useState(true)
+  const { playMusic, stopMusic } = useAudio()
 
   // Brief boot animation on first load.
   useEffect(() => {
@@ -19,18 +21,41 @@ export default function App() {
     return () => clearTimeout(timer)
   }, [])
 
+  // Menu music plays everywhere except the active game and tutorial.
+  // SessionRouter takes over stopping/starting music when the game goes live.
+  useEffect(() => {
+    if (booting) return
+    if (mode === 'tutorial') {
+      stopMusic()
+    } else if (!sessionId) {
+      playMusic('menuMusic')
+    }
+    // When sessionId is set, SessionRouter controls music based on game status.
+  }, [booting, sessionId, mode, playMusic, stopMusic])
+
   if (booting) return <LoadingScreen message="Booting the 5G arena network." />
   if (mode === 'tutorial') return <TutorialScreen />
   if (!sessionId) return <HomeScreen />
-  return <SessionRouter sessionId={sessionId} />
+  return <SessionRouter sessionId={sessionId} playMusic={playMusic} stopMusic={stopMusic} />
 }
 
 /** Routes between lobby / active / intermission / completed based on status. */
-function SessionRouter({ sessionId }) {
-  const { state, transport, error } = useGameState(sessionId)
+function SessionRouter({ sessionId, playMusic, stopMusic }) {
+  const { leave } = useGame()
+  const { state, transport, error, notFound } = useGameState(sessionId)
+
+  // Play menu music on all session screens except the active game.
+  useEffect(() => {
+    if (!state) return
+    if (state.status === 'ACTIVE') {
+      stopMusic()  // GameScreen starts its own in-game music
+    } else {
+      playMusic('menuMusic')  // WAITING, INTERMISSION, COMPLETED
+    }
+  }, [state?.status, playMusic, stopMusic])
 
   if (!state) {
-    return <LoadingScreen message="Syncing live session state." error={error} />
+    return <ResumeLoading error={error} notFound={notFound} onLeave={leave} />
   }
 
   if (state.status === 'WAITING') return <LobbyScreen state={state} transport={transport} />
@@ -41,6 +66,24 @@ function SessionRouter({ sessionId }) {
       <GameScreen state={state} transport={transport} />
     </GameErrorBoundary>
   )
+}
+
+function ResumeLoading({ error, notFound, onLeave }) {
+  if (notFound) {
+    return (
+      <div className="screen center">
+        <div className="card resume-card">
+          <h2>Session no longer available</h2>
+          <p className="muted">
+            This browser remembered a match, but the backend no longer has that session.
+          </p>
+          <button onClick={onLeave}>Back to menu</button>
+        </div>
+      </div>
+    )
+  }
+
+  return <LoadingScreen message="Syncing live session state." error={error} />
 }
 
 class GameErrorBoundary extends Component {

@@ -19,6 +19,12 @@ __pycache__/
 .venv/
 venv/
 
+# Coverage reports (generated; not committed)
+.coverage
+coverage.xml
+htmlcov/
+frontend/coverage/
+
 # OS files
 .DS_Store
 

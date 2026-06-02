@@ -33,15 +33,16 @@ spec:
             limits:
               cpu: "1"
               memory: "1Gi"
+          # Spring Boot Actuator probe groups (spring-boot-starter-actuator).
           readinessProbe:
             httpGet:
-              path: /actuator/health
+              path: /actuator/health/readiness
               port: 8080
             initialDelaySeconds: 20
             periodSeconds: 10
           livenessProbe:
             httpGet:
-              path: /actuator/health
+              path: /actuator/health/liveness
               port: 8080
             initialDelaySeconds: 30
             periodSeconds: 15

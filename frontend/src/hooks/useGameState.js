@@ -6,14 +6,15 @@ import { getState } from '../services/api'
  *
  * Primary transport is the backend WebSocket (broadcast-only). If it fails to
  * open or drops, we fall back to polling GET /state every 1.5s. Either way the
- * client never mutates state — it only renders what the backend sends.
+ * client never mutates state - it only renders what the backend sends.
  *
- * @returns {{ state: object|null, transport: string, error: string|null }}
+ * @returns {{ state: object|null, transport: string, error: string|null, notFound: boolean }}
  */
 export default function useGameState(sessionId) {
   const [state, setState] = useState(null)
   const [transport, setTransport] = useState('connecting')
   const [error, setError] = useState(null)
+  const [notFound, setNotFound] = useState(false)
 
   useEffect(() => {
     if (!sessionId) return undefined
@@ -23,22 +24,28 @@ export default function useGameState(sessionId) {
     let pollTimer
 
     const apply = (next) => {
-      if (active) setState(next)
+      if (!active) return
+      setError(null)
+      setNotFound(false)
+      setState(next)
+    }
+
+    const recordError = (e) => {
+      if (!active) return
+      setError(e.message)
+      if (e.status === 404) setNotFound(true)
     }
 
     const startPolling = () => {
       if (pollTimer || !active) return
       setTransport('polling')
-      const fetchState = () =>
-        getState(sessionId)
-          .then(apply)
-          .catch((e) => active && setError(e.message))
+      const fetchState = () => getState(sessionId).then(apply).catch(recordError)
       fetchState()
       pollTimer = setInterval(fetchState, 1500)
     }
 
     // Seed with an initial snapshot regardless of transport.
-    getState(sessionId).then(apply).catch(() => {})
+    getState(sessionId).then(apply).catch(recordError)
 
     try {
       const host = window.location.hostname || 'localhost'
@@ -70,5 +77,5 @@ export default function useGameState(sessionId) {
     }
   }, [sessionId])
 
-  return { state, transport, error }
+  return { state, transport, error, notFound }
 }

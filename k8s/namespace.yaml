@@ -1,0 +1,8 @@
+# Dedicated namespace for all Packet Quest Arena resources.
+# Apply this first, then apply the rest with `-n packetquest`.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: packetquest
+  labels:
+    app.kubernetes.io/part-of: packet-quest-arena
