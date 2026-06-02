@@ -9,8 +9,10 @@ const STATUS_CLASS = {
   EXPIRED: 'st-bad',
 }
 
-export default function PacketJobsPanel({ state, playerId, selectedPacketId, onSelectPacket, timerPaused = false }) {
+export default function PacketJobsPanel({ state, playerId, selectedPacketId, onSelectPacket, timerPaused = false, cueRouteButton = false }) {
   const flows = (state.packetFlows || []).filter((f) => f.ownerPlayerId === playerId)
+  // In the tutorial, point a "click here" cue at the first job's Route button.
+  const firstPendingId = flows.find((f) => f.status === 'PENDING')?.id
   const me = (state.players || []).find((p) => p.id === playerId)
   const nodeIndex = Object.fromEntries((state.nodes || []).map((n) => [n.id, n]))
   const [now, setNow] = useState(() => Date.now())
@@ -58,12 +60,17 @@ export default function PacketJobsPanel({ state, playerId, selectedPacketId, onS
               {deadline && <DeadlineMeter deadline={deadline} />}
               <span className={`job-status ${STATUS_CLASS[f.status] || ''}`}>{f.status}</span>
               {f.status === 'PENDING' && (
-                <button
-                  className={`job-select-btn ${isSelected ? 'on' : ''}`}
-                  onClick={() => onSelectPacket(isSelected ? null : f)}
-                >
-                  {isSelected ? 'Cancel' : 'Route'}
-                </button>
+                <span className="job-route-wrap">
+                  {cueRouteButton && f.id === firstPendingId && !isSelected && (
+                    <span className="click-cue click-cue-left">👉 Click here</span>
+                  )}
+                  <button
+                    className={`job-select-btn ${isSelected ? 'on' : ''} ${cueRouteButton && f.id === firstPendingId && !isSelected ? 'cue-pulse' : ''}`}
+                    onClick={() => onSelectPacket(isSelected ? null : f)}
+                  >
+                    {isSelected ? 'Cancel' : 'Route'}
+                  </button>
+                </span>
               )}
             </li>
           )

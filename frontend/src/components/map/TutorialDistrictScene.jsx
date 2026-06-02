@@ -326,12 +326,12 @@ function NodeMesh({
         <RouteBeacon
           node={node}
           color={color}
-          label={isSource ? 'START' : 'END'}
+          label={isSource ? 'START' : 'DESTINATION'}
           onSelect={handleSelect}
         />
       )}
-      {/* Show the "click to add" cue on any valid next hop — including the
-          destination, so it's obvious you can click it to finish the route. */}
+      {/* Show the "click here" cue on any valid next hop — including the
+          destination, so the final hop is never left without a prompt. */}
       {isValidNext && !isSource && (
         <NextHopMarker node={node} suggested={isSuggestedNext || isDest} onSelect={handleSelect} />
       )}
@@ -614,8 +614,8 @@ function NextHopMarker({ node, suggested, onSelect }) {
   const anchor = nodeAnchor(node)
   return (
     <Html center position={[0, anchor.y + 18, 0]} className={`next-hop-marker ${suggested ? 'suggested' : ''}`}>
-      <button type="button" onClick={onSelect}>
-        {suggested ? 'BEST NEXT' : 'NEXT'}
+      <button type="button" className={suggested ? 'cue-pulse' : ''} onClick={onSelect}>
+        {suggested ? '👉 CLICK HERE' : 'NEXT'}
       </button>
     </Html>
   )
@@ -632,6 +632,9 @@ function NodeLabel({ node, color, active, dimmed, role, onSelect }) {
     >
       <button type="button" onClick={onSelect}>
         <span>{friendlyNodeName(node)}</span>
+        {(role === 'start' || role === 'dest') && (
+          <small>{role === 'start' ? 'source node' : 'destination node'}</small>
+        )}
       </button>
     </Html>
   )
@@ -639,22 +642,27 @@ function NodeLabel({ node, color, active, dimmed, role, onSelect }) {
 
 function LinkLine({ link, a, b, onSelect, inRoute, isValidNext, isSuggested, dimmed, affectedColor }) {
   const points = useMemo(() => linkPoints(a, b, link), [a, b, link])
-  const color = inRoute ? '#ffd479' : isValidNext ? '#66e6ff' : isSuggested ? '#b8f7ff' : linkColor(link)
   const broken = isBrokenLink(link.status)
+  // Broken links are unmistakable: bright red, thick, dashed, with a ✕ DOWN tag.
+  const color = broken
+    ? '#ff3b4e'
+    : inRoute ? '#ffd479' : isValidNext ? '#66e6ff' : isSuggested ? '#b8f7ff' : linkColor(link)
   const isGround = link.linkType === 'FIBRE' || link.linkType === 'LEGACY'
   const mid = points[Math.floor(points.length / 2)]
-  const lineWidth = inRoute
-    ? 5.2
-    : isValidNext
-      ? 4.5
-      : isSuggested
-        ? 3.4
-        : link.status === 'OVERLOADED' || link.status === 'CONGESTED'
-          ? 3.8
-          : isGround
-            ? 2.4
-            : 1.8
-  const opacity = dimmed ? 0.2 : inRoute ? 1 : isValidNext ? 0.96 : isSuggested ? 0.62 : broken ? 0.48 : isGround ? 0.92 : 0.78
+  const lineWidth = broken
+    ? 4.2
+    : inRoute
+      ? 5.2
+      : isValidNext
+        ? 4.5
+        : isSuggested
+          ? 3.4
+          : link.status === 'OVERLOADED' || link.status === 'CONGESTED'
+            ? 3.8
+            : isGround
+              ? 2.4
+              : 1.8
+  const opacity = dimmed ? 0.2 : broken ? 0.95 : inRoute ? 1 : isValidNext ? 0.96 : isSuggested ? 0.62 : isGround ? 0.92 : 0.78
   const selectLink = (e) => {
     e.stopPropagation()
     onSelect({ kind: 'link', data: link })
@@ -667,13 +675,13 @@ function LinkLine({ link, a, b, onSelect, inRoute, isValidNext, isSuggested, dim
         color={color}
         lineWidth={lineWidth}
         dashed={broken || link.linkType === 'LEGACY' || isSuggested}
-        dashSize={1.4}
-        gapSize={0.7}
+        dashSize={broken ? 2.2 : 1.4}
+        gapSize={broken ? 1.4 : 0.7}
         transparent
         opacity={opacity}
         onClick={selectLink}
       />
-      {affectedColor && !inRoute && (
+      {affectedColor && !inRoute && !broken && (
         <Line
           points={points}
           color={affectedColor}
@@ -684,6 +692,11 @@ function LinkLine({ link, a, b, onSelect, inRoute, isValidNext, isSuggested, dim
           transparent
           opacity={dimmed ? 0.22 : 0.55}
         />
+      )}
+      {broken && (
+        <Html center position={[mid.x, mid.y + 6, mid.z]} className="link-down-tag">
+          ✕ LINK DOWN
+        </Html>
       )}
       <mesh position={[mid.x, mid.y, mid.z]} onClick={selectLink}>
         <sphereGeometry args={[isValidNext ? 2.4 : 1.35, 10, 10]} />
@@ -810,7 +823,7 @@ function Packet({ points, color }) {
   )
 }
 
-export default function DistrictScene({ state, onSelect, routePath = [], selectedPacket = null, view = 'iso', layers, focus }) {
+export default function TutorialDistrictScene({ state, onSelect, routePath = [], selectedPacket = null, view = 'iso', layers, focus }) {
   const planet = view === 'planet'
   const focusNodes = useMemo(() => {
     if (!selectedPacket || view === 'planet') return []

@@ -61,12 +61,84 @@ const MAP_OBJECTS = [
   mapObject('cz-2', 'CONSTRUCTION_ZONE', 'Harbor Fibre Works', 12, -52, 22, 1, 12),
 ]
 
-export function createTutorialState({ remainingSeconds = 75, status = 'ACTIVE', packetStatus = 'PENDING' } = {}) {
+// Per-lesson packet jobs. Lesson 1 teaches basic routing; lesson 2 forces the
+// player to route around a broken link and through a storm zone.
+const LESSON_JOBS = {
+  1: {
+    id: 'tutorial-flow-1',
+    sourceNodeId: 'ru-south',
+    destinationNodeId: 'upf-1',
+    trafficType: 'CONTROL',
+    packetSize: 6,
+    fallbackPath: ['ru-south', 'oru-central', 'odu-2', 'ocu-1', 'upf-1'],
+  },
+  2: {
+    // The tempting path ru-north -> oru-central -> odu-1 -> ocu-1 is blocked
+    // because oru-central -> odu-1 (l-oru-odu1) is FAILED, forcing the detour
+    // via odu-2, which skirts the downtown storm zone.
+    id: 'tutorial-flow-2',
+    sourceNodeId: 'ru-north',
+    destinationNodeId: 'ocu-1',
+    trafficType: 'VIDEO',
+    packetSize: 8,
+    fallbackPath: ['ru-north', 'oru-central', 'odu-2', 'ocu-1'],
+  },
+}
+
+export function createTutorialState({ remainingSeconds = 75, status, packetStatus = 'PENDING', paused = false, routePath = [], lesson = 1 } = {}) {
   const now = Date.now()
   const links = createTutorialLinks()
+  // Freeze the main HUD clock while paused (it only ticks while ACTIVE).
+  const effectiveStatus = status || (paused ? 'INTERMISSION' : 'ACTIVE')
+  const job = LESSON_JOBS[lesson] || LESSON_JOBS[1]
+  // Animate the packet along the route the player actually built (fall back to
+  // the lesson's default path only if somehow empty).
+  const deliveredPath = routePath && routePath.length >= 2 ? routePath : job.fallbackPath
+  // Lesson 1 banks 120 once delivered; lesson 2 adds another 90.
+  const bankedScore = (lesson >= 2 ? 120 : 0) + (packetStatus === 'DELIVERED' ? (lesson >= 2 ? 90 : 120) : 0)
+  const delivered = packetStatus === 'DELIVERED'
+
+  // The current lesson's active job.
+  const currentFlow = {
+    id: job.id,
+    ownerPlayerId: PLAYER_ID,
+    sourceNodeId: job.sourceNodeId,
+    destinationNodeId: job.destinationNodeId,
+    trafficType: job.trafficType,
+    packetSize: job.packetSize,
+    deadlineSeconds: 75,
+    createdAt: new Date(now - 1000).toISOString(),
+    expiresAt: new Date(now + remainingSeconds * 1000).toISOString(),
+    status: packetStatus,
+    selectedPath: delivered ? deliveredPath : null,
+    latencyMs: delivered ? 28 : 0,
+    scoreDelta: delivered ? (lesson >= 2 ? 90 : 120) : 0,
+  }
+
+  // On lesson 2, keep lesson 1's job listed above (shown as delivered) so the
+  // player sees their progress — the second job appears UNDER the first.
+  const lessonOne = LESSON_JOBS[1]
+  const completedFlows = lesson >= 2
+    ? [{
+        id: lessonOne.id,
+        ownerPlayerId: PLAYER_ID,
+        sourceNodeId: lessonOne.sourceNodeId,
+        destinationNodeId: lessonOne.destinationNodeId,
+        trafficType: lessonOne.trafficType,
+        packetSize: lessonOne.packetSize,
+        deadlineSeconds: 75,
+        createdAt: new Date(now - 2000).toISOString(),
+        expiresAt: new Date(now + remainingSeconds * 1000).toISOString(),
+        status: 'DELIVERED',
+        selectedPath: null,
+        latencyMs: 28,
+        scoreDelta: 120,
+      }]
+    : []
+
   return {
     sessionId: 'tutorial-session',
-    status,
+    status: effectiveStatus,
     difficulty: 'EASY',
     remainingSeconds,
     players: [
@@ -74,32 +146,14 @@ export function createTutorialState({ remainingSeconds = 75, status = 'ACTIVE', 
         id: PLAYER_ID,
         displayName: 'You',
         color: 'blue',
-        score: packetStatus === 'DELIVERED' ? 120 : 0,
-        deliveredPackets: packetStatus === 'DELIVERED' ? 1 : 0,
+        score: bankedScore,
+        deliveredPackets: (lesson >= 2 ? 1 : 0) + (delivered ? 1 : 0),
         droppedPackets: 0,
       },
     ],
     nodes: NODES,
     links,
-    packetFlows: [
-      {
-        id: 'tutorial-flow-1',
-        ownerPlayerId: PLAYER_ID,
-        sourceNodeId: 'ru-south',
-        destinationNodeId: 'upf-1',
-        trafficType: 'CONTROL',
-        packetSize: 6,
-        deadlineSeconds: 75,
-        createdAt: new Date(now - 1000).toISOString(),
-        expiresAt: new Date(now + remainingSeconds * 1000).toISOString(),
-        status: packetStatus,
-        selectedPath: packetStatus === 'DELIVERED'
-          ? ['ru-south', 'oru-central', 'odu-2', 'ocu-1', 'upf-1']
-          : null,
-        latencyMs: packetStatus === 'DELIVERED' ? 28 : 0,
-        scoreDelta: packetStatus === 'DELIVERED' ? 120 : 0,
-      },
-    ],
+    packetFlows: [...completedFlows, currentFlow],
     incidents: createTutorialIncidents(now),
     mapObjects: MAP_OBJECTS,
     serverTime: new Date(now).toISOString(),
@@ -109,6 +163,11 @@ export function createTutorialState({ remainingSeconds = 75, status = 'ACTIVE', 
 function createTutorialLinks() {
   return LINKS.map((base) => {
     const link = { ...base }
+    // A fully broken link so the tutorial can teach routing AROUND failures.
+    if (link.id === 'l-oru-odu1') {
+      link.status = 'FAILED'
+      link.packetLossRate = 1
+    }
     if (['l-oru-odu2', 'l-odu2-ocu'].includes(link.id)) {
       link.status = 'BUSY'
       link.currentLoad = Math.round(link.capacity * 0.72)

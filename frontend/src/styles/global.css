@@ -1094,6 +1094,20 @@ code.pill, .pill {
 .next-hop-marker {
   pointer-events: auto;
 }
+/* "✕ LINK DOWN" tag floating over a broken link in the tutorial. */
+.link-down-tag {
+  pointer-events: none;
+  white-space: nowrap;
+  background: #ff3b4e;
+  color: #fff;
+  font-weight: 900;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  border-radius: 7px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+  transform: translateY(-50%);
+}
 .node-label button,
 .route-beacon-label button,
 .next-hop-marker button {
@@ -1189,6 +1203,84 @@ code.pill, .pill {
 .next-hop-marker.suggested {
   color: #08101a;
   background: #b8f7ff;
+  position: relative;
+}
+/* downward arrow tail pointing from the floating marker to the node below it */
+.next-hop-marker.suggested::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 7px solid transparent;
+  border-top-color: #b8f7ff;
+}
+
+/* Tutorial "click here" cues: a pulsing target + a floating prompt tag. */
+@keyframes cue-pulse-anim {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 209, 102, 0.6); }
+  50% { transform: scale(1.06); box-shadow: 0 0 0 8px rgba(255, 209, 102, 0); }
+}
+.cue-pulse {
+  animation: cue-pulse-anim 1.1s ease-in-out infinite;
+  outline: 2px solid #ffd166;
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+.job-route-wrap, .submit-wrap { position: relative; display: inline-flex; align-items: center; }
+.click-cue {
+  position: absolute;
+  z-index: 30;
+  white-space: nowrap;
+  background: #ffd166;
+  color: #1a1206;
+  font-weight: 800;
+  font-size: 12px;
+  padding: 4px 9px;
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+  pointer-events: none;
+  animation: cue-bob 1.1s ease-in-out infinite;
+}
+/* tag sits LEFT of the target → arrow points right toward it, nudging across */
+.click-cue-left {
+  right: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%);
+  animation: cue-nudge-right 1.1s ease-in-out infinite;
+}
+.click-cue-left::after {
+  content: "";
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 7px solid transparent;
+  border-left-color: #ffd166;
+}
+/* tag sits ABOVE the target → arrow points down toward it, nudging down */
+.click-cue-above {
+  bottom: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  animation: cue-nudge-down 1.1s ease-in-out infinite;
+}
+.click-cue-above::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 7px solid transparent;
+  border-top-color: #ffd166;
+}
+@keyframes cue-nudge-right {
+  0%, 100% { transform: translateY(-50%) translateX(0); }
+  50% { transform: translateY(-50%) translateX(4px); }
+}
+@keyframes cue-nudge-down {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(4px); }
 }
 
 .tutorial-mode .hud-right {

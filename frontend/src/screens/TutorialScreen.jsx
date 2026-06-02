@@ -6,7 +6,8 @@ import LeaderboardPanel from '../components/hud/LeaderboardPanel'
 import IncidentFeedPanel from '../components/hud/IncidentFeedPanel'
 import RouteControlsPanel from '../components/hud/RouteControlsPanel'
 import SelectedDetailPanel from '../components/hud/SelectedDetailPanel'
-import DistrictScene from '../components/map/DistrictScene'
+import TutorialDistrictScene from '../components/map/TutorialDistrictScene'
+import TacticalMap from '../components/map/TacticalMap'
 import { createTutorialState } from '../tutorial/tutorialState'
 import { buildRouteAssist, isUsableLink } from '../utils/routeAssist'
 import { friendlyNodeName } from '../utils/mapDisplay'
@@ -20,10 +21,13 @@ const TUTORIAL_LAYERS = { weather: true, incidents: true, labels: false }
 
 export default function TutorialScreen() {
   const { leave } = useGame()
+  const [lesson, setLesson] = useState(1)
+  const [loadingLesson, setLoadingLesson] = useState(false)
   const [remainingSeconds, setRemainingSeconds] = useState(INITIAL_SECONDS)
   const [packetStatus, setPacketStatus] = useState('PENDING')
   const [paused, setPaused] = useState(true)
   const [panels, setPanels] = useState(DEFAULT_PANELS)
+  const [view, setView] = useState('iso')
   const [selected, setSelected] = useState(null)
   const [selectedPacket, setSelectedPacket] = useState(null)
   const [routePath, setRoutePath] = useState([])
@@ -32,18 +36,40 @@ export default function TutorialScreen() {
   const [misses, setMisses] = useState(0)
 
   const state = useMemo(
-    () => createTutorialState({ remainingSeconds, packetStatus }),
-    [remainingSeconds, packetStatus]
+    // While the tutorial is paused, report a non-active status so the main
+    // HUD timer freezes too (it only ticks while ACTIVE).
+    () => createTutorialState({ remainingSeconds, packetStatus, paused, routePath, lesson }),
+    [remainingSeconds, packetStatus, paused, routePath, lesson]
   )
-  const currentPacket = state.packetFlows[0]
+  // The active job is the pending one (lesson 2 also lists lesson 1 as done).
+  const currentPacket = state.packetFlows.find((f) => f.status === 'PENDING') || state.packetFlows[state.packetFlows.length - 1]
   const routeAssist = useMemo(
     () => buildRouteAssist(state, selectedPacket, routePath),
     [state, selectedPacket, routePath]
   )
-  const coach = useMemo(
-    () => coachCopy({ selectedPacket, routePath, packetStatus, paused, misses, routeAssist, state }),
-    [selectedPacket, routePath, packetStatus, paused, misses, routeAssist, state]
-  )
+  const coach = useMemo(() => {
+    if (loadingLesson) {
+      return {
+        step: 'Loading…',
+        title: '⏳ Lesson 2 loading…',
+        body: 'Great — lesson 1 complete! Spinning up the next scenario with a broken link and a storm to navigate…',
+        tip: 'Hang tight — the next packet job will appear in a moment.',
+      }
+    }
+    return coachCopy({ selectedPacket, routePath, packetStatus, paused, misses, routeAssist, state, lesson })
+  }, [loadingLesson, selectedPacket, routePath, packetStatus, paused, misses, routeAssist, state, lesson])
+
+  // Which on-screen target the player should click right now, so we can point
+  // a "👉 Click here" cue at the exact element for each step.
+  const routeComplete = selectedPacket
+    && routePath[routePath.length - 1] === selectedPacket.destinationNodeId
+  const cueTarget = packetStatus === 'DELIVERED'
+    ? 'none'
+    : !selectedPacket
+      ? 'route-button'      // step 1: click Route on the job
+      : routeComplete
+        ? 'submit-button'   // step 4: click Submit route
+        : 'next-node'       // steps 2-3: click the glowing next node
 
   useEffect(() => {
     if (!selectedPacket || currentPacket.status !== 'PENDING') return
@@ -80,6 +106,8 @@ export default function TutorialScreen() {
   const toggle = (name) => setPanels((p) => ({ ...p, [name]: !p[name] }))
 
   const resetTutorial = () => {
+    setLesson(1)
+    setLoadingLesson(false)
     setRemainingSeconds(INITIAL_SECONDS)
     setPacketStatus('PENDING')
     setPaused(true)
@@ -180,30 +208,67 @@ export default function TutorialScreen() {
     setRouteNotice(`Timer paused: ${message}`)
   }
 
+  const startLessonTwo = () => {
+    setLesson(2)
+    setLoadingLesson(false)
+    setPacketStatus('PENDING')
+    setRemainingSeconds(INITIAL_SECONDS)
+    setSelected(null)
+    setSelectedPacket(null)
+    setRoutePath([])
+    setRouteNotice(null)
+    setLastProgressAt(Date.now())
+    setMisses(0)
+    setPaused(true)
+  }
+
   const handleTutorialSubmit = async ({ routeStats }) => {
     setPacketStatus('DELIVERED')
     setPaused(true)
     setRouteNotice(null)
+    // After lesson 1 is delivered, automatically roll into lesson 2 (hazards).
+    if (lesson === 1) {
+      setLoadingLesson(true)
+      setTimeout(startLessonTwo, 2200)
+    }
     return {
       packetStatus: 'DELIVERED',
       latencyMs: routeStats?.latencyMs || 28,
-      scoreDelta: 120,
+      scoreDelta: lesson >= 2 ? 90 : 120,
     }
   }
 
   return (
     <div className="hud tutorial-mode">
       <div className="map-layer">
-        {/* Tutorial is locked to the district map (its coaching was authored
-            for this view). */}
-        <DistrictScene
-          state={state}
-          onSelect={handleSelect}
-          routePath={routePath}
-          selectedPacket={selectedPacket}
-          view="iso"
-          layers={TUTORIAL_LAYERS}
-        />
+        {/* Tutorial uses the teammate's original district scene verbatim
+            (its coaching was authored for this exact map). */}
+        {view === 'tactical' ? (
+          <TacticalMap
+            state={state}
+            onSelect={handleSelect}
+            routePath={routePath}
+            selectedPacket={selectedPacket}
+            layers={TUTORIAL_LAYERS}
+          />
+        ) : (
+          <TutorialDistrictScene
+            state={state}
+            onSelect={handleSelect}
+            routePath={routePath}
+            selectedPacket={selectedPacket}
+            view={view}
+            layers={TUTORIAL_LAYERS}
+          />
+        )}
+      </div>
+
+      <div className="view-controls">
+        <button className={`toggle ${view === 'close' ? 'on' : ''}`} onClick={() => setView('close')}>Close</button>
+        <button className={`toggle ${view === 'iso' ? 'on' : ''}`} onClick={() => setView('iso')}>City</button>
+        <button className={`toggle ${view === 'tactical' ? 'on' : ''}`} onClick={() => setView('tactical')}>2D</button>
+        <button className={`toggle ${view === 'planet' ? 'on' : ''}`} onClick={() => setView('planet')}>Planet</button>
+        <button className="ghost" onClick={() => setView('iso')}>{view === 'planet' ? 'Back to City' : 'Reset'}</button>
       </div>
 
       <TopBar state={state} transport={paused ? 'tutorial paused' : 'tutorial'} panels={panels} onToggle={toggle} />
@@ -216,6 +281,7 @@ export default function TutorialScreen() {
             selectedPacketId={selectedPacket?.id}
             onSelectPacket={handleSelectPacket}
             timerPaused={paused}
+            cueRouteButton={cueTarget === 'route-button'}
           />
         </aside>
       )}
@@ -251,6 +317,7 @@ export default function TutorialScreen() {
             routeNotice={routeNotice}
             onClearPacket={() => handleSelectPacket(null)}
             onSubmitRoute={handleTutorialSubmit}
+            cueSubmit={cueTarget === 'submit-button'}
           />
         </div>
       )}
@@ -294,23 +361,39 @@ function TutorialConditions({ incidents }) {
   )
 }
 
-function coachCopy({ selectedPacket, routePath, packetStatus, paused, misses, routeAssist, state }) {
+function coachCopy({ selectedPacket, routePath, packetStatus, paused, misses, routeAssist, state, lesson = 1 }) {
+  const isHazardLesson = lesson >= 2
+
   if (packetStatus === 'DELIVERED') {
-    return {
-      step: 'Complete',
-      title: 'Packet delivered',
-      body: 'That is the core loop: choose a packet, follow connected network hops, watch route quality, and submit before the timer expires.',
-      tip: 'In live play, weather and incidents keep changing the best route while everyone is racing.',
-    }
+    return isHazardLesson
+      ? {
+          step: 'Tutorial complete! 🎉',
+          title: '✅ You beat the hazards!',
+          body: 'You routed around a broken link and through a storm zone. That\'s the real skill — the network keeps breaking and you adapt.',
+          tip: 'Click "Exit tutorial" when you\'re ready to play a live match.',
+        }
+      : {
+          step: 'Lesson 1 done!',
+          title: '✅ Packet delivered!',
+          body: 'That\'s the basic loop. Next lesson: the network won\'t always be friendly — let\'s handle a broken link and a storm…',
+          tip: 'Lesson 2 starts automatically in a moment.',
+        }
   }
 
   if (!selectedPacket) {
-    return {
-      step: 'Step 1',
-      title: 'Choose the packet job',
-      body: 'Click Route on the CONTROL job. The map will jump to the source and destination so you are not hunting blindly.',
-      tip: paused ? 'Notice the STORM and WORK markers too: weather is separate from incidents, and both can make nearby links risky.' : null,
-    }
+    return isHazardLesson
+      ? {
+          step: 'Lesson 2 · Step 1',
+          title: '👉 Click "Route" on the new job',
+          body: 'A new VIDEO packet arrived. Click its green "Route" button on the LEFT. Heads up: its direct path is broken, so you\'ll need a detour.',
+          tip: 'Look at the map: a RED dashed link is DOWN, and the shaded patch is a STORM zone.',
+        }
+      : {
+          step: 'Lesson 1 · Step 1',
+          title: '👉 Click "Route" on a job',
+          body: 'Look at the packet jobs on the LEFT. Click the green "Route" button under the CONTROL job to start.',
+          tip: 'Each job is one packet you must deliver from its start node to its destination.',
+        }
   }
 
   const nodes = state.nodes || []
@@ -323,32 +406,50 @@ function coachCopy({ selectedPacket, routePath, packetStatus, paused, misses, ro
 
   if (currentId === destId) {
     return {
-      step: 'Step 4',
-      title: 'Submit the completed route',
-      body: `Your path reaches ${destName}. Click Submit route in the bottom panel to deliver it and score.`,
-      tip: 'The timer is paused here because the tutorial is checking that you know the final action.',
+      step: isHazardLesson ? 'Lesson 2 · Step 4' : 'Lesson 1 · Step 4',
+      title: '👉 Click "Submit route"',
+      body: isHazardLesson
+        ? `Nicely done — you reached ${destName} despite the broken link. Click "Submit route" to deliver it.`
+        : `Your path reached ${destName}! Now click the blue "Submit route" button in the bottom panel to deliver it.`,
+      tip: 'Submitting before the timer runs out scores the packet.',
     }
   }
 
   if (routePath.length <= 1) {
-    return {
-      step: 'Step 2',
-      title: 'Click the first next hop',
-      body: suggestedName
-        ? `Start at ${currentName}. Click the BEST NEXT marker for ${suggestedName}, or click the cyan link leading to it.`
-        : `Start at ${currentName}. Click a glowing cyan neighbour to move the packet forward.`,
-      tip: misses ? 'You can click the floating labels, node models, or highlighted link markers. Coloured zones explain why some links look risky.' : 'Storms mostly affect wireless links; construction mostly affects fibre links.',
-    }
+    return isHazardLesson
+      ? {
+          step: 'Lesson 2 · Step 2',
+          title: '⚠️ The direct link is broken',
+          body: `From ${currentName}, the straight path is the RED dashed link — it's DOWN, so you can't use it. Click a glowing CYAN node to start routing AROUND it.`,
+          tip: 'Cyan markers only ever appear on links you CAN use, so they always steer you past broken ones.',
+        }
+      : {
+          step: 'Lesson 1 · Step 2',
+          title: '👉 Click the glowing cyan node',
+          body: suggestedName
+            ? `You're at the green START node (${currentName}). Click the glowing cyan "CLICK HERE" node — ${suggestedName} — to take your first hop.`
+            : `You're at the green START node (${currentName}). Click any glowing cyan node next to it to take your first hop.`,
+          tip: 'Cyan = where you can go next. You can click the node, its label, or the cyan link.',
+        }
   }
 
-  return {
-    step: 'Step 3',
-    title: 'Build the route hop by hop',
-    body: suggestedName
-      ? `You are now at ${currentName}. The fastest suggested next hop is ${suggestedName}; keep moving toward ${destName}.`
-      : `You are now at ${currentName}. Pick any glowing cyan connected node that moves you toward ${destName}.`,
-    tip: misses || paused ? 'When the clock pauses, read the cyan markers first. The pink DESTINATION beacon is your goal.' : 'The bottom panel shows latency, loss, hops, and time left. The incident feed explains active map hazards.',
-  }
+  return isHazardLesson
+    ? {
+        step: 'Lesson 2 · Step 3',
+        title: '🌩️ Now mind the storm',
+        body: suggestedName
+          ? `Good — you dodged the break. Keep hopping toward the pink END (${destName}). Best next: ${suggestedName}.`
+          : `Good — you dodged the break. Keep hopping cyan nodes toward the pink END (${destName}).`,
+        tip: 'The shaded STORM zone adds packet loss to WIRELESS links (radio/satellite). FIBRE links through it are much safer — prefer them.',
+      }
+    : {
+        step: 'Lesson 1 · Step 3',
+        title: '👉 Keep hopping to the pink END node',
+        body: suggestedName
+          ? `Good — you're at ${currentName}. Keep clicking glowing cyan nodes toward the pink END beacon (${destName}). Best next: ${suggestedName}.`
+          : `Good — you're at ${currentName}. Keep clicking glowing cyan nodes until you reach the pink END beacon (${destName}).`,
+        tip: misses || paused ? 'Stuck? Click a glowing cyan node or its link. The pink beacon is your destination.' : 'The bottom panel shows latency, loss and time left as you build.',
+      }
 }
 
 function connected(links, a, b) {

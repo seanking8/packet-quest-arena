@@ -13,6 +13,7 @@ export default function RouteControlsPanel({
   routeNotice,
   onClearPacket,
   onSubmitRoute,
+  cueSubmit = false,
 }) {
   const { sessionId } = useGame()
   const [result, setResult] = useState(null)
@@ -128,9 +129,18 @@ export default function RouteControlsPanel({
             </span>
             <button className="ghost" onClick={onUndo} disabled={routePath.length <= 1}>Undo</button>
             <button className="ghost" onClick={onClearPacket}>Cancel</button>
-            <button disabled={!routeComplete || busy} onClick={onSubmit}>
-              {busy ? 'Submitting...' : 'Submit route'}
-            </button>
+            <span className="submit-wrap">
+              {cueSubmit && routeComplete && (
+                <span className="click-cue click-cue-above">👉 Click here</span>
+              )}
+              <button
+                className={cueSubmit && routeComplete ? 'cue-pulse' : ''}
+                disabled={!routeComplete || busy}
+                onClick={onSubmit}
+              >
+                {busy ? 'Submitting...' : 'Submit route'}
+              </button>
+            </span>
           </>
         ) : (
           <span className="muted">
