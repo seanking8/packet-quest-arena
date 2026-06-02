@@ -100,9 +100,9 @@ route over the real topology → assert the packet status and score change.
 
 ## Documentation
 
-- [Architecture summary](docs/design/architecture-summary.md) — components, data flow, game loop, real-time updates
-- [Security & anti-cheat notes](docs/security-notes.md) — backend-authoritative design, validation, no secrets
-- [Scalability notes](docs/scalability-notes.md) — behaviour and mitigations under load
+- [Architecture summary](Docs/design/architecture-summary.md) — components, data flow, game loop, real-time updates
+- [Security & anti-cheat notes](Docs/security-notes.md) — backend-authoritative design, validation, no secrets
+- [Scalability notes](Docs/scalability-notes.md) — behaviour and mitigations under load
 - [AI usage log](AI_USAGE_LOG.md) — honest record of AI-assisted contributions
 
 ## Code Quality (SonarQube)
