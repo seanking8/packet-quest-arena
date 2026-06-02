@@ -2469,3 +2469,108 @@ button:not(.link-btn),
   font-size: 14px;
   line-height: 1.12;
 }
+
+/* ---- taller, narrower Steelar treatment ---- */
+h1,
+h2,
+h3,
+.loading-title,
+.map-card-name,
+.tutorial-step,
+.field span,
+.route-label,
+.feed-group,
+.job-type,
+.incident-type {
+  font-stretch: condensed;
+}
+
+.home-header h1,
+.loading-title,
+.panel h3,
+.card h2,
+.map-chooser h2,
+.map-card-name,
+.pregame-screen .field span,
+.job-type,
+.incident-type,
+.feed-group {
+  transform: scaleX(0.94) scaleY(1.12);
+}
+
+button:not(.link-btn),
+.job-select-btn,
+.map2d-reset,
+.difficulty-option span {
+  font-stretch: condensed;
+}
+
+button:not(.link-btn),
+.job-select-btn,
+.map2d-reset {
+  transform: scaleX(0.96) scaleY(1.08);
+  transform-origin: center;
+}
+
+button:not(.link-btn):not(:disabled):hover,
+.job-select-btn:not(:disabled):hover,
+.map2d-reset:not(:disabled):hover {
+  transform: translateY(-1px) scaleX(0.96) scaleY(1.08);
+}
+
+.pregame-screen button,
+.hud button,
+.map2d-reset {
+  padding-inline: 18px;
+}
+
+.hud .job-select-btn {
+  padding-inline: 15px;
+}
+
+/* ---- button label readability fix ---- */
+button:not(.link-btn),
+.job-select-btn,
+.map2d-reset,
+.difficulty-option span {
+  font-stretch: normal;
+  font-kerning: none;
+  font-feature-settings: "kern" 0;
+}
+
+button:not(.link-btn),
+.job-select-btn,
+.map2d-reset {
+  transform: none;
+}
+
+button:not(.link-btn):not(:disabled):hover,
+.job-select-btn:not(:disabled):hover,
+.map2d-reset:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.hud-top-right button,
+.view-controls button,
+.layer-controls button,
+.pregame-screen button,
+.map2d-reset {
+  min-height: 40px;
+  padding-inline: 20px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.hud-top-right button {
+  min-width: 104px;
+}
+
+.hud-top-right button:nth-child(2) {
+  min-width: 160px;
+}
+
+.hud .job-select-btn {
+  min-height: 26px;
+  padding-inline: 16px;
+  font-size: 12px;
+}
