@@ -34,8 +34,8 @@ const VIEWS = {
 // pre-merge proportions — without shrinking the models themselves — so the
 // city reads like it did before the merge. Backend + district map are
 // untouched; both axes use one factor each so everything stays aligned.
-const CITY_SX = 0.84
-const CITY_SZ = 0.78
+const CITY_SX = 0.94
+const CITY_SZ = 0.88
 
 // Remap a backend (x,z) into the compact city layout.
 const cx = (x) => (x || 0) * CITY_SX
