@@ -76,6 +76,36 @@ export default function GameScreen({ state, transport }) {
     }
   }, [state.packetFlows, selectedPacket])
 
+  // Play 'dropped' whenever any packet transitions to EXPIRED or DROPPED.
+  const prevFlowStatusesRef = useRef({})
+  useEffect(() => {
+    const flows = state.packetFlows || []
+    flows.forEach((f) => {
+      const prev = prevFlowStatusesRef.current[f.id]
+      if (prev === 'PENDING' && (f.status === 'EXPIRED' || f.status === 'DROPPED')) {
+        play('dropped')
+      }
+    })
+    prevFlowStatusesRef.current = Object.fromEntries(flows.map((f) => [f.id, f.status]))
+  }, [state.packetFlows, play])
+
+  // About-to-expire warning — fires once per packet when it enters the last 4 seconds.
+  // Uses serverTime to correct for clock skew between browser and backend.
+  const warnedPacketsRef = useRef(new Set())
+  useEffect(() => {
+    const flows = state.packetFlows || []
+    const serverNow = parseInstant(state.serverTime)
+    const now = serverNow || Date.now()
+    flows.forEach((f) => {
+      if (f.status !== 'PENDING' || warnedPacketsRef.current.has(f.id)) return
+      const expiry = parseInstant(f.expiresAt)
+      if (expiry && expiry - now <= 4000) {
+        warnedPacketsRef.current.add(f.id)
+        play('aboutToExpire')
+      }
+    })
+  }, [state.packetFlows, state.serverTime, play])
+
   // Play a sound when a new incident arrives.
   const incidentIdsRef = useRef(new Set())
   useEffect(() => {
@@ -92,39 +122,29 @@ export default function GameScreen({ state, transport }) {
     }
 
     if ((item.kind === 'node' || item.kind === 'link') && selectedPacket) {
+      // Resolve the target nodeId outside the setter so we can call play() reliably.
       setRoutePath((prev) => {
         const nodeId = item.kind === 'node'
           ? item.data.id
           : nextNodeFromLink(item.data, prev[prev.length - 1])
         if (!nodeId) {
-          play('hopInvalid')
           setRouteNotice('Click a highlighted next-hop link connected to your current node.')
           return prev
         }
         const existingIndex = prev.indexOf(nodeId)
         if (existingIndex >= 0) {
-          play('hopValid')
           setRouteNotice(null)
           return prev.slice(0, existingIndex + 1)
         }
-
         const last = prev[prev.length - 1]
-        // Once the path already reaches the destination, don't let further
-        // clicks extend past it — the route is finished at the destination.
         if (last === selectedPacket.destinationNodeId) {
-          play('hopInvalid')
           setRouteNotice('Route already reaches the destination — submit it, or Undo to change it.')
           return prev
         }
         if (!last || connected(state.links || [], last, nodeId)) {
-          play('hopValid')
           setRouteNotice(null)
           return [...prev, nodeId]
         }
-
-        // Explain why this node can't be added: either there's no link at all,
-        // or the only link to it is down (FAILED/EXPIRED) and unusable.
-        play('hopInvalid')
         if (linkExists(state.links || [], last, nodeId)) {
           setRouteNotice(`The link from ${friendlyNodeName(last)} to ${friendlyNodeName(nodeId)} is down — pick a glowing cyan neighbour instead.`)
         } else {
@@ -132,10 +152,31 @@ export default function GameScreen({ state, transport }) {
         }
         return prev
       })
+
+      // Determine validity outside the setter for the audio call.
+      const prev = routePath
+      const nodeId = item.kind === 'node'
+        ? item.data.id
+        : nextNodeFromLink(item.data, prev[prev.length - 1])
+      if (!nodeId) {
+        play('hopInvalid')
+      } else if (prev.indexOf(nodeId) >= 0) {
+        play('hopValid') // trim back counts as valid navigation
+      } else if (prev[prev.length - 1] === selectedPacket.destinationNodeId) {
+        play('hopInvalid')
+      } else if (!prev[prev.length - 1] || connected(state.links || [], prev[prev.length - 1], nodeId)) {
+        play('hopValid')
+      } else {
+        play('hopInvalid')
+      }
       return
     }
 
     setSelected(item)
+    // Clicking a node/link with no active route is a misclick — signal it.
+    if (item.kind === 'node' || item.kind === 'link') {
+      play('hopInvalid')
+    }
   }
 
   const handleSelectPacket = (flow) => {
@@ -311,4 +352,25 @@ function nextNodeFromLink(link, currentNodeId) {
   if (link.sourceNodeId === currentNodeId) return link.targetNodeId
   if (link.targetNodeId === currentNodeId) return link.sourceNodeId
   return null
+}
+
+/**
+ * Parse a Java Instant from the backend into a JS epoch ms number.
+ * Handles ISO strings ("2026-06-02T14:30:00Z"), plain numbers (epoch seconds
+ * or ms), and Jackson's array format ([year, month, day, ...]).
+ */
+function parseInstant(value) {
+  if (!value) return null
+  if (typeof value === 'number') {
+    // Epoch seconds (< 1e11) vs epoch ms
+    return value < 1e11 ? value * 1000 : value
+  }
+  if (Array.isArray(value)) {
+    // Jackson LocalDateTime array: [year, month, day, hour, minute, second, nano]
+    const [y, mo, d, h = 0, mi = 0, s = 0] = value
+    return Date.UTC(y, mo - 1, d, h, mi, s)
+  }
+  // ISO string — standard Date.parse
+  const ms = Date.parse(value)
+  return Number.isNaN(ms) ? null : ms
 }

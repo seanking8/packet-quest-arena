@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useGame } from '../../state/GameContext'
 import useAudio from '../../hooks/useAudio'
 import { previewRoute, submitRoute } from '../../services/api'
@@ -115,22 +115,6 @@ export default function RouteControlsPanel({
   }
 
   const onUndo = () => onRoutePath((prev) => prev.slice(0, -1))
-
-  // Fire the about-to-expire sound once when the selected packet hits urgent.
-  const urgentFiredRef = useRef(false)
-  useEffect(() => {
-    if (!selectedPacket || selectedPacket.status !== 'PENDING' || !selectedPacket.expiresAt) return
-    urgentFiredRef.current = false
-  }, [selectedPacket?.id])
-  useEffect(() => {
-    if (!selectedPacket || selectedPacket.status !== 'PENDING' || !selectedPacket.expiresAt) return
-    const remainingMs = Date.parse(selectedPacket.expiresAt) - Date.now()
-    const isUrgent = remainingMs <= 5000
-    if (isUrgent && !urgentFiredRef.current) {
-      urgentFiredRef.current = true
-      play('aboutToExpire')
-    }
-  })
 
   return (
     <section className="panel route-panel">
