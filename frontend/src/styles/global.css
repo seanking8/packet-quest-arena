@@ -2400,3 +2400,72 @@ button.toggle.on,
 .intermission-screen .lobby {
   width: min(900px, 92vw);
 }
+
+/* ---- Steelar readability pass ---- */
+h1,
+h2,
+h3,
+.loading-title,
+.map-card-name,
+.tutorial-step,
+.field span,
+.route-label,
+.feed-group,
+.job-type,
+.incident-type,
+button,
+.job-select-btn,
+.map2d-reset {
+  letter-spacing: 0;
+  text-rendering: geometricPrecision;
+  font-kerning: normal;
+}
+
+h1,
+h2,
+h3,
+.loading-title,
+.map-card-name,
+.tutorial-step,
+.field span,
+.route-label,
+.feed-group,
+.job-type,
+.incident-type {
+  line-height: 1.14;
+}
+
+.home-header h1,
+.loading-title,
+.panel h3,
+.card h2,
+.map-chooser h2,
+.map-card-name,
+.pregame-screen .field span {
+  display: inline-block;
+  transform: scaleY(1.06);
+  transform-origin: left center;
+}
+
+button:not(.link-btn),
+.job-select-btn,
+.map2d-reset {
+  line-height: 1.12;
+}
+
+.pregame-screen button,
+.hud button,
+.map2d-reset {
+  font-size: 13px;
+  padding-inline: 16px;
+}
+
+.hud .job-select-btn {
+  font-size: 12px;
+  padding-inline: 13px;
+}
+
+.difficulty-option span {
+  font-size: 14px;
+  line-height: 1.12;
+}
