@@ -2574,3 +2574,121 @@ button:not(.link-btn):not(:disabled):hover,
   padding-inline: 16px;
   font-size: 12px;
 }
+
+/* ---- active HUD transparency, sidebar toggle, map chooser copy ---- */
+.hud {
+  --hud-glass-top: rgba(6, 24, 35, 0.50);
+  --hud-glass-bottom: rgba(3, 10, 22, 0.38);
+  --hud-glass-border: rgba(34, 217, 228, 0.36);
+  transition: grid-template-columns 180ms ease;
+}
+
+.hud.jobs-hidden {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "top"
+    "center";
+}
+
+.hud.jobs-collapsed {
+  grid-template-columns: 48px minmax(0, 1fr);
+}
+
+.hud-game-title {
+  display: inline-block;
+  font-family: var(--display-font);
+  font-size: 15px;
+  line-height: 1;
+  letter-spacing: 0;
+  color: #c7e6e0;
+  text-shadow: 0 1px 0 rgba(67, 224, 184, 0.20);
+  transform: scaleY(1.08);
+  transform-origin: left center;
+}
+
+.hud-left {
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(4, 17, 29, 0.32), rgba(3, 9, 19, 0.18)),
+    rgba(3, 9, 19, 0.14);
+}
+
+.hud-left.collapsed {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  overflow: visible;
+  padding: 9px 4px;
+}
+
+.sidebar-toggle {
+  width: 30px;
+  min-width: 30px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-radius: 0;
+  font-size: 15px;
+  color: #d8f4ee;
+}
+
+.hud-left:not(.collapsed) .sidebar-toggle {
+  position: absolute;
+  top: 10px;
+  right: -15px;
+  z-index: 8;
+}
+
+.hud-left.collapsed .sidebar-toggle {
+  margin-top: 6px;
+}
+
+.hud .panel {
+  background:
+    linear-gradient(180deg, var(--hud-glass-top), var(--hud-glass-bottom)),
+    rgba(3, 10, 22, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(90, 255, 235, 0.05),
+    0 14px 30px rgba(0, 0, 0, 0.20);
+}
+
+.hud .job-list li,
+.hud .leaderboard li,
+.hud .incident-row,
+.hud .route-quality {
+  background:
+    linear-gradient(180deg, rgba(5, 19, 31, 0.28), rgba(2, 8, 18, 0.20)),
+    rgba(2, 8, 18, 0.18);
+}
+
+.map-chooser .muted,
+.map-card-blurb {
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  font-size: 12px;
+  line-height: 1.35;
+  letter-spacing: 0;
+  color: #a9c6c5;
+  text-transform: none;
+  transform: none;
+}
+
+.map-chooser .muted {
+  margin: 10px 0 0;
+}
+
+.map-card {
+  min-width: 0;
+  overflow: hidden;
+  padding: 20px 18px;
+}
+
+.map-card-name {
+  font-size: 17px;
+}
+
+.map-card-blurb {
+  display: block;
+  max-width: 240px;
+  white-space: normal;
+  overflow-wrap: normal;
+}
