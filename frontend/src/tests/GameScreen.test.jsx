@@ -8,6 +8,10 @@ vi.mock('../components/map/NetworkScene', () => ({
   default: ({ state }) => <div data-testid="scene">scene:{state.nodes.length}</div>,
 }))
 
+vi.mock('../components/map/DistrictScene', () => ({
+  default: ({ state }) => <div data-testid="district-scene">district:{state.nodes.length}</div>,
+}))
+
 const STATE = {
   sessionId: 's1',
   status: 'ACTIVE',
@@ -54,8 +58,8 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-const renderGame = () =>
-  render(<GameProvider><GameScreen state={STATE} transport="websocket" /></GameProvider>)
+const renderGame = (state = STATE) =>
+  render(<GameProvider><GameScreen state={state} transport="websocket" /></GameProvider>)
 
 test('shows timer, counts and leaderboard from backend state', () => {
   renderGame()
@@ -68,6 +72,11 @@ test('shows timer, counts and leaderboard from backend state', () => {
 test('mounts the network scene with backend nodes', () => {
   renderGame()
   expect(screen.getByTestId('scene')).toHaveTextContent('scene:2')
+})
+
+test('mounts the district scene when the match was started with district map', () => {
+  renderGame({ ...STATE, mapFamily: 'DISTRICT' })
+  expect(screen.getByTestId('district-scene')).toHaveTextContent('district:2')
 })
 
 test('toggling the Jobs panel hides it', () => {

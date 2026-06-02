@@ -201,6 +201,7 @@ function SceneContent({ state, onSelect, routePath, selectedPacket, layers }) {
           isValidNext={routeAssist.validNextIds.has(n.id)}
           isSuggestedNext={n.id === routeAssist.suggestedNextId}
           dimmed={routeMode && !routeAssist.relevantIds.has(n.id)}
+          showLabel={showLabels}
         />
       ))}
 
@@ -211,12 +212,6 @@ function SceneContent({ state, onSelect, routePath, selectedPacket, layers }) {
           suggestedPath={routeAssist.suggestedPath.map((id) => nodeIndex[id]).filter(Boolean)}
         />
       )}
-
-      {showLabels && (state.nodes || []).map((n) => (
-        <Html key={`lbl-${n.id}`} position={[n.x, nodeAnchorHeight(n.type) + 7, n.z]} center distanceFactor={120} style={{ pointerEvents: 'none' }}>
-          <div className="node-mini-label">{friendlyNodeName(n)}</div>
-        </Html>
-      ))}
 
       <IncidentZones
         incidents={state.incidents || []}
@@ -280,6 +275,7 @@ function NodeMesh({
   isValidNext,
   isSuggestedNext,
   dimmed,
+  showLabel,
 }) {
   const [hovered, setHovered] = useState(false)
   const color = isSource
@@ -335,14 +331,16 @@ function NodeMesh({
       {isValidNext && !isSource && (
         <NextHopMarker node={node} suggested={isSuggestedNext || isDest} onSelect={handleSelect} />
       )}
-      <NodeLabel
-        node={node}
-        color={color}
-        active={active}
-        dimmed={dimmed}
-        role={isSource ? 'start' : isDest ? 'dest' : isCurrent ? 'current' : isSuggestedNext ? 'suggested' : isValidNext ? 'next' : null}
-        onSelect={handleSelect}
-      />
+      {showLabel && (
+        <NodeLabel
+          node={node}
+          color={color}
+          active={active}
+          dimmed={dimmed}
+          role={isSource ? 'start' : isDest ? 'dest' : isCurrent ? 'current' : isSuggestedNext ? 'suggested' : isValidNext ? 'next' : null}
+          onSelect={handleSelect}
+        />
+      )}
     </group>
   )
 }
@@ -627,7 +625,7 @@ function NodeLabel({ node, color, active, dimmed, role, onSelect }) {
     <Html
       center
       position={[0, anchor.y + (node.type === 'SATELLITE' ? 5 : 8), 0]}
-      className={`node-label node-label-3d ${active ? 'active' : ''} ${dimmed ? 'dimmed' : ''} ${role ? `role-${role}` : ''}`}
+      className={`node-label district-node-label ${active ? 'active' : ''} ${dimmed ? 'dimmed' : ''} ${role ? `role-${role}` : ''}`}
       style={{ '--node-color': color }}
     >
       <button type="button" onClick={onSelect}>

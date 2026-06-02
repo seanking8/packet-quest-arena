@@ -40,6 +40,7 @@ export function GameProvider({ children }) {
   const [playerId, setPlayerId] = useState(storedSession.playerId || null)
   const [playerName, setPlayerName] = useState(storedSession.playerName || '')
   const [mode, setMode] = useState('live')
+  const [selectedMapFamily, setSelectedMapFamily] = useState(null)
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
 
@@ -72,6 +73,7 @@ export function GameProvider({ children }) {
       setSessionId(id)
       setPlayerId(player.id)
       setPlayerName(name)
+      setSelectedMapFamily(null)
     })
 
   /** Join an existing session by id. */
@@ -81,10 +83,18 @@ export function GameProvider({ children }) {
       setSessionId(id)
       setPlayerId(player.id)
       setPlayerName(name)
+      setSelectedMapFamily(null)
     })
 
   /** Start the match with the host's chosen map family (host action). */
-  const start = (mapFamily = 'CITY') => run(() => startMatch(sessionId, mapFamily))
+  const start = (mapFamily = 'CITY') =>
+    run(async () => {
+      const family = normalizeMapFamily(mapFamily)
+      setSelectedMapFamily(family)
+      const state = await startMatch(sessionId, family)
+      setSelectedMapFamily(normalizeMapFamily(state?.mapFamily || family))
+      return state
+    })
 
   /** Advance from intermission to the next round (host action). */
   const advanceRound = () => run(() => nextRoundApi(sessionId))
@@ -94,6 +104,7 @@ export function GameProvider({ children }) {
     setPlayerId(null)
     setPlayerName('')
     setMode('live')
+    setSelectedMapFamily(null)
     setError(null)
     clearStoredSession()
   }
@@ -103,6 +114,7 @@ export function GameProvider({ children }) {
     setPlayerId('tutorial-player')
     setPlayerName('Trainee')
     setMode('tutorial')
+    setSelectedMapFamily(null)
     setError(null)
     clearStoredSession()
   }
@@ -112,6 +124,7 @@ export function GameProvider({ children }) {
     playerId,
     playerName,
     mode,
+    selectedMapFamily,
     error,
     busy,
     setError,
@@ -124,6 +137,10 @@ export function GameProvider({ children }) {
   }
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>
+}
+
+function normalizeMapFamily(mapFamily) {
+  return String(mapFamily || 'CITY').trim().toUpperCase() === 'DISTRICT' ? 'DISTRICT' : 'CITY'
 }
 
 export function useGame() {

@@ -119,6 +119,18 @@ class GameServiceTest {
     }
 
     @Test
+    void startSession_withDistrictMapFamily_storesSelection() {
+        String id = service.createSession().getId();
+        service.joinPlayer(id, "Alice");
+        service.joinPlayer(id, "Bob");
+
+        GameStateDto state = service.startSession(id, "DISTRICT");
+
+        assertThat(state.mapFamily()).isEqualTo("DISTRICT");
+        assertThat(service.getState(id).mapFamily()).isEqualTo("DISTRICT");
+    }
+
+    @Test
     void nextRound_advancesRoundAndKeepsScores() {
         String id = service.createSession().getId();
         service.joinPlayer(id, "Alice");
