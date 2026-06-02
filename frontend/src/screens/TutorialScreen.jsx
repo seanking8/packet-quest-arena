@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useGame } from '../state/GameContext'
+import useAudio from '../hooks/useAudio'
 import TopBar from '../components/hud/TopBar'
 import PacketJobsPanel from '../components/hud/PacketJobsPanel'
 import LeaderboardPanel from '../components/hud/LeaderboardPanel'
@@ -21,6 +22,8 @@ const TUTORIAL_LAYERS = { weather: true, incidents: true, labels: false }
 
 export default function TutorialScreen() {
   const { leave } = useGame()
+  const { playMusic } = useAudio()
+  useEffect(() => { playMusic('districtMusic') }, [playMusic])
   const [lesson, setLesson] = useState(1)
   const [loadingLesson, setLoadingLesson] = useState(false)
   const [remainingSeconds, setRemainingSeconds] = useState(INITIAL_SECONDS)
