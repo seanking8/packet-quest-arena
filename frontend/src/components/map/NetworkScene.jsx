@@ -34,8 +34,8 @@ const VIEWS = {
 // pre-merge proportions — without shrinking the models themselves — so the
 // city reads like it did before the merge. Backend + district map are
 // untouched; both axes use one factor each so everything stays aligned.
-const CITY_SX = 0.52
-const CITY_SZ = 0.44
+const CITY_SX = 0.84
+const CITY_SZ = 0.78
 
 // Remap a backend (x,z) into the compact city layout.
 const cx = (x) => (x || 0) * CITY_SX
@@ -583,7 +583,7 @@ export default function NetworkScene({ state, onSelect, routePath = [], selected
       <div style={{ position: 'absolute', inset: 0, visibility: planet ? 'hidden' : 'visible' }}>
         <Canvas camera={{ position: VIEWS.iso.pos, fov: 45 }} onPointerMissed={() => onSelect(null)}>
           <color attach="background" args={['#9fb3cf']} />
-          <fog attach="fog" args={['#9fb3cf', 105, 235]} />
+          <fog attach="fog" args={['#9fb3cf', 180, 360]} />
           <CameraRig view={view} focus={focus} />
           <OrbitControls
             makeDefault
