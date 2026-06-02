@@ -55,6 +55,27 @@ SESSION_ID=<sessionId> BACKEND_URL=http://localhost:8080 python simulator.py
 SESSION_ID=<sessionId> docker compose up simulator
 ```
 
+## Deploying To Kubernetes
+
+Manifests live in `k8s/` (Deployments, Services, ConfigMap, placeholder Secret,
+probes, resource limits, and a backend CPU HPA). Quick version:
+
+```bash
+# build images the cluster can see (Minikube example)
+eval $(minikube docker-env)
+docker build -t packetquest/backend:latest ./backend
+docker build -t packetquest/frontend:latest ./frontend
+docker build -t packetquest/simulator:latest ./simulator
+
+kubectl apply -f k8s/namespace.yaml
+kubectl apply -n packetquest -f k8s/
+kubectl get pods,svc,hpa -n packetquest
+kubectl port-forward -n packetquest svc/frontend 3000:80
+```
+
+Full instructions (secret setup, apply order, checks, cleanup) are in
+[`k8s/README.md`](k8s/README.md).
+
 ## Running Tests
 
 ```bash
@@ -75,9 +96,37 @@ python3 -m pytest simulator/tests -q
 
 The backend suite includes `FullMatchFlowTest`, an end-to-end system test that
 drives create session → join two players → start → generate traffic → submit a
-route over the real topology → assert the packet status and score change. See
-[Docs/security-notes.md](Docs/security-notes.md) for the anti-cheat and
-validation design.
+route over the real topology → assert the packet status and score change.
+
+## Documentation
+
+- [Architecture summary](docs/design/architecture-summary.md) — components, data flow, game loop, real-time updates
+- [Security & anti-cheat notes](docs/security-notes.md) — backend-authoritative design, validation, no secrets
+- [Scalability notes](docs/scalability-notes.md) — behaviour and mitigations under load
+- [AI usage log](AI_USAGE_LOG.md) — honest record of AI-assisted contributions
+
+## Code Quality (SonarQube)
+
+`sonar-project.properties` configures sources, tests, coverage report paths and
+exclusions (`node_modules`, `target`, `dist`, `build`, coverage, `__pycache__`).
+Coverage reports must be generated before a scan:
+
+```bash
+cd frontend && npm run coverage          # writes frontend/coverage/lcov.info
+cd backend && mvn test                   # add the JaCoCo plugin for backend XML coverage
+pip install pytest-cov                    # simulator coverage needs this extra dep
+python3 -m pytest simulator/tests --cov=simulator --cov-report=xml
+
+# then, with a SonarQube/SonarCloud token + server URL:
+sonar-scanner -Dsonar.host.url=<url> -Dsonar.login=<token>
+```
+
+> Note: the JaCoCo (backend) and `pytest-cov` (simulator) coverage tooling is
+> referenced in `sonar-project.properties` but not yet added to the build —
+> generate those reports (or add the plugins) before relying on coverage.
+
+Quality-gate results are **to be completed after running SonarQube** — no
+results are committed to the repo yet.
 
 ## Project Structure
 
