@@ -16,11 +16,22 @@ delivery/drop, scoring, incidents, and the match timer.
 ## Quick Start With Docker
 
 ```bash
+cp .env.example .env          # local dev defaults (no real secrets)
 docker compose up --build
 ```
 
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8080
+Services and default host ports:
+
+| Service   | URL / Port                | Notes                                  |
+|-----------|---------------------------|----------------------------------------|
+| Frontend  | http://localhost:3000     | nginx serving the built React app      |
+| Backend   | http://localhost:8080     | Spring Boot API (has a healthcheck)    |
+| MySQL     | localhost:3307 → 3306     | 3307 avoids clashing with a local MySQL|
+| Simulator | (no port)                 | optional incident generator, opt-in    |
+
+Ports and credentials are read from `.env` (see `.env.example`); override any
+of them there. The backend waits for MySQL to be healthy, and the simulator
+waits for the backend to be healthy, so `docker compose up` starts cleanly.
 
 Create a session in the browser, join with 2-4 players, then start the match.
 Active sessions tick automatically on the backend. The manual endpoint still

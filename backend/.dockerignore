@@ -1,0 +1,9 @@
+target
+*.log
+*.err
+.env
+.DS_Store
+.idea
+*.iml
+Dockerfile
+.dockerignore
