@@ -20,6 +20,7 @@ const DEFAULT_LAYERS = { weather: true, incidents: true, labels: false }
 
 export default function GameScreen({ state, transport }) {
   const { playerId, selectedMapFamily } = useGame()
+  const { play } = useAudio()
   const [webglAvailable, setWebglAvailable] = useState(canUseWebGL)
   const [panels, setPanels] = useState(DEFAULT_PANELS)
   const [jobsCollapsed, setJobsCollapsed] = useState(false)
