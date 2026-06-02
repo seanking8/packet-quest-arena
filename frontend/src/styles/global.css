@@ -2930,3 +2930,42 @@ button:not(.link-btn):not(:disabled):hover,
   padding: 3px 12px;
   font-size: 11px;
 }
+
+/* District map labels are plain map text, not HUD buttons/cards. Keep this at
+   the end so the broad .hud button rules cannot paint cyan boxes over them. */
+.hud .district-node-label,
+.hud .district-node-label button,
+.hud .district-node-label span,
+.hud .district-node-label.active,
+.hud .district-node-label.active button,
+.hud .district-node-label.active span,
+.hud .district-node-label.role-start button,
+.hud .district-node-label.role-start span,
+.hud .district-node-label.role-dest button,
+.hud .district-node-label.role-dest span,
+.hud .district-node-label.role-next button,
+.hud .district-node-label.role-next span,
+.hud .district-node-label.role-suggested button,
+.hud .district-node-label.role-suggested span {
+  background: transparent !important;
+  background-image: none !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+.hud .district-node-label button {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  transform: none !important;
+}
+
+.hud .district-node-label span {
+  color: rgba(218, 255, 249, 0.88) !important;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 0 !important;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.95), 0 0 10px rgba(34, 219, 210, 0.28);
+}
