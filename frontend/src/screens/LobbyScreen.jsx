@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useGame } from '../state/GameContext'
 import ErrorBanner from '../components/common/ErrorBanner'
+import LoadingScreen from '../components/common/LoadingScreen'
 
 const MAP_CHOICES = [
   {
@@ -25,6 +26,11 @@ export default function LobbyScreen({ state, transport }) {
   const [choosingMap, setChoosingMap] = useState(false)
   const [copied, setCopied] = useState(false)
   const shortCode = sessionId ? sessionId.slice(0, 8) : ''
+
+  if (busy) {
+    return <LoadingScreen message="Starting match systems." />
+  }
+
   const copyCode = async () => {
     try {
       await navigator.clipboard.writeText(sessionId)
@@ -36,7 +42,7 @@ export default function LobbyScreen({ state, transport }) {
   }
 
   return (
-    <div className="screen center">
+    <div className="screen center pregame-screen lobby-screen">
       <div className="lobby">
         <header className="home-header">
           <h1>Lobby</h1>
