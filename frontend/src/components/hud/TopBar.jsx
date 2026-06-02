@@ -37,7 +37,7 @@ export default function TopBar({ state, panels, onToggle }) {
   return (
     <header className="hud-top">
       <div className="hud-top-left">
-        <strong>Packet Quest Arena</strong>
+        <strong className="hud-game-title">Packet Quest Arena</strong>
         {state.currentRound > 0 && (
           <span className="pill round-pill" title={state.roundTagline}>
             Round {state.currentRound}/{state.totalRounds || 3} · {state.roundTitle}

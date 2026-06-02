@@ -7,12 +7,14 @@ const MAP_CHOICES = [
   {
     id: 'CITY',
     name: 'City map',
+    shortBlurb: 'Streets, towers, parks.',
     blurb: 'A realistic daytime city — streets, buildings, parks and traffic. Fly around it in 3D.',
     art: '🏙️',
   },
   {
     id: 'DISTRICT',
     name: 'District map',
+    shortBlurb: 'Clear districts and labels.',
     blurb: 'A clean strategic view with named districts and clear node labels. Easier to read at a glance.',
     art: '🗺️',
   },
@@ -87,7 +89,7 @@ export default function LobbyScreen({ state, transport }) {
         <div className="map-chooser-overlay" role="dialog" aria-label="Choose a map">
           <div className="map-chooser">
             <h2>Choose your map</h2>
-            <p className="muted">The map you pick is used for the whole match by every player.</p>
+            <p className="muted">Used by every player for this match.</p>
             <div className="map-chooser-grid">
               {MAP_CHOICES.map((m) => (
                 <button
@@ -98,7 +100,7 @@ export default function LobbyScreen({ state, transport }) {
                 >
                   <span className="map-card-art" aria-hidden="true">{m.art}</span>
                   <span className="map-card-name">{m.name}</span>
-                  <span className="map-card-blurb">{m.blurb}</span>
+                  <span className="map-card-blurb">{m.shortBlurb}</span>
                 </button>
               ))}
             </div>

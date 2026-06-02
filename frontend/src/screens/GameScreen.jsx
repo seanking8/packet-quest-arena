@@ -21,6 +21,7 @@ export default function GameScreen({ state, transport }) {
   const { playerId } = useGame()
   const [webglAvailable, setWebglAvailable] = useState(canUseWebGL)
   const [panels, setPanels] = useState(DEFAULT_PANELS)
+  const [jobsCollapsed, setJobsCollapsed] = useState(false)
   const [layers, setLayers] = useState(DEFAULT_LAYERS)
   // The map family is chosen once by the host at start and stored on the
   // session, so every player renders the same map for the whole match. There
@@ -124,17 +125,28 @@ export default function GameScreen({ state, transport }) {
   }
 
   return (
-    <div className="hud">
+    <div className={`hud ${!panels.jobs ? 'jobs-hidden' : jobsCollapsed ? 'jobs-collapsed' : ''}`}>
       <TopBar state={state} transport={transport} panels={panels} onToggle={toggle} />
 
       {panels.jobs && (
-        <aside className="hud-left">
-          <PacketJobsPanel
-            state={state}
-            playerId={playerId}
-            selectedPacketId={selectedPacket?.id}
-            onSelectPacket={handleSelectPacket}
-          />
+        <aside className={`hud-left ${jobsCollapsed ? 'collapsed' : ''}`}>
+          <button
+            className="sidebar-toggle"
+            type="button"
+            aria-label={jobsCollapsed ? 'Expand packet jobs' : 'Collapse packet jobs'}
+            aria-expanded={!jobsCollapsed}
+            onClick={() => setJobsCollapsed((value) => !value)}
+          >
+            {jobsCollapsed ? '>' : '<'}
+          </button>
+          {!jobsCollapsed && (
+            <PacketJobsPanel
+              state={state}
+              playerId={playerId}
+              selectedPacketId={selectedPacket?.id}
+              onSelectPacket={handleSelectPacket}
+            />
+          )}
         </aside>
       )}
 

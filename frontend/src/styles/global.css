@@ -1,13 +1,26 @@
+@font-face {
+  font-family: 'Steelar';
+  src: url('../assets/fonts/Steelar-j9Vnj.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --bg: #0b1020;
-  --panel: rgba(18, 24, 44, 0.82);
-  --panel-border: rgba(120, 150, 220, 0.25);
-  --text: #e6ecff;
-  --muted: #93a0c4;
-  --accent: #4f8cff;
+  --panel: rgba(7, 18, 32, 0.86);
+  --panel-border: rgba(36, 220, 216, 0.34);
+  --text: #dcefeb;
+  --muted: #91b7b8;
+  --accent: #20d0be;
   --ok: #36c98d;
   --bad: #ff5d6c;
   --warn: #ffb454;
+  --display-font: 'Steelar', Impact, Haettenschweiler, 'Arial Black', sans-serif;
+  --frame-cyan: #22d9e4;
+  --frame-green: #43e0b8;
+  --frame-blue: #4f9dff;
+  --frame-amber: #ffb454;
 }
 
 * { box-sizing: border-box; }
@@ -23,6 +36,15 @@ body {
   color: var(--text);
   font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   overflow: hidden;
+}
+
+h1, h2, h3,
+.loading-title,
+.map-card-name,
+.tutorial-step {
+  font-family: var(--display-font);
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 button {
@@ -108,6 +130,7 @@ code.pill, .pill {
   gap: 8px;
 }
 .pregame-screen .field span {
+  font-family: var(--display-font);
   color: #b8dacf;
   font-size: 13px;
   font-weight: 700;
@@ -156,7 +179,7 @@ code.pill, .pill {
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, #7affc4, #ffb454 58%, transparent);
+  background: linear-gradient(90deg, var(--frame-green), var(--frame-cyan) 52%, var(--frame-blue) 78%, transparent);
   opacity: 0.9;
 }
 .pregame-screen .card::after {
@@ -201,16 +224,16 @@ code.pill, .pill {
 }
 .pregame-screen button.ghost {
   background: rgba(7, 13, 25, 0.42);
-  border-color: rgba(255, 180, 84, 0.42);
-  color: #ffe0ad;
+  border-color: rgba(79, 157, 255, 0.42);
+  color: #c6edff;
   box-shadow: inset 0 0 0 1px rgba(255,255,255,0.025);
 }
 .pregame-screen button.ghost:not(:disabled):hover {
-  background: rgba(255, 180, 84, 0.12);
-  box-shadow: 0 12px 28px rgba(255, 180, 84, 0.12);
+  background: rgba(79, 157, 255, 0.12);
+  box-shadow: 0 12px 28px rgba(79, 157, 255, 0.14);
 }
 .pregame-screen .tag {
-  background: linear-gradient(180deg, rgba(255,180,84,0.95), rgba(192,113,36,0.95));
+  background: linear-gradient(180deg, rgba(80,218,255,0.95), rgba(32,147,181,0.95));
   color: #101525;
   font-weight: 800;
   text-transform: uppercase;
@@ -244,9 +267,9 @@ code.pill, .pill {
   padding: 3px 12px;
   margin-left: 8px;
   color: #101525;
-  background: linear-gradient(180deg, #ffce72, #c77a2b);
+  background: linear-gradient(180deg, #75f5e2, #36a9de);
   border-color: rgba(255,255,255,0.16);
-  box-shadow: 0 10px 18px rgba(199,122,43,0.18);
+  box-shadow: 0 10px 18px rgba(36, 180, 220, 0.18);
 }
 .lobby-screen .card {
   min-height: 136px;
@@ -1662,8 +1685,8 @@ code.pill, .pill {
 .loading-title {
   position: relative;
   margin: 0 0 26px;
-  color: #d6d8dc;
-  font-family: Impact, Haettenschweiler, 'Arial Black', 'Segoe UI Black', sans-serif;
+  color: #d6efe9;
+  font-family: var(--display-font);
   font-size: 54px;
   font-weight: 900;
   line-height: 0.9;
@@ -1671,7 +1694,7 @@ code.pill, .pill {
   text-align: center;
   text-transform: uppercase;
   white-space: nowrap;
-  transform: scaleX(1.14);
+  transform: scaleX(1.02);
   text-shadow:
     0 2px 0 rgba(255,255,255,0.18),
     0 18px 38px rgba(0,0,0,0.72);
@@ -1763,6 +1786,78 @@ code.pill, .pill {
     animation: none;
     opacity: 1;
   }
+}
+
+/* ---- unified tactical frame system ---- */
+.card,
+.panel,
+.map-chooser,
+.map-card,
+.error-banner {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(10, 27, 43, 0.88), rgba(5, 13, 25, 0.90)),
+    rgba(5, 13, 25, 0.9);
+  box-shadow:
+    inset 0 1px 0 rgba(93, 255, 232, 0.08),
+    0 18px 42px rgba(0, 0, 0, 0.28);
+}
+
+.card::before,
+.panel::before,
+.map-chooser::before,
+.map-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 18px;
+  right: 18px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--frame-green), var(--frame-cyan), transparent);
+  opacity: 0.82;
+  pointer-events: none;
+}
+
+.card::after,
+.panel::after,
+.map-chooser::after,
+.map-card::after {
+  content: "";
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  width: 42px;
+  height: 28px;
+  border-right: 1px solid rgba(36, 220, 216, 0.48);
+  border-bottom: 1px solid rgba(67, 224, 184, 0.38);
+  pointer-events: none;
+}
+
+.panel h3,
+.card h2,
+.map-chooser h2,
+.tutorial-card h2 {
+  color: #bddbd8;
+  text-shadow: 0 1px 0 rgba(67, 224, 184, 0.22);
+}
+
+input,
+select,
+.pill {
+  border-color: rgba(36, 220, 216, 0.28);
+}
+
+button:not(.ghost):not(.toggle):not(.link-btn) {
+  background:
+    linear-gradient(180deg, rgba(45, 216, 202, 0.96), rgba(28, 129, 166, 0.96));
+  box-shadow: 0 10px 24px rgba(32, 208, 190, 0.22);
+}
+
+button:not(.ghost):not(.toggle):not(.link-btn):not(:disabled):hover {
+  box-shadow: 0 14px 30px rgba(32, 208, 190, 0.32);
 }
 
 @media (max-width: 980px) {
@@ -1875,4 +1970,835 @@ code.pill, .pill {
     grid-template-columns: 1fr;
     gap: 6px;
   }
+}
+
+/* ---- final HUD frame harmonization ---- */
+.card,
+.panel,
+.map-chooser,
+.map-card,
+.tutorial-card,
+.error-banner {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(34, 217, 228, 0.36);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(8, 28, 43, 0.90), rgba(4, 13, 25, 0.92)),
+    rgba(4, 13, 25, 0.92);
+  box-shadow:
+    inset 0 1px 0 rgba(90, 255, 235, 0.08),
+    0 18px 46px rgba(0, 0, 0, 0.30);
+}
+
+.card::before,
+.panel::before,
+.map-chooser::before,
+.map-card::before,
+.tutorial-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 18px;
+  right: 18px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--frame-green), var(--frame-cyan), var(--frame-blue), transparent);
+  opacity: 0.86;
+  pointer-events: none;
+}
+
+.card::after,
+.panel::after,
+.map-chooser::after,
+.map-card::after,
+.tutorial-card::after {
+  content: "";
+  position: absolute;
+  right: 13px;
+  bottom: 13px;
+  width: 44px;
+  height: 30px;
+  border-right: 1px solid rgba(34, 217, 228, 0.52);
+  border-bottom: 1px solid rgba(67, 224, 184, 0.42);
+  pointer-events: none;
+}
+
+.panel h3,
+.card h2,
+.map-chooser h2,
+.map-card-name,
+.home-header h1,
+.loading-title {
+  color: #bedbd7;
+  text-shadow: 0 1px 0 rgba(67, 224, 184, 0.22), 0 10px 28px rgba(0,0,0,0.42);
+}
+
+.field span,
+.route-label,
+.feed-group,
+.job-type,
+.incident-type {
+  font-family: var(--display-font);
+  letter-spacing: 0.02em;
+}
+
+.panel .job-list li,
+.panel .leaderboard li,
+.panel .incident-row,
+.player-list li,
+.route-quality,
+.tutorial-condition {
+  border: 1px solid rgba(34, 217, 228, 0.18);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(6, 20, 35, 0.52), rgba(3, 10, 22, 0.44)),
+    rgba(3, 10, 22, 0.44);
+}
+
+.panel .job-list li,
+.panel .leaderboard li,
+.panel .incident-row {
+  padding: 8px 10px;
+  margin-bottom: 7px;
+  border-bottom: 1px solid rgba(34, 217, 228, 0.18);
+}
+
+.job-selected {
+  background:
+    linear-gradient(180deg, rgba(34, 217, 228, 0.16), rgba(5, 14, 28, 0.54)),
+    rgba(5, 14, 28, 0.54);
+}
+
+input,
+select,
+.pill {
+  border-color: rgba(34, 217, 228, 0.30);
+}
+
+button:not(.ghost):not(.toggle):not(.link-btn) {
+  background: linear-gradient(180deg, rgba(54, 219, 202, 0.96), rgba(32, 128, 177, 0.96));
+  box-shadow: 0 10px 24px rgba(32, 208, 190, 0.24);
+}
+
+/* ---- active game HUD glass + compact controls ---- */
+.hud {
+  --hud-glass-top: rgba(6, 24, 35, 0.64);
+  --hud-glass-bottom: rgba(3, 10, 22, 0.52);
+  --hud-glass-border: rgba(34, 217, 228, 0.42);
+}
+
+.hud-top {
+  background: linear-gradient(180deg, rgba(3, 8, 17, 0.82), rgba(3, 8, 17, 0.48));
+  backdrop-filter: blur(7px);
+  border-bottom: 1px solid rgba(34, 217, 228, 0.16);
+}
+
+.hud-left {
+  background:
+    linear-gradient(180deg, rgba(4, 17, 29, 0.46), rgba(3, 9, 19, 0.30)),
+    rgba(3, 9, 19, 0.22);
+  border-right-color: rgba(34, 217, 228, 0.26);
+  backdrop-filter: blur(5px);
+}
+
+.hud .panel {
+  border-color: var(--hud-glass-border);
+  background:
+    linear-gradient(180deg, var(--hud-glass-top), var(--hud-glass-bottom)),
+    rgba(3, 10, 22, 0.42);
+  box-shadow:
+    inset 0 1px 0 rgba(90, 255, 235, 0.06),
+    0 16px 34px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(6px);
+}
+
+.hud .panel::before {
+  opacity: 0.68;
+}
+
+.hud .panel::after {
+  opacity: 0.72;
+}
+
+.hud .panel h3 {
+  color: #b7d4d0;
+  text-shadow: 0 1px 0 rgba(67, 224, 184, 0.18);
+  letter-spacing: 0;
+}
+
+.hud .job-list li,
+.hud .leaderboard li,
+.hud .incident-row,
+.hud .route-quality {
+  background:
+    linear-gradient(180deg, rgba(5, 19, 31, 0.38), rgba(2, 8, 18, 0.30)),
+    rgba(2, 8, 18, 0.28);
+  border-color: rgba(34, 217, 228, 0.24);
+}
+
+.hud .job-selected {
+  background:
+    linear-gradient(180deg, rgba(36, 220, 216, 0.18), rgba(3, 10, 22, 0.36)),
+    rgba(3, 10, 22, 0.32);
+  border-color: rgba(67, 224, 184, 0.48);
+}
+
+button,
+.job-select-btn,
+.map2d-reset {
+  font-family: var(--display-font);
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+button:not(.link-btn),
+.job-select-btn,
+.map2d-reset {
+  border: 1px solid rgba(90, 255, 235, 0.22);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(36, 210, 196, 0.92), rgba(22, 144, 158, 0.88)),
+    rgba(16, 118, 138, 0.78);
+  color: #d9f4ee;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 10px 22px rgba(14, 127, 150, 0.22);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.24);
+}
+
+.hud button,
+.hud .job-select-btn,
+.hud .map2d-reset {
+  min-height: 36px;
+  padding: 8px 13px;
+  font-size: 12px;
+}
+
+.hud-top-right button,
+.view-controls button,
+.layer-controls button {
+  min-width: 0;
+  min-height: 38px;
+  padding: 9px 14px;
+  font-size: 12px;
+}
+
+.hud .job-select-btn {
+  min-height: 24px;
+  padding: 4px 12px;
+  font-size: 11px;
+}
+
+button.ghost,
+.hud button.ghost {
+  border-color: rgba(88, 172, 223, 0.48);
+  background:
+    linear-gradient(180deg, rgba(6, 25, 40, 0.46), rgba(3, 10, 22, 0.34)),
+    rgba(3, 10, 22, 0.28);
+  color: #d2eee8;
+  box-shadow: inset 0 1px 0 rgba(90, 255, 235, 0.05);
+}
+
+button.toggle,
+.hud button.toggle {
+  border-color: rgba(34, 151, 205, 0.36);
+  background:
+    linear-gradient(180deg, rgba(19, 84, 116, 0.54), rgba(8, 38, 62, 0.42)),
+    rgba(8, 38, 62, 0.32);
+  color: #a9c9c8;
+  box-shadow: inset 0 1px 0 rgba(90, 255, 235, 0.06);
+}
+
+button.toggle.on,
+.hud button.toggle.on,
+.job-select-btn.on {
+  border-color: rgba(90, 255, 235, 0.42);
+  background:
+    linear-gradient(180deg, rgba(39, 219, 198, 0.96), rgba(24, 161, 174, 0.92)),
+    rgba(21, 138, 158, 0.86);
+  color: #effffb;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 12px 24px rgba(24, 178, 181, 0.26);
+}
+
+button:not(:disabled):hover,
+.job-select-btn:not(:disabled):hover,
+.map2d-reset:not(:disabled):hover {
+  border-color: rgba(122, 255, 221, 0.52);
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+button:disabled,
+.hud button:disabled,
+.job-select-btn:disabled {
+  opacity: 0.48;
+  filter: saturate(0.7);
+  transform: none;
+}
+
+/* ---- final difficulty + tactical outline pass ---- */
+.card,
+.panel,
+.map-chooser,
+.map-card,
+.tutorial-card,
+.error-banner {
+  --frame-notch: 18px;
+  border-color: rgba(35, 225, 232, 0.48);
+  border-radius: 0;
+  clip-path: polygon(
+    0 var(--frame-notch),
+    var(--frame-notch) 0,
+    calc(100% - var(--frame-notch)) 0,
+    100% var(--frame-notch),
+    100% calc(100% - var(--frame-notch)),
+    calc(100% - var(--frame-notch)) 100%,
+    var(--frame-notch) 100%,
+    0 calc(100% - var(--frame-notch))
+  );
+}
+
+.card::before,
+.panel::before,
+.map-chooser::before,
+.map-card::before,
+.tutorial-card::before,
+.error-banner::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  height: auto;
+  background:
+    linear-gradient(90deg, transparent, rgba(35, 225, 232, 0.95), transparent) 28px 0 / 116px 2px no-repeat,
+    linear-gradient(90deg, transparent, rgba(35, 225, 232, 0.72), transparent) calc(100% - 144px) 0 / 116px 2px no-repeat,
+    linear-gradient(rgba(35, 225, 232, 0.88), rgba(35, 225, 232, 0.18)) 0 28px / 2px 82px no-repeat,
+    linear-gradient(rgba(35, 225, 232, 0.18), rgba(35, 225, 232, 0.82)) 100% calc(100% - 110px) / 2px 82px no-repeat,
+    linear-gradient(90deg, transparent, rgba(67, 224, 184, 0.72), transparent) 34px 100% / 92px 2px no-repeat,
+    linear-gradient(90deg, transparent, rgba(67, 224, 184, 0.56), transparent) calc(100% - 126px) 100% / 92px 2px no-repeat;
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.card::after,
+.panel::after,
+.map-chooser::after,
+.map-card::after,
+.tutorial-card::after,
+.error-banner::after {
+  content: "";
+  position: absolute;
+  right: 13px;
+  bottom: 13px;
+  width: 48px;
+  height: 36px;
+  border-right: 1px solid rgba(35, 225, 232, 0.58);
+  border-bottom: 1px solid rgba(67, 224, 184, 0.48);
+  background:
+    linear-gradient(90deg, rgba(35, 225, 232, 0.42), transparent) 0 100% / 28px 1px no-repeat,
+    linear-gradient(rgba(35, 225, 232, 0.34), transparent) 100% 0 / 1px 22px no-repeat;
+  pointer-events: none;
+}
+
+button:not(.link-btn),
+.job-select-btn,
+.map2d-reset {
+  border-color: rgba(42, 205, 206, 0.34);
+  background:
+    linear-gradient(180deg, rgba(26, 158, 151, 0.88), rgba(10, 82, 107, 0.90)),
+    rgba(8, 59, 78, 0.88);
+  color: #d4eee9;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 9px 18px rgba(5, 69, 88, 0.22);
+}
+
+button:not(.link-btn):not(:disabled):hover,
+.job-select-btn:not(:disabled):hover,
+.map2d-reset:not(:disabled):hover {
+  border-color: rgba(79, 230, 216, 0.48);
+  background:
+    linear-gradient(180deg, rgba(31, 179, 168, 0.90), rgba(12, 93, 119, 0.92)),
+    rgba(8, 67, 86, 0.90);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    0 11px 22px rgba(7, 89, 105, 0.28);
+}
+
+button.difficulty-option,
+button.difficulty-option:not(.link-btn) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 43px;
+  padding: 10px 14px;
+  border-color: rgba(35, 225, 232, 0.34);
+  background:
+    linear-gradient(180deg, rgba(7, 28, 43, 0.82), rgba(3, 13, 28, 0.88)),
+    rgba(3, 13, 28, 0.82);
+  color: #9fbfbd;
+  box-shadow: inset 0 1px 0 rgba(90, 255, 235, 0.06);
+  text-align: center;
+}
+
+.difficulty-option span {
+  font-family: var(--display-font);
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.difficulty-option small {
+  display: none;
+}
+
+button.difficulty-option.on,
+button.difficulty-option.on:not(.link-btn) {
+  border-color: rgba(74, 234, 211, 0.72);
+  background:
+    linear-gradient(180deg, rgba(29, 161, 154, 0.86), rgba(12, 93, 119, 0.90)),
+    rgba(10, 78, 96, 0.90);
+  color: #e2fbf6;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 10px 22px rgba(20, 160, 151, 0.22);
+}
+
+button.ghost,
+.hud button.ghost {
+  border-color: rgba(73, 162, 206, 0.48);
+  background:
+    linear-gradient(180deg, rgba(5, 22, 36, 0.58), rgba(2, 10, 22, 0.48)),
+    rgba(2, 10, 22, 0.42);
+  color: #cce7e1;
+}
+
+button.toggle,
+.hud button.toggle {
+  border-color: rgba(32, 142, 185, 0.42);
+  background:
+    linear-gradient(180deg, rgba(13, 66, 91, 0.66), rgba(5, 28, 48, 0.58)),
+    rgba(5, 28, 48, 0.46);
+  color: #9fbdbc;
+}
+
+button.toggle.on,
+.hud button.toggle.on,
+.job-select-btn.on {
+  border-color: rgba(74, 234, 211, 0.68);
+  background:
+    linear-gradient(180deg, rgba(31, 174, 164, 0.88), rgba(13, 104, 125, 0.92)),
+    rgba(10, 82, 99, 0.88);
+  color: #e6fbf7;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 10px 22px rgba(20, 160, 151, 0.22);
+}
+
+.intermission-screen .lobby {
+  width: min(900px, 92vw);
+}
+
+/* ---- Steelar readability pass ---- */
+h1,
+h2,
+h3,
+.loading-title,
+.map-card-name,
+.tutorial-step,
+.field span,
+.route-label,
+.feed-group,
+.job-type,
+.incident-type,
+button,
+.job-select-btn,
+.map2d-reset {
+  letter-spacing: 0;
+  text-rendering: geometricPrecision;
+  font-kerning: normal;
+}
+
+h1,
+h2,
+h3,
+.loading-title,
+.map-card-name,
+.tutorial-step,
+.field span,
+.route-label,
+.feed-group,
+.job-type,
+.incident-type {
+  line-height: 1.14;
+}
+
+.home-header h1,
+.loading-title,
+.panel h3,
+.card h2,
+.map-chooser h2,
+.map-card-name,
+.pregame-screen .field span {
+  display: inline-block;
+  transform: scaleY(1.06);
+  transform-origin: left center;
+}
+
+button:not(.link-btn),
+.job-select-btn,
+.map2d-reset {
+  line-height: 1.12;
+}
+
+.pregame-screen button,
+.hud button,
+.map2d-reset {
+  font-size: 13px;
+  padding-inline: 16px;
+}
+
+.hud .job-select-btn {
+  font-size: 12px;
+  padding-inline: 13px;
+}
+
+.difficulty-option span {
+  font-size: 14px;
+  line-height: 1.12;
+}
+
+/* ---- taller, narrower Steelar treatment ---- */
+h1,
+h2,
+h3,
+.loading-title,
+.map-card-name,
+.tutorial-step,
+.field span,
+.route-label,
+.feed-group,
+.job-type,
+.incident-type {
+  font-stretch: condensed;
+}
+
+.home-header h1,
+.loading-title,
+.panel h3,
+.card h2,
+.map-chooser h2,
+.map-card-name,
+.pregame-screen .field span,
+.job-type,
+.incident-type,
+.feed-group {
+  transform: scaleX(0.94) scaleY(1.12);
+}
+
+button:not(.link-btn),
+.job-select-btn,
+.map2d-reset,
+.difficulty-option span {
+  font-stretch: condensed;
+}
+
+button:not(.link-btn),
+.job-select-btn,
+.map2d-reset {
+  transform: scaleX(0.96) scaleY(1.08);
+  transform-origin: center;
+}
+
+button:not(.link-btn):not(:disabled):hover,
+.job-select-btn:not(:disabled):hover,
+.map2d-reset:not(:disabled):hover {
+  transform: translateY(-1px) scaleX(0.96) scaleY(1.08);
+}
+
+.pregame-screen button,
+.hud button,
+.map2d-reset {
+  padding-inline: 18px;
+}
+
+.hud .job-select-btn {
+  padding-inline: 15px;
+}
+
+/* ---- button label readability fix ---- */
+button:not(.link-btn),
+.job-select-btn,
+.map2d-reset,
+.difficulty-option span {
+  font-stretch: normal;
+  font-kerning: none;
+  font-feature-settings: "kern" 0;
+}
+
+button:not(.link-btn),
+.job-select-btn,
+.map2d-reset {
+  transform: none;
+}
+
+button:not(.link-btn):not(:disabled):hover,
+.job-select-btn:not(:disabled):hover,
+.map2d-reset:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.hud-top-right button,
+.view-controls button,
+.layer-controls button,
+.pregame-screen button,
+.map2d-reset {
+  min-height: 40px;
+  padding-inline: 20px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.hud-top-right button {
+  min-width: 104px;
+}
+
+.hud-top-right button:nth-child(2) {
+  min-width: 160px;
+}
+
+.hud .job-select-btn {
+  min-height: 26px;
+  padding-inline: 16px;
+  font-size: 12px;
+}
+
+/* ---- active HUD transparency, sidebar toggle, map chooser copy ---- */
+.hud {
+  --hud-glass-top: rgba(6, 24, 35, 0.50);
+  --hud-glass-bottom: rgba(3, 10, 22, 0.38);
+  --hud-glass-border: rgba(34, 217, 228, 0.36);
+  transition: grid-template-columns 180ms ease;
+}
+
+.hud.jobs-hidden {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "top"
+    "center";
+}
+
+.hud.jobs-collapsed {
+  grid-template-columns: 48px minmax(0, 1fr);
+}
+
+.hud-game-title {
+  display: inline-block;
+  font-family: var(--display-font);
+  font-size: 15px;
+  line-height: 1;
+  letter-spacing: 0;
+  color: #c7e6e0;
+  text-shadow: 0 1px 0 rgba(67, 224, 184, 0.20);
+  transform: scaleY(1.08);
+  transform-origin: left center;
+}
+
+.hud-left {
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(4, 17, 29, 0.32), rgba(3, 9, 19, 0.18)),
+    rgba(3, 9, 19, 0.14);
+}
+
+.hud-left.collapsed {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  overflow: visible;
+  padding: 9px 4px;
+}
+
+.sidebar-toggle {
+  width: 30px;
+  min-width: 30px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-radius: 0;
+  font-size: 15px;
+  color: #d8f4ee;
+}
+
+.hud-left:not(.collapsed) .sidebar-toggle {
+  position: absolute;
+  top: 10px;
+  right: -15px;
+  z-index: 8;
+}
+
+.hud-left.collapsed .sidebar-toggle {
+  margin-top: 6px;
+}
+
+.hud .panel {
+  background:
+    linear-gradient(180deg, var(--hud-glass-top), var(--hud-glass-bottom)),
+    rgba(3, 10, 22, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(90, 255, 235, 0.05),
+    0 14px 30px rgba(0, 0, 0, 0.20);
+}
+
+.hud .job-list li,
+.hud .leaderboard li,
+.hud .incident-row,
+.hud .route-quality {
+  background:
+    linear-gradient(180deg, rgba(5, 19, 31, 0.28), rgba(2, 8, 18, 0.20)),
+    rgba(2, 8, 18, 0.18);
+}
+
+.map-chooser .muted,
+.map-card-blurb {
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  font-size: 12px;
+  line-height: 1.35;
+  letter-spacing: 0;
+  color: #a9c6c5;
+  text-transform: none;
+  transform: none;
+}
+
+.map-chooser .muted {
+  margin: 10px 0 0;
+}
+
+.map-card {
+  min-width: 0;
+  overflow: hidden;
+  padding: 20px 18px;
+}
+
+.map-card-name {
+  font-size: 17px;
+}
+
+.map-card-blurb {
+  display: block;
+  max-width: 240px;
+  white-space: normal;
+  overflow-wrap: normal;
+}
+
+/* ---- HUD rail width + softer controls ---- */
+@media (min-width: 721px) {
+  .hud {
+    grid-template-columns: 330px minmax(0, 1fr);
+    --hud-glass-top: rgba(6, 24, 35, 0.42);
+    --hud-glass-bottom: rgba(3, 10, 22, 0.30);
+    --hud-glass-border: rgba(34, 217, 228, 0.32);
+  }
+
+  .hud.jobs-hidden {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hud.jobs-collapsed {
+    grid-template-columns: 46px minmax(0, 1fr);
+  }
+}
+
+.hud-left {
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-inline: 14px 18px;
+  background:
+    linear-gradient(180deg, rgba(4, 17, 29, 0.24), rgba(3, 9, 19, 0.14)),
+    rgba(3, 9, 19, 0.10);
+}
+
+.hud-left:not(.collapsed) .sidebar-toggle {
+  top: 10px;
+  right: 7px;
+}
+
+.sidebar-toggle {
+  width: 26px;
+  min-width: 26px;
+  height: 32px;
+  min-height: 32px;
+  background:
+    linear-gradient(180deg, rgba(27, 160, 158, 0.62), rgba(9, 72, 92, 0.58)),
+    rgba(7, 54, 70, 0.52);
+}
+
+.hud .panel {
+  background:
+    linear-gradient(180deg, var(--hud-glass-top), var(--hud-glass-bottom)),
+    rgba(3, 10, 22, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(90, 255, 235, 0.04),
+    0 12px 24px rgba(0, 0, 0, 0.16);
+}
+
+.hud button:not(.link-btn),
+.hud .job-select-btn,
+.hud .map2d-reset {
+  border-color: rgba(54, 216, 216, 0.30);
+  background:
+    linear-gradient(180deg, rgba(25, 160, 155, 0.68), rgba(9, 80, 104, 0.60)),
+    rgba(8, 54, 72, 0.46);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 8px 16px rgba(5, 69, 88, 0.16);
+}
+
+.hud button.toggle,
+.hud button.ghost {
+  background:
+    linear-gradient(180deg, rgba(11, 72, 95, 0.52), rgba(4, 24, 42, 0.42)),
+    rgba(4, 24, 42, 0.34);
+}
+
+.hud button.toggle.on,
+.hud .job-select-btn.on {
+  background:
+    linear-gradient(180deg, rgba(31, 174, 164, 0.72), rgba(11, 100, 122, 0.66)),
+    rgba(8, 78, 96, 0.54);
+}
+
+.hud-top-right button,
+.view-controls button,
+.layer-controls button {
+  min-height: 34px;
+  padding: 7px 12px;
+  font-size: 12px;
+}
+
+.hud-top-right button {
+  min-width: 86px;
+}
+
+.hud-top-right button:nth-child(2) {
+  min-width: 136px;
+}
+
+.view-controls,
+.layer-controls {
+  gap: 5px;
+}
+
+.view-controls button,
+.layer-controls button {
+  min-width: 0;
+  padding-inline: 13px;
+}
+
+.hud .job-select-btn {
+  min-height: 23px;
+  padding: 3px 12px;
+  font-size: 11px;
 }
