@@ -7,11 +7,49 @@ import { isWeather, incidentColor } from './incidents'
 import IncidentZones from './IncidentZones'
 import PlanetScene from './PlanetScene'
 import { DecorBuildings, NodeModel, Roads, Greenery, StreetTrees, TrafficLights, Bridges, Cars, anchorY } from './cityDetails'
+import { friendlyNodeName } from '../../utils/mapDisplay'
 
 // Camera presets — y is up, matching backend coordinates.
 const VIEWS = {
   close: { pos: [18, 16, 30], target: [0, 2, 0] },
   iso: { pos: [70, 60, 70], target: [10, 0, 0] },
+}
+
+// The merged backend topology spans ~±150 (stretched ~2.4x on X, ~2.9x on Z
+// from our original layout), which leaves the city nodes too far apart. For
+// OUR city map only, compress node/zone/building POSITIONS back to the tighter
+// pre-merge proportions — without shrinking the models themselves — so the
+// city reads like it did before the merge. Backend + district map are
+// untouched; both axes use one factor each so everything stays aligned.
+const CITY_SX = 0.42
+const CITY_SZ = 0.34
+
+// Remap a backend (x,z) into the compact city layout.
+const cx = (x) => (x || 0) * CITY_SX
+const cz = (z) => (z || 0) * CITY_SZ
+
+// Return a copy of game state with node / map-object / weather-zone positions
+// compressed into the compact city layout. Memoised by the caller.
+function toCityLayout(state) {
+  if (!state) return state
+  const r = (CITY_SX + CITY_SZ) / 2
+  return {
+    ...state,
+    nodes: (state.nodes || []).map((n) => ({ ...n, x: cx(n.x), z: cz(n.z) })),
+    mapObjects: (state.mapObjects || []).map((o) => ({
+      ...o, x: cx(o.x), z: cz(o.z),
+      sizeX: (o.sizeX || 0) * CITY_SX, sizeZ: (o.sizeZ || 0) * CITY_SZ,
+    })),
+    incidents: (state.incidents || []).map((i) => (
+      i.visualZone
+        ? { ...i, visualZone: {
+            ...i.visualZone,
+            x: cx(i.visualZone.x), z: cz(i.visualZone.z),
+            radius: (i.visualZone.radius || 0) * r,
+          } }
+        : i
+    )),
+  }
 }
 
 function CameraRig({ view, focus }) {
@@ -32,20 +70,24 @@ function CameraRig({ view, focus }) {
   // a click that changes both view and focus lands the camera on the incident.
   useEffect(() => {
     if (!focus) return
-    camera.position.set(focus.x + 22, 26, focus.z + 22)
+    // focus.x/z are backend coords; map them into the compact city layout.
+    const fx = cx(focus.x)
+    const fz = cz(focus.z)
+    camera.position.set(fx + 22, 26, fz + 22)
     if (controls) {
-      controls.target.set(focus.x, 0, focus.z)
+      controls.target.set(fx, 0, fz)
       controls.update()
     } else {
-      camera.lookAt(focus.x, 0, focus.z)
+      camera.lookAt(fx, 0, fz)
     }
   }, [focus?.key]) // eslint-disable-line react-hooks/exhaustive-deps
   return null
 }
 
 // A tall, pulsing light column + floating marker so the sender / receiver of a
-// selected packet are impossible to miss in the busy city.
-function Beacon({ color }) {
+// selected packet are impossible to miss in the busy city. A "START"/"END"
+// label floats above the beam so it's clear which end is which.
+function Beacon({ color, label }) {
   const beam = useRef()
   const marker = useRef()
   useFrame((state) => {
@@ -63,6 +105,11 @@ function Beacon({ color }) {
         <octahedronGeometry args={[1.8, 0]} />
         <meshBasicMaterial color={color} transparent opacity={0.95} />
       </mesh>
+      {label && (
+        <Html position={[0, 46, 0]} center distanceFactor={140} style={{ pointerEvents: 'none' }}>
+          <div className="route-endpoint-label" style={{ '--label-color': color }}>{label}</div>
+        </Html>
+      )}
     </group>
   )
 }
@@ -115,15 +162,28 @@ function NodeMesh({ node, onSelect, inPath, isSource, isDest, isNextHop }) {
       }}
       onPointerOut={() => setHovered(false)}
     >
+      {/* Invisible click/hover target — a tall thin cylinder so the node stays
+          selectable even with buildings in front, without overlapping its
+          neighbours now that nodes sit close together in the compact layout. */}
+      <mesh position={[0, 9, 0]}>
+        <cylinderGeometry args={[isNextHop ? s * 1.6 : s * 1.2, isNextHop ? s * 1.6 : s * 1.2, 20, 10]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
+
       <group scale={failed ? 0.95 : 1}>
         <NodeModel type={node.type} />
       </group>
 
-      {/* Sender / receiver of the packet being routed get a tall light beam. */}
-      {(isSource || isDest) && <Beacon color={isSource ? '#36c98d' : '#ff7ab6'} />}
+      {/* Sender / receiver of the packet being routed get a tall light beam
+          with a START / END label so each end is unmistakable. */}
+      {(isSource || isDest) && (
+        <Beacon color={isSource ? '#36c98d' : '#ff7ab6'} label={isSource ? 'START' : 'END'} />
+      )}
 
       {/* Valid next click while building the route. */}
-      {isNextHop && !inPath && !isSource && !isDest && <HopMarker />}
+      {/* Show the cyan "click to add" cue on valid next hops, including the
+          destination so it's clearly clickable to finish the route. */}
+      {isNextHop && !inPath && !isSource && <HopMarker />}
 
       {/* Base marker ring — makes each node easy to spot in the city and shows
           its selection / health state. */}
@@ -151,10 +211,12 @@ function linkPoints(a, b, arc) {
   return [start, mid, end]
 }
 
-function LinkLine({ link, a, b, onSelect, inRoute, affectedColor }) {
+function LinkLine({ link, a, b, onSelect, inRoute, candidate, affectedColor }) {
   const arc = isArcLink(link.linkType)
   const points = useMemo(() => linkPoints(a, b, arc), [a, b, arc])
-  const color = inRoute ? '#ffd479' : linkColor(link)
+  // Route edges glow yellow; valid next-hop candidates glow cyan (matching the
+  // node HopMarkers); everything else keeps its normal link colour.
+  const color = inRoute ? '#ffd479' : candidate ? '#4fe0ff' : linkColor(link)
   const broken = isBrokenLink(link.status)
   const mid = points[Math.floor(points.length / 2)]
   return (
@@ -162,12 +224,12 @@ function LinkLine({ link, a, b, onSelect, inRoute, affectedColor }) {
       <Line
         points={points}
         color={color}
-        lineWidth={inRoute ? 4 : link.status === 'OVERLOADED' || link.status === 'CONGESTED' ? 3 : 1.6}
+        lineWidth={inRoute ? 4 : candidate ? 3 : link.status === 'OVERLOADED' || link.status === 'CONGESTED' ? 3 : 1.6}
         dashed={broken}
         dashSize={1}
         gapSize={0.6}
         transparent
-        opacity={inRoute ? 1 : broken ? 0.6 : 0.9}
+        opacity={inRoute ? 1 : candidate ? 0.95 : broken ? 0.6 : 0.9}
       />
       {/* At-risk overlay: this link is touched by an active weather/incident. */}
       {affectedColor && !inRoute && (
@@ -239,28 +301,67 @@ function CityGround() {
   )
 }
 
-function Packet({ points, color }) {
-  const ref = useRef()
+// A bright electric packet pulse travelling along the route. Uses a hot
+// cyan/white glow (not the player's colour, which can be green and vanish into
+// the trees) plus a pulsing halo and a short trailing dot so the direction of
+// travel reads clearly.
+function Packet({ points }) {
+  const head = useRef()
+  const halo = useRef()
+  const trail = useRef()
   const progress = useRef(0)
-  useFrame((_, delta) => {
-    if (!ref.current || points.length < 2) return
-    progress.current = (progress.current + delta * 0.25) % 1
-    const t = progress.current * (points.length - 1)
+
+  const at = (p) => {
+    const t = p * (points.length - 1)
     const i = Math.floor(t)
     const frac = t - i
     const a = points[i]
     const b = points[Math.min(i + 1, points.length - 1)]
-    ref.current.position.set(
+    return [
       a.x + (b.x - a.x) * frac,
-      a.y + (b.y - a.y) * frac + 1.2,
-      a.z + (b.z - a.z) * frac
-    )
+      a.y + (b.y - a.y) * frac + 1.6,
+      a.z + (b.z - a.z) * frac,
+    ]
+  }
+
+  useFrame((state, delta) => {
+    if (points.length < 2) return
+    progress.current = (progress.current + delta * 0.25) % 1
+    const [x, y, z] = at(progress.current)
+    if (head.current) head.current.position.set(x, y, z)
+    if (halo.current) {
+      halo.current.position.set(x, y, z)
+      // Blink the halo so it pulses as it moves forward.
+      const pulse = 0.55 + 0.45 * Math.sin(state.clock.elapsedTime * 9)
+      halo.current.material.opacity = 0.25 + pulse * 0.4
+      const s = 1 + pulse * 0.5
+      halo.current.scale.set(s, s, s)
+    }
+    if (trail.current) {
+      const tp = (progress.current - 0.05 + 1) % 1
+      const [tx, ty, tz] = at(tp)
+      trail.current.position.set(tx, ty, tz)
+    }
   })
+
   return (
-    <mesh ref={ref}>
-      <sphereGeometry args={[0.6, 10, 10]} />
-      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.7} />
-    </mesh>
+    <group raycast={() => null}>
+      {/* trailing spark */}
+      <mesh ref={trail}>
+        <sphereGeometry args={[0.45, 8, 8]} />
+        <meshBasicMaterial color="#bff4ff" transparent opacity={0.5} />
+      </mesh>
+      {/* pulsing halo */}
+      <mesh ref={halo}>
+        <sphereGeometry args={[1.1, 12, 12]} />
+        <meshBasicMaterial color="#00e5ff" transparent opacity={0.45} depthWrite={false} blending={THREE.AdditiveBlending} />
+      </mesh>
+      {/* bright core */}
+      <mesh ref={head}>
+        <sphereGeometry args={[0.62, 12, 12]} />
+        <meshStandardMaterial color="#eaffff" emissive="#00e5ff" emissiveIntensity={1.6} toneMapped={false} />
+      </mesh>
+    </group>
   )
 }
 
@@ -326,14 +427,26 @@ function SceneContent({ state, onSelect, routePath, selectedPacket, layers }) {
   // While building a route, the nodes you're actually allowed to click next:
   // neighbours of the current path end that aren't already on the path.
   const lastInPath = routePath[routePath.length - 1]
-  const nextHops = useMemo(() => {
-    const set = new Set()
-    if (!selectedPacket || !lastInPath || lastInPath === destId) return set
+  // While building a route, the valid next moves from the current path end:
+  // usable links to unvisited neighbours. We track both the neighbour node ids
+  // (for the cyan markers) and the candidate edges (so the links glow too).
+  const { nextHops, nextHopEdges } = useMemo(() => {
+    const nodes = new Set()
+    const edges = new Set()
+    if (!selectedPacket || !lastInPath || lastInPath === destId) {
+      return { nextHops: nodes, nextHopEdges: edges }
+    }
     ;(state.links || []).forEach((l) => {
-      if (l.sourceNodeId === lastInPath && !pathSet.has(l.targetNodeId)) set.add(l.targetNodeId)
-      else if (l.targetNodeId === lastInPath && !pathSet.has(l.sourceNodeId)) set.add(l.sourceNodeId)
+      if (isBrokenLink(l.status)) return // can't route through a dead link
+      let neighbour = null
+      if (l.sourceNodeId === lastInPath && !pathSet.has(l.targetNodeId)) neighbour = l.targetNodeId
+      else if (l.targetNodeId === lastInPath && !pathSet.has(l.sourceNodeId)) neighbour = l.sourceNodeId
+      if (neighbour) {
+        nodes.add(neighbour)
+        edges.add(edgeKey(l.sourceNodeId, l.targetNodeId))
+      }
     })
-    return set
+    return { nextHops: nodes, nextHopEdges: edges }
   }, [selectedPacket, lastInPath, destId, state.links, pathSet])
 
   return (
@@ -365,6 +478,7 @@ function SceneContent({ state, onSelect, routePath, selectedPacket, layers }) {
             b={b}
             onSelect={onSelect}
             inRoute={routeEdges.has(edgeKey(link.sourceNodeId, link.targetNodeId))}
+            candidate={nextHopEdges.has(edgeKey(link.sourceNodeId, link.targetNodeId))}
             affectedColor={affectedLinkColor.get(link.id)}
           />
         )
@@ -383,8 +497,8 @@ function SceneContent({ state, onSelect, routePath, selectedPacket, layers }) {
       ))}
 
       {showLabels && (state.nodes || []).map((n) => (
-        <Html key={`lbl-${n.id}`} position={[n.x, (nodeSize(n.type) || 1) * 2 + 2, n.z]} center distanceFactor={120} style={{ pointerEvents: 'none' }}>
-          <div className="node-label">{n.label || n.id}</div>
+        <Html key={`lbl-${n.id}`} position={[n.x, anchorY(n) + 4, n.z]} center distanceFactor={150} style={{ pointerEvents: 'none' }}>
+          <div className="node-label">{friendlyNodeName(n)}</div>
         </Html>
       ))}
 
@@ -397,7 +511,7 @@ function SceneContent({ state, onSelect, routePath, selectedPacket, layers }) {
       />
 
       {packets.map((p) => (
-        <Packet key={p.id} points={p.points} color={p.color} />
+        <Packet key={p.id} points={p.points} />
       ))}
     </>
   )
@@ -405,6 +519,8 @@ function SceneContent({ state, onSelect, routePath, selectedPacket, layers }) {
 
 export default function NetworkScene({ state, onSelect, routePath = [], selectedPacket = null, view = 'iso', layers, focus }) {
   const planet = view === 'planet'
+  // Compact city layout (positions only) so nodes sit close like pre-merge.
+  const cityState = useMemo(() => toCityLayout(state), [state])
 
   if (!state?.nodes?.length) {
     return (
@@ -423,7 +539,7 @@ export default function NetworkScene({ state, onSelect, routePath = [], selected
           <color attach="background" args={['#9fb3cf']} />
           <CameraRig view={view} focus={focus} />
           <OrbitControls makeDefault enablePan enableZoom enableRotate />
-          <SceneContent state={state} onSelect={onSelect} routePath={routePath} selectedPacket={selectedPacket} layers={layers} />
+          <SceneContent state={cityState} onSelect={onSelect} routePath={routePath} selectedPacket={selectedPacket} layers={layers} />
         </Canvas>
       </div>
 

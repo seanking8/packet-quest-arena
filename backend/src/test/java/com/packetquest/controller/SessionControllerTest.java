@@ -14,6 +14,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -32,12 +33,13 @@ class SessionControllerTest {
 
     @Test
     void createSession_returns201WithSessionId() throws Exception {
-        when(gameService.createSession()).thenReturn(new GameSession());
+        when(gameService.createSession(any())).thenReturn(new GameSession());
 
         mockMvc.perform(post("/api/sessions"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.sessionId").exists())
-                .andExpect(jsonPath("$.status").value("WAITING"));
+                .andExpect(jsonPath("$.status").value("WAITING"))
+                .andExpect(jsonPath("$.difficulty").value("MEDIUM"));
     }
 
     @Test
@@ -78,7 +80,7 @@ class SessionControllerTest {
         session.addPlayer("Alice", "blue");
         session.addPlayer("Bob", "green");
         session.start();
-        when(gameService.startSession(anyString())).thenReturn(GameStateDto.from(session));
+        when(gameService.startSession(anyString(), any())).thenReturn(GameStateDto.from(session));
 
         mockMvc.perform(post("/api/sessions/s1/start"))
                 .andExpect(status().isOk())

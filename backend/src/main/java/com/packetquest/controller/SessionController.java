@@ -1,9 +1,11 @@
 package com.packetquest.controller;
 
 import com.packetquest.dto.CreateSessionResponse;
+import com.packetquest.dto.CreateSessionRequest;
 import com.packetquest.dto.GameStateDto;
 import com.packetquest.dto.JoinPlayerRequest;
 import com.packetquest.dto.JoinPlayerResponse;
+import com.packetquest.dto.StartSessionRequest;
 import com.packetquest.model.GameSession;
 import com.packetquest.model.Player;
 import com.packetquest.service.GameService;
@@ -36,10 +38,11 @@ public class SessionController {
     }
 
     @PostMapping
-    public ResponseEntity<CreateSessionResponse> create() {
-        GameSession session = gameService.createSession();
+    public ResponseEntity<CreateSessionResponse> create(
+            @RequestBody(required = false) CreateSessionRequest request) {
+        GameSession session = gameService.createSession(request != null ? request.difficulty() : null);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new CreateSessionResponse(session.getId(), session.getStatus()));
+                .body(new CreateSessionResponse(session.getId(), session.getStatus(), session.getDifficulty()));
     }
 
     @PostMapping("/{sessionId}/players")
@@ -53,8 +56,15 @@ public class SessionController {
     }
 
     @PostMapping("/{sessionId}/start")
-    public ResponseEntity<GameStateDto> start(@PathVariable String sessionId) {
-        return ResponseEntity.ok(gameService.startSession(sessionId));
+    public ResponseEntity<GameStateDto> start(@PathVariable String sessionId,
+                                              @RequestBody(required = false) StartSessionRequest request) {
+        return ResponseEntity.ok(
+                gameService.startSession(sessionId, request != null ? request.mapFamily() : null));
+    }
+
+    @PostMapping("/{sessionId}/next-round")
+    public ResponseEntity<GameStateDto> nextRound(@PathVariable String sessionId) {
+        return ResponseEntity.ok(gameService.nextRound(sessionId));
     }
 
     @GetMapping("/{sessionId}/state")

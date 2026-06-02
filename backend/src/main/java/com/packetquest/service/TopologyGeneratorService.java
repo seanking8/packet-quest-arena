@@ -6,6 +6,7 @@ import com.packetquest.model.MapObject;
 import com.packetquest.model.MapObjectType;
 import com.packetquest.model.NetworkLink;
 import com.packetquest.model.NetworkNode;
+import com.packetquest.model.NodeStatus;
 import com.packetquest.model.NodeType;
 import org.springframework.stereotype.Service;
 
@@ -39,32 +40,32 @@ public class TopologyGeneratorService {
     }
 
     private void addNodes(GameSession session) {
-        // Radio access (towers + central O-RU), slightly elevated masts.
-        node(session, "ru-north", "Radio Tower North", NodeType.RADIO_TOWER, -30, 3, 30);
-        node(session, "ru-south", "Radio Tower South", NodeType.RADIO_TOWER, -30, 3, -30);
-        node(session, "ru-east", "Radio Tower East", NodeType.RADIO_TOWER, 40, 3, 30);
-        node(session, "ru-west", "Radio Tower West", NodeType.RADIO_TOWER, -50, 3, 0);
-        node(session, "oru-central", "O-RU Central", NodeType.O_RU, -10, 2, 0);
+        // Radio access across a wider metro/region map.
+        node(session, "ru-north", "North Suburb Cell Tower", NodeType.RADIO_TOWER, -70, 3, 85);
+        node(session, "ru-south", "South Hospital Macro Tower", NodeType.RADIO_TOWER, -65, 3, -90);
+        node(session, "ru-east", "Airport District Cell Tower", NodeType.RADIO_TOWER, 95, 3, 70);
+        node(session, "ru-west", "Remote Hill Radio Tower", NodeType.RADIO_TOWER, -135, 3, 5);
+        node(session, "oru-central", "Downtown Rooftop O-RU", NodeType.O_RU, -20, 2, 10);
 
         // Small cells on/near buildings.
-        node(session, "sc-plaza", "Small Cell Plaza", NodeType.SMALL_CELL, -20, 2, 15);
-        node(session, "sc-market", "Small Cell Market", NodeType.SMALL_CELL, 10, 2, 20);
-        node(session, "sc-harbor", "Small Cell Harbor", NodeType.SMALL_CELL, 20, 2, -25);
+        node(session, "sc-plaza", "City Plaza Small Cell", NodeType.SMALL_CELL, -35, 2, 48);
+        node(session, "sc-market", "Market Quarter Small Cell", NodeType.SMALL_CELL, 5, 2, 58);
+        node(session, "sc-harbor", "Harbor Small Cell", NodeType.SMALL_CELL, 35, 2, -82);
 
         // Aggregation / control.
-        node(session, "odu-1", "O-DU North Hub", NodeType.O_DU, 0, 1, 10);
-        node(session, "odu-2", "O-DU South Hub", NodeType.O_DU, 0, 1, -15);
-        node(session, "ocu-1", "O-CU Control", NodeType.O_CU, 20, 1, 0);
+        node(session, "odu-1", "North Aggregation Hub", NodeType.O_DU, -4, 1, 35);
+        node(session, "odu-2", "South Aggregation Hub", NodeType.O_DU, -5, 1, -38);
+        node(session, "ocu-1", "Metro O-CU Control Centre", NodeType.O_CU, 42, 1, 8);
 
         // Core transport chain.
-        node(session, "edge-1", "Edge Data Centre", NodeType.EDGE, 30, 1, 18);
-        node(session, "upf-1", "UPF Gateway", NodeType.UPF, 40, 1, 0);
-        node(session, "core-1", "Core Data Centre", NodeType.CORE, 55, 1, 0);
-        node(session, "dc-1", "Regional Data Centre", NodeType.DATA_CENTRE, 70, 1, 12);
+        node(session, "edge-1", "East Edge Data Centre", NodeType.EDGE, 76, 1, 45);
+        node(session, "upf-1", "Carrier UPF Gateway", NodeType.UPF, 86, 1, 0);
+        node(session, "core-1", "Core Network Campus", NodeType.CORE, 118, 1, -5);
+        node(session, "dc-1", "Regional Cloud Data Centre", NodeType.DATA_CENTRE, 150, 1, 38);
 
         // Fixed satellite relays high above the city.
-        node(session, "sat-1", "Satellite Relay Alpha", NodeType.SATELLITE, 0, 85, 0);
-        node(session, "sat-2", "Satellite Relay Beta", NodeType.SATELLITE, 40, 90, 10);
+        node(session, "sat-1", "Emergency Satellite Alpha", NodeType.SATELLITE, -25, 95, -25);
+        node(session, "sat-2", "Emergency Satellite Beta", NodeType.SATELLITE, 115, 105, 35);
     }
 
     private void addLinks(GameSession session) {
@@ -109,20 +110,53 @@ public class TopologyGeneratorService {
     /** A few lightweight decorative / obstruction objects for the 3D city. */
     private void addMapObjects(GameSession session) {
         session.addMapObject(new MapObject("bld-1", MapObjectType.DECORATIVE_BUILDING,
-                "Office Block", -15, 0, 22, 6, 12, 6));
+                "Downtown Office Block", -18, 0, 28, 12, 18, 10));
         session.addMapObject(new MapObject("bld-2", MapObjectType.DECORATIVE_BUILDING,
-                "Apartments", 12, 0, -10, 8, 9, 8));
+                "North Apartments", -48, 0, 70, 14, 12, 12));
         session.addMapObject(new MapObject("bld-3", MapObjectType.DECORATIVE_BUILDING,
-                "Market Hall", 8, 0, 25, 10, 6, 10));
+                "Market Hall", 8, 0, 48, 18, 7, 14));
+        session.addMapObject(new MapObject("bld-4", MapObjectType.DECORATIVE_BUILDING,
+                "Airport Terminal", 82, 0, 88, 28, 9, 16));
+        session.addMapObject(new MapObject("bld-5", MapObjectType.DECORATIVE_BUILDING,
+                "Harbor Warehouse", 30, 0, -65, 28, 8, 18));
+        session.addMapObject(new MapObject("bld-6", MapObjectType.DECORATIVE_BUILDING,
+                "Core Operations Hall", 120, 0, -22, 28, 12, 18));
         session.addMapObject(new MapObject("obs-1", MapObjectType.TALL_OBSTRUCTION,
-                "Central Skyscraper", 5, 0, 5, 8, 40, 8));
+                "Central Skyscraper", 18, 0, 15, 12, 48, 12));
+        session.addMapObject(new MapObject("obs-2", MapObjectType.TALL_OBSTRUCTION,
+                "Hospital Tower", -75, 0, -72, 14, 34, 14));
         session.addMapObject(new MapObject("cz-1", MapObjectType.CONSTRUCTION_ZONE,
-                "Roadworks (West Ave)", -35, 0, 5, 12, 1, 12));
+                "Roadworks (West Ave)", -95, 0, 15, 24, 1, 16));
+        session.addMapObject(new MapObject("cz-2", MapObjectType.CONSTRUCTION_ZONE,
+                "Harbor Fibre Works", 12, 0, -52, 22, 1, 12));
     }
 
     private void node(GameSession session, String id, String name, NodeType type,
                       double x, double y, double z) {
         session.addNode(new NetworkNode(id, name, type, x, y, z));
+    }
+
+    /**
+     * Reset the existing network to a clean baseline for a new round, keeping
+     * the same map. Links go back to healthy with zero load, their capacity
+     * scaled by {@code capacityFactor} (lower = congests faster); nodes go
+     * healthy. Incidents/packets are cleared by the caller.
+     */
+    public void resetForRound(GameSession session, double capacityFactor) {
+        for (NetworkLink link : session.getLinks()) {
+            double latency = baseLatencyFor(link.getLinkType());
+            link.setCapacity(capacityFor(link.getLinkType()) * capacityFactor);
+            link.setCurrentLoad(0.0);
+            link.setBaseLatencyMs(latency);
+            link.setCurrentLatencyMs(latency);
+            link.setPacketLossRate(packetLossFor(link.getLinkType()));
+            link.recomputeStatus();
+        }
+        for (NetworkNode node : session.getNodes()) {
+            node.setStatus(NodeStatus.HEALTHY);
+            node.setLatencyMultiplier(1.0);
+            node.setPacketLossRate(0.0);
+        }
     }
 
     private void link(GameSession session, String id, String sourceId, String targetId, LinkType type) {

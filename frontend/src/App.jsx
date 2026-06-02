@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Component } from 'react'
 import { useGame } from './state/GameContext'
 import useGameState from './hooks/useGameState'
 import HomeScreen from './screens/HomeScreen'
@@ -17,6 +18,12 @@ export default function App() {
   }, [])
 
   if (booting) return <LoadingScreen message="Booting the 5G arena network." />
+import IntermissionScreen from './screens/IntermissionScreen'
+import TutorialScreen from './screens/TutorialScreen'
+
+export default function App() {
+  const { sessionId, mode } = useGame()
+  if (mode === 'tutorial') return <TutorialScreen />
   if (!sessionId) return <HomeScreen />
   return <SessionRouter sessionId={sessionId} />
 }
@@ -30,6 +37,41 @@ function SessionRouter({ sessionId }) {
   }
 
   if (state.status === 'WAITING') return <LobbyScreen state={state} transport={transport} />
+  if (state.status === 'INTERMISSION') return <IntermissionScreen state={state} />
   if (state.status === 'COMPLETED') return <CompletedScreen state={state} />
-  return <GameScreen state={state} transport={transport} />
+  return (
+    <GameErrorBoundary>
+      <GameScreen state={state} transport={transport} />
+    </GameErrorBoundary>
+  )
+}
+
+class GameErrorBoundary extends Component {
+  constructor(props) {
+    super(props)
+    this.state = { error: null }
+  }
+
+  static getDerivedStateFromError(error) {
+    return { error }
+  }
+
+  componentDidCatch(error) {
+    console.error('Game screen failed to render', error)
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="screen center">
+          <div className="card">
+            <h2>Game screen failed to render</h2>
+            <p className="muted">{this.state.error.message}</p>
+          </div>
+        </div>
+      )
+    }
+
+    return this.props.children
+  }
 }

@@ -1,6 +1,8 @@
 package com.packetquest.dto;
 
+import com.packetquest.config.RoundConfig;
 import com.packetquest.model.GameSession;
+import com.packetquest.model.GameDifficulty;
 import com.packetquest.model.IncidentEvent;
 import com.packetquest.model.MapObject;
 import com.packetquest.model.NetworkLink;
@@ -22,6 +24,12 @@ import java.util.List;
 public record GameStateDto(
         String sessionId,
         SessionStatus status,
+        GameDifficulty difficulty,
+        String mapFamily,
+        int currentRound,
+        int totalRounds,
+        String roundTitle,
+        String roundTagline,
         long remainingSeconds,
         List<Player> players,
         List<NetworkNode> nodes,
@@ -42,6 +50,12 @@ public record GameStateDto(
         return new GameStateDto(
                 session.getId(),
                 session.getStatus(),
+                session.getDifficulty(),
+                session.getMapFamily(),
+                session.getCurrentRound(),
+                session.getTotalRounds(),
+                RoundConfig.forRound(session.getCurrentRound()).title(),
+                RoundConfig.forRound(session.getCurrentRound()).tagline(),
                 session.remainingSeconds(now),
                 List.copyOf(session.getPlayers()),
                 List.copyOf(session.getNodes()),

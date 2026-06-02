@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useGame } from '../../state/GameContext'
 import { previewRoute, submitRoute } from '../../services/api'
+import { buildRouteAssist, estimatePath } from '../../utils/routeAssist'
+import { districtForNode, friendlyNodeName } from '../../utils/mapDisplay'
 
 export default function RouteControlsPanel({
   state,
@@ -10,6 +12,7 @@ export default function RouteControlsPanel({
   onRoutePath,
   routeNotice,
   onClearPacket,
+  onSubmitRoute,
 }) {
   const { sessionId } = useGame()
   const [result, setResult] = useState(null)
@@ -26,20 +29,31 @@ export default function RouteControlsPanel({
   const pending = (state.packetFlows || []).filter(
     (f) => f.ownerPlayerId === playerId && f.status === 'PENDING'
   )
+  const nodeIndex = useMemo(() => {
+    return Object.fromEntries((state.nodes || []).map((n) => [n.id, n]))
+  }, [state.nodes])
+
+  const routeAssist = useMemo(
+    () => buildRouteAssist(state, selectedPacket, routePath),
+    [state, selectedPacket, routePath]
+  )
+  const routeStats = useMemo(
+    () => estimatePath(state, routePath, selectedPacket),
+    [state, routePath, selectedPacket]
+  )
 
   const routeComplete = selectedPacket
     && routePath.length >= 2
     && routePath[0] === selectedPacket.sourceNodeId
     && routePath[routePath.length - 1] === selectedPacket.destinationNodeId
 
-  // Fetch a non-binding estimate whenever the player has a complete candidate
-  // route. The preview is advisory only — a failure never blocks submission,
-  // and the authoritative result still comes from submitRoute.
+  // Fetch a non-binding backend estimate when a real match has a complete
+  // candidate route. The tutorial keeps using its local guided estimate.
   useEffect(() => {
-    if (!routeComplete) {
+    if (!routeComplete || onSubmitRoute || !sessionId) {
       setPreview(null)
       setPreviewing(false)
-      return
+      return undefined
     }
     let cancelled = false
     setPreviewing(true)
@@ -52,14 +66,17 @@ export default function RouteControlsPanel({
       .catch(() => { if (!cancelled) setPreview(null) })
       .finally(() => { if (!cancelled) setPreviewing(false) })
     return () => { cancelled = true }
-  }, [routeComplete, sessionId, playerId, selectedPacket?.id, routePath.join('|')])
+  }, [routeComplete, onSubmitRoute, sessionId, playerId, selectedPacket?.id, routePath.join('|')])
 
   const nextHint = useMemo(() => {
     if (!selectedPacket) return null
     const last = routePath[routePath.length - 1]
     if (last === selectedPacket.destinationNodeId) return 'Route reaches the destination. Ready to submit.'
-    return `Click a node connected to ${last} and finish at ${selectedPacket.destinationNodeId}.`
-  }, [routePath, selectedPacket])
+    const suggested = routeAssist.suggestedNextId ? friendlyNodeName(nodeIndex[routeAssist.suggestedNextId] || routeAssist.suggestedNextId) : null
+    return suggested
+      ? `Valid next hops are highlighted cyan. Best next: ${suggested}.`
+      : `Click a highlighted node connected to ${friendlyNodeName(nodeIndex[last] || last)}.`
+  }, [routePath, selectedPacket, routeAssist.suggestedNextId, nodeIndex])
 
   const onSubmit = async () => {
     if (!routeComplete) return
@@ -67,16 +84,27 @@ export default function RouteControlsPanel({
     setError(null)
     setResult(null)
     try {
-      const res = await submitRoute(sessionId, {
-        playerId,
-        packetFlowId: selectedPacket.id,
-        path: routePath,
-      })
+      const res = onSubmitRoute
+        ? await onSubmitRoute({ selectedPacket, routePath, routeStats })
+        : await submitRoute(sessionId, {
+            playerId,
+            packetFlowId: selectedPacket.id,
+            path: routePath,
+          })
       const summary = `${res.packetStatus} | ${Math.round(res.latencyMs)}ms | ${res.scoreDelta >= 0 ? '+' : ''}${res.scoreDelta}`
-      setResult({ delivered: res.packetStatus === 'DELIVERED', text: res.message ? `${summary} — ${res.message}` : summary })
+      setResult({
+        delivered: res.packetStatus === 'DELIVERED',
+        text: res.message ? `${summary} - ${res.message}` : summary,
+      })
       onClearPacket()
     } catch (e) {
-      setError(e.message)
+      // The round can end (intermission) in the ~1.5s between state polls; a
+      // submit landing in that window is a harmless timing race, not a failure.
+      if (/not active|INTERMISSION|COMPLETED/i.test(e.message || '')) {
+        setError('Round ended — hold on for the next round.')
+      } else {
+        setError(e.message)
+      }
     } finally {
       setBusy(false)
     }
@@ -91,10 +119,12 @@ export default function RouteControlsPanel({
           <>
             <span className="route-label">
               <strong>{selectedPacket.trafficType}</strong>
-              &nbsp;{selectedPacket.sourceNodeId} to {selectedPacket.destinationNodeId}
+              &nbsp;{friendlyNodeName(nodeIndex[selectedPacket.sourceNodeId] || selectedPacket.sourceNodeId)}
+              &nbsp;to&nbsp;
+              {friendlyNodeName(nodeIndex[selectedPacket.destinationNodeId] || selectedPacket.destinationNodeId)}
             </span>
             <span className="route-path" title="Click connected nodes on the map to extend the path">
-              {routePath.length ? routePath.join(' -> ') : '-'}
+              {routePath.length ? routePath.map((id) => friendlyNodeName(nodeIndex[id] || id)).join(' -> ') : '-'}
             </span>
             <button className="ghost" onClick={onUndo} disabled={routePath.length <= 1}>Undo</button>
             <button className="ghost" onClick={onClearPacket}>Cancel</button>
@@ -110,9 +140,18 @@ export default function RouteControlsPanel({
           </span>
         )}
       </div>
+
+      {selectedPacket && (
+        <RouteQuality
+          source={nodeIndex[selectedPacket.sourceNodeId] || selectedPacket.sourceNodeId}
+          dest={nodeIndex[selectedPacket.destinationNodeId] || selectedPacket.destinationNodeId}
+          stats={routeStats}
+        />
+      )}
+
       {selectedPacket && routeComplete && (
         <div className="route-preview">
-          {previewing && <span className="muted">Estimating…</span>}
+          {previewing && <span className="muted">Estimating...</span>}
           {!previewing && preview && preview.valid && (
             <div className="route-preview-row">
               <span className="preview-stat">~{Math.round(preview.estimatedLatencyMs)}ms</span>
@@ -125,19 +164,51 @@ export default function RouteControlsPanel({
             </div>
           )}
           {!previewing && preview && !preview.valid && (
-            <span className="risk risk-high">Route can't be delivered</span>
+            <span className="risk risk-high">Route cannot be delivered</span>
           )}
           {!previewing && preview && preview.warnings?.length > 0 && (
             <ul className="route-warnings">
-              {preview.warnings.map((w, i) => <li key={i}>⚠ {w}</li>)}
+              {preview.warnings.map((warning, index) => <li key={index}>Warning: {warning}</li>)}
             </ul>
           )}
         </div>
       )}
+
       {selectedPacket && <p className="route-result">{routeNotice || nextHint}</p>}
       {result && <p className={`route-result ${result.delivered ? 'ok' : 'bad'}`}>{result.text}</p>}
       {error && <p className="route-result bad">{error}</p>}
     </section>
+  )
+}
+
+function RouteQuality({ source, dest, stats }) {
+  const quality = stats?.quality || 'building'
+  const timeLeft = stats?.timeLeftSeconds
+  const utilisationPct = Math.round((stats?.worstUtilisation || 0) * 100)
+  const lossPct = (stats?.lossPct || 0).toFixed(stats?.lossPct >= 10 ? 0 : 1)
+  return (
+    <div className={`route-quality route-${quality}`}>
+      <div className="route-quality-main">
+        <span>
+          <strong>{friendlyNodeName(source)}</strong>
+          <small>{districtForNode(source)}</small>
+        </span>
+        <div className="route-quality-bar" aria-hidden="true">
+          <i style={{ width: `${Math.min(100, Math.max(10, utilisationPct || (stats?.hops ? 28 : 10)))}%` }} />
+        </div>
+        <span>
+          <strong>{friendlyNodeName(dest)}</strong>
+          <small>{districtForNode(dest)}</small>
+        </span>
+      </div>
+      <div className="route-quality-stats">
+        <span>{stats?.qualityLabel || 'Route in progress'}</span>
+        <span>{stats?.hops || 0} hops</span>
+        <span>{Math.round(stats?.latencyMs || 0)}ms latency</span>
+        <span>{lossPct}% loss</span>
+        {timeLeft != null && <span>{timeLeft}s left</span>}
+      </div>
+    </div>
   )
 }
 

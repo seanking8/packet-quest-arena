@@ -258,10 +258,10 @@ function satellitePosition(slot, elapsed) {
 }
 
 function cityToPlanet(node, radius) {
-  const nx = ((node.x || 0) - 15) / 60
-  const nz = ((node.z || 0) - 15) / 60
-  const phi = Math.PI / 2 - nx * 0.8
-  const theta = nz * 0.8
+  const nx = THREE.MathUtils.clamp(((node.x || 0) - 5) / 180, -1, 1)
+  const nz = THREE.MathUtils.clamp((node.z || 0) / 140, -1, 1)
+  const phi = Math.PI / 2 - nx * 1.15
+  const theta = nz * 1.2
   return new THREE.Vector3(
     radius * Math.sin(phi) * Math.cos(theta),
     radius * Math.cos(phi),

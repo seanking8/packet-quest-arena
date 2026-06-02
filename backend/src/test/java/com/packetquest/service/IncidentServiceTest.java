@@ -3,6 +3,7 @@ package com.packetquest.service;
 import com.packetquest.dto.GameStateDto;
 import com.packetquest.dto.IncidentSubmissionRequest;
 import com.packetquest.exception.SessionNotFoundException;
+import com.packetquest.model.GameDifficulty;
 import com.packetquest.model.GameSession;
 import com.packetquest.model.IncidentType;
 import com.packetquest.model.LinkStatus;
@@ -46,19 +47,22 @@ class IncidentServiceTest {
     }
 
     @Test
-    void weatherIncident_appearsInStateAndDegradesWirelessLinks() {
+    void weatherIncident_appearsInStateAndDegradesNearbyWirelessLinks() {
         double baseLoss = link("l-runorth-oru").getPacketLossRate(); // RADIO
+        double outOfZoneLoss = link("l-rusouth-oru").getPacketLossRate(); // RADIO
 
         GameStateDto state = service.applyIncident(session.getId(), new IncidentSubmissionRequest(
-                IncidentType.WEATHER_ELECTRICAL_STORM, "ZONE", "zone-downtown", 0.5, 25,
-                "Electrical storm over downtown.",
+                IncidentType.WEATHER_ELECTRICAL_STORM, "ZONE", "zone-north", 0.5, 25,
+                "Electrical storm over north suburbs.",
                 List.of(LinkType.RADIO, LinkType.MMWAVE, LinkType.MICROWAVE),
                 List.of(), List.of(),
-                new VisualZone("zone-downtown", 20, -10, 18)));
+                new VisualZone("zone-north", -70, 85, 25)));
 
         assertThat(state.incidents()).hasSize(1);
         assertThat(state.incidents().get(0).getEventType()).isEqualTo(IncidentType.WEATHER_ELECTRICAL_STORM);
+        assertThat(state.incidents().get(0).getAffectedLinkIds()).contains("l-runorth-oru");
         assertThat(link("l-runorth-oru").getPacketLossRate()).isGreaterThan(baseLoss);
+        assertThat(link("l-rusouth-oru").getPacketLossRate()).isEqualTo(outOfZoneLoss);
     }
 
     @Test
@@ -72,18 +76,45 @@ class IncidentServiceTest {
     }
 
     @Test
-    void weatherAffectsAllLinksOfTheGivenTypes() {
+    void easyDifficultySoftensLinkFailures() {
+        session.setDifficulty(GameDifficulty.EASY);
+        double baseLatency = link("l-upf-core").getBaseLatencyMs();
+
+        service.applyIncident(session.getId(), new IncidentSubmissionRequest(
+                IncidentType.FIBRE_CUT, "LINK", "l-upf-core", 0.6, 30,
+                "Fibre damage near the core.",
+                List.of(), List.of(), List.of("l-upf-core"), null));
+
+        assertThat(link("l-upf-core").getStatus()).isNotEqualTo(LinkStatus.FAILED);
+        assertThat(link("l-upf-core").getCurrentLatencyMs()).isGreaterThan(baseLatency);
+        assertThat(session.getIncidents().get(0).getSeverity()).isLessThan(0.6);
+    }
+
+    @Test
+    void zonedWeatherDoesNotAffectAllLinksOfTheGivenTypes() {
         service.applyIncident(session.getId(), new IncidentSubmissionRequest(
                 IncidentType.WEATHER_HIGH_WINDS, "ZONE", "zone-north", 0.4, 20,
                 "High winds.", List.of(LinkType.RADIO, LinkType.MICROWAVE),
-                List.of(), List.of(), new VisualZone("zone-north", -30, 30, 20)));
+                List.of(), List.of(), new VisualZone("zone-north", -70, 85, 25)));
 
-        // every RADIO/MICROWAVE link should have gained latency over its base
-        List<NetworkLink> wireless = session.getLinks().stream()
-                .filter(l -> l.getLinkType() == LinkType.RADIO || l.getLinkType() == LinkType.MICROWAVE)
+        assertThat(link("l-runorth-oru").getCurrentLatencyMs())
+                .isGreaterThan(link("l-runorth-oru").getBaseLatencyMs());
+        assertThat(link("l-rusouth-oru").getCurrentLatencyMs())
+                .isEqualTo(link("l-rusouth-oru").getBaseLatencyMs());
+    }
+
+    @Test
+    void typeOnlyIncidentStillFallsBackToAllMatchingTypes() {
+        service.applyIncident(session.getId(), new IncidentSubmissionRequest(
+                IncidentType.WEATHER_HIGH_WINDS, "ZONE", "zone-wide", 0.4, 20,
+                "High winds.", List.of(LinkType.RADIO),
+                List.of(), List.of(), null));
+
+        List<NetworkLink> radio = session.getLinks().stream()
+                .filter(l -> l.getLinkType() == LinkType.RADIO)
                 .toList();
-        assertThat(wireless).isNotEmpty();
-        assertThat(wireless).allSatisfy(l ->
+        assertThat(radio).isNotEmpty();
+        assertThat(radio).allSatisfy(l ->
                 assertThat(l.getCurrentLatencyMs()).isGreaterThan(l.getBaseLatencyMs()));
     }
 
@@ -110,6 +141,29 @@ class IncidentServiceTest {
         assertThat(link("l-upf-core").getStatus()).isNotEqualTo(LinkStatus.FAILED);
         assertThat(session.getIncidents())
                 .noneMatch(i -> i.getEventType() == IncidentType.FIBRE_CUT);
+    }
+
+    @Test
+    void weatherClear_restoresLinksFromMatchingWeatherZone() {
+        service.applyIncident(session.getId(), new IncidentSubmissionRequest(
+                IncidentType.WEATHER_ELECTRICAL_STORM, "ZONE", "zone-north", 0.5, 25,
+                "Electrical storm over north suburbs.",
+                List.of(LinkType.RADIO),
+                List.of(), List.of(),
+                new VisualZone("zone-north", -70, 85, 25)));
+        assertThat(link("l-runorth-oru").getCurrentLatencyMs())
+                .isGreaterThan(link("l-runorth-oru").getBaseLatencyMs());
+
+        service.applyIncident(session.getId(), new IncidentSubmissionRequest(
+                IncidentType.WEATHER_CLEAR, "ZONE", "zone-north", 0.0, 10,
+                "Weather is clearing.",
+                List.of(), List.of(), List.of(),
+                new VisualZone("zone-north", -70, 85, 25)));
+
+        assertThat(link("l-runorth-oru").getCurrentLatencyMs())
+                .isEqualTo(link("l-runorth-oru").getBaseLatencyMs());
+        assertThat(session.getIncidents())
+                .noneMatch(i -> i.getEventType() == IncidentType.WEATHER_ELECTRICAL_STORM);
     }
 
     @Test

@@ -37,8 +37,12 @@ async function request(path, options = {}) {
   return res.json()
 }
 
-/** POST /api/sessions -> { sessionId, status } */
-export const createSession = () => request('/sessions', { method: 'POST' })
+/** POST /api/sessions -> { sessionId, status, difficulty } */
+export const createSession = (difficulty = 'MEDIUM') =>
+  request('/sessions', {
+    method: 'POST',
+    body: JSON.stringify({ difficulty }),
+  })
 
 /** POST /api/sessions/{id}/players -> { player, state } */
 export const joinSession = (sessionId, displayName) =>
@@ -48,8 +52,15 @@ export const joinSession = (sessionId, displayName) =>
   })
 
 /** POST /api/sessions/{id}/start -> GameStateDto */
-export const startMatch = (sessionId) =>
-  request(`/sessions/${sessionId}/start`, { method: 'POST' })
+export const startMatch = (sessionId, mapFamily = 'CITY') =>
+  request(`/sessions/${sessionId}/start`, {
+    method: 'POST',
+    body: JSON.stringify({ mapFamily }),
+  })
+
+/** POST /api/sessions/{id}/next-round -> GameStateDto (host advances rounds) */
+export const nextRound = (sessionId) =>
+  request(`/sessions/${sessionId}/next-round`, { method: 'POST' })
 
 /** GET /api/sessions/{id}/state -> GameStateDto */
 export const getState = (sessionId) => request(`/sessions/${sessionId}/state`)

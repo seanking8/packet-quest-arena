@@ -199,10 +199,7 @@ public class RoutingService {
         }
         for (NetworkLink link : links) {
             for (IncidentEvent incident : session.getIncidents()) {
-                boolean byId = link.getId().equals(incident.getTargetId())
-                        || incident.getAffectedLinkIds().contains(link.getId());
-                boolean byType = incident.getAffectedLinkTypes().contains(link.getLinkType());
-                if (byId || byType) {
+                if (incidentAffectsLink(incident, link)) {
                     warnings.add(String.format("Active %s affects this route.", incident.getEventType()));
                 }
             }
@@ -350,6 +347,16 @@ public class RoutingService {
             }
         }
         return penalty;
+    }
+
+    private boolean incidentAffectsLink(IncidentEvent incident, NetworkLink link) {
+        if (link.getId().equals(incident.getTargetId()) || incident.getAffectedLinkIds().contains(link.getId())) {
+            return true;
+        }
+        if (!incident.getAffectedLinkIds().isEmpty()) {
+            return false;
+        }
+        return incident.getAffectedLinkTypes().contains(link.getLinkType());
     }
 
     private double computeLossRisk(List<NetworkLink> links, List<LinkStatus> preStatuses) {

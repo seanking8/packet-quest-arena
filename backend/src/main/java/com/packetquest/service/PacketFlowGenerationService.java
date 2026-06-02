@@ -58,7 +58,7 @@ public class PacketFlowGenerationService {
     public void generateInitialJobs(GameSession session) {
         List<Player> players = session.getPlayers();
         for (int i = 0; i < players.size(); i++) {
-            createJobsForPlayer(session, players.get(i), i, INITIAL_JOBS_PER_PLAYER);
+            createJobsForPlayer(session, players.get(i), i, session.getDifficulty().initialJobsPerPlayer());
         }
     }
 
@@ -112,13 +112,14 @@ public class PacketFlowGenerationService {
             TrafficType type = ROTATION.get(Math.floorMod(step, ROTATION.size()));
             NetworkNode source = sources.get(Math.floorMod(step, sources.size()));
             NetworkNode destination = sinks.get(Math.floorMod(step, sinks.size()));
-            session.addPacketFlow(buildJob(player, type, source, destination, now));
+            session.addPacketFlow(buildJob(session, player, type, source, destination, now));
         }
     }
 
-    private PacketFlow buildJob(Player player, TrafficType type,
+    private PacketFlow buildJob(GameSession session, Player player, TrafficType type,
                                 NetworkNode source, NetworkNode destination, Instant now) {
         TrafficProfile profile = trafficProfiles.profileFor(type);
+        int deadlineSeconds = playerDeadlineSeconds(session, profile);
         PacketFlow flow = new PacketFlow(
                 UUID.randomUUID().toString(),
                 player.getId(),
@@ -126,13 +127,17 @@ public class PacketFlowGenerationService {
                 destination.getId(),
                 type,
                 profile.packetSize(),
-                profile.deadlineSeconds()
+                deadlineSeconds
         );
         flow.setValue(profile.value());
         flow.setCreatedAt(now);
-        flow.setExpiresAt(now.plusSeconds(profile.deadlineSeconds()));
+        flow.setExpiresAt(now.plusSeconds(deadlineSeconds));
         // status defaults to PENDING; selectedPath null; latencyMs/scoreDelta 0
         return flow;
+    }
+
+    private int playerDeadlineSeconds(GameSession session, TrafficProfile profile) {
+        return session.getDifficulty().scaleDeadlineSeconds(profile.deadlineSeconds());
     }
 
     private List<NetworkNode> nodesOfType(GameSession session, Set<NodeType> types) {

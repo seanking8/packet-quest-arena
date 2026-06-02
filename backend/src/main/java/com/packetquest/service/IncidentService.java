@@ -3,6 +3,7 @@ package com.packetquest.service;
 import com.packetquest.dto.GameStateDto;
 import com.packetquest.dto.IncidentSubmissionRequest;
 import com.packetquest.exception.SessionNotFoundException;
+import com.packetquest.model.GameDifficulty;
 import com.packetquest.model.GameSession;
 import com.packetquest.model.IncidentEvent;
 import com.packetquest.model.IncidentType;
@@ -11,12 +12,14 @@ import com.packetquest.model.LinkType;
 import com.packetquest.model.NetworkLink;
 import com.packetquest.model.NetworkNode;
 import com.packetquest.model.NodeStatus;
+import com.packetquest.model.VisualZone;
 import com.packetquest.repository.GameSessionRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -50,11 +53,12 @@ public class IncidentService {
 
         synchronized (session) {
             Instant now = Instant.now();
-            IncidentEvent incident = toIncident(request, now);
+            IncidentEvent incident = toIncident(request, now, session.getDifficulty());
             session.addIncident(incident);
 
             List<NetworkLink> links = resolveLinks(session, request);
             List<NetworkNode> nodes = resolveNodes(session, request);
+            incident.setAffectedLinkIds(mergeAffectedLinkIds(request.affectedLinkIds(), links));
             applyEffects(session, incident, links, nodes);
 
             sessionRepo.save(session);
@@ -77,13 +81,13 @@ public class IncidentService {
         }
     }
 
-    private IncidentEvent toIncident(IncidentSubmissionRequest request, Instant now) {
+    private IncidentEvent toIncident(IncidentSubmissionRequest request, Instant now, GameDifficulty difficulty) {
         IncidentEvent incident = new IncidentEvent(
                 UUID.randomUUID().toString(),
                 request.eventType(),
                 request.targetType(),
                 request.targetId(),
-                request.severity(),
+                difficulty.scaleIncidentSeverity(request.severity()),
                 request.message(),
                 request.durationSeconds());
         incident.setStartedAt(now);
@@ -95,7 +99,7 @@ public class IncidentService {
         return incident;
     }
 
-    /** Links targeted by id, targetId, or affected link type. */
+    /** Links targeted by id, targetId, or affected link type within the visual zone. */
     private List<NetworkLink> resolveLinks(GameSession session, IncidentSubmissionRequest request) {
         Set<String> ids = new HashSet<>(nullSafe(request.affectedLinkIds()));
         if ("LINK".equalsIgnoreCase(request.targetType()) && request.targetId() != null) {
@@ -104,11 +108,74 @@ public class IncidentService {
         Set<LinkType> types = new HashSet<>(nullSafe(request.affectedLinkTypes()));
         List<NetworkLink> result = new ArrayList<>();
         for (NetworkLink link : session.getLinks()) {
-            if (ids.contains(link.getId()) || types.contains(link.getLinkType())) {
+            boolean directMatch = ids.contains(link.getId());
+            boolean typeMatch = types.contains(link.getLinkType())
+                    && linkTouchesZone(session, link, request.visualZone());
+            if (directMatch || typeMatch) {
                 result.add(link);
             }
         }
+        if (result.isEmpty() && isRecoveryLike(request.eventType()) && request.targetId() != null) {
+            Set<String> matchingIncidentLinkIds = linkIdsFromMatchingIncidents(session, request.targetId());
+            for (NetworkLink link : session.getLinks()) {
+                if (matchingIncidentLinkIds.contains(link.getId())) {
+                    result.add(link);
+                }
+            }
+        }
         return result;
+    }
+
+    private boolean isRecoveryLike(IncidentType eventType) {
+        return eventType == IncidentType.RECOVERY || eventType == IncidentType.WEATHER_CLEAR;
+    }
+
+    private Set<String> linkIdsFromMatchingIncidents(GameSession session, String targetId) {
+        Set<String> ids = new HashSet<>();
+        for (IncidentEvent incident : session.getIncidents()) {
+            if (targetId.equals(incident.getTargetId())
+                    && incident.getEventType() != IncidentType.RECOVERY
+                    && incident.getEventType() != IncidentType.WEATHER_CLEAR) {
+                ids.addAll(incident.getAffectedLinkIds());
+            }
+        }
+        return ids;
+    }
+
+    private List<String> mergeAffectedLinkIds(List<String> submittedIds, List<NetworkLink> links) {
+        Set<String> ids = new LinkedHashSet<>(nullSafe(submittedIds));
+        links.forEach(link -> ids.add(link.getId()));
+        return new ArrayList<>(ids);
+    }
+
+    private boolean linkTouchesZone(GameSession session, NetworkLink link, VisualZone zone) {
+        if (zone == null) {
+            return true;
+        }
+        NetworkNode source = findNode(session, link.getSourceNodeId());
+        NetworkNode target = findNode(session, link.getTargetNodeId());
+        if (source == null || target == null) {
+            return false;
+        }
+        double radius = Math.max(0.0, zone.radius()) + 4.0;
+        double midX = (source.getX() + target.getX()) / 2.0;
+        double midZ = (source.getZ() + target.getZ()) / 2.0;
+        return pointInZone(source.getX(), source.getZ(), zone, radius)
+                || pointInZone(target.getX(), target.getZ(), zone, radius)
+                || pointInZone(midX, midZ, zone, radius);
+    }
+
+    private NetworkNode findNode(GameSession session, String nodeId) {
+        return session.getNodes().stream()
+                .filter(node -> node.getId().equals(nodeId))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private boolean pointInZone(double x, double z, VisualZone zone, double radius) {
+        double dx = x - zone.x();
+        double dz = z - zone.z();
+        return Math.sqrt(dx * dx + dz * dz) <= radius;
     }
 
     private List<NetworkNode> resolveNodes(GameSession session, IncidentSubmissionRequest request) {
@@ -129,7 +196,13 @@ public class IncidentService {
                               List<NetworkLink> links, List<NetworkNode> nodes) {
         double severity = incident.getSeverity();
         switch (incident.getEventType()) {
-            case FIBRE_CUT, LINK_FAILURE -> links.forEach(l -> l.setStatus(LinkStatus.FAILED));
+            case FIBRE_CUT, LINK_FAILURE -> {
+                if (session.getDifficulty() == GameDifficulty.EASY) {
+                    degradeLinks(links, severity);
+                } else {
+                    links.forEach(l -> l.setStatus(LinkStatus.FAILED));
+                }
+            }
             case LINK_CONGESTION -> links.forEach(l -> {
                 l.setCurrentLoad(Math.max(l.getCurrentLoad(), l.getCapacity() * 0.9));
                 l.recomputeStatus();
@@ -154,6 +227,14 @@ public class IncidentService {
             });
             case WEATHER_CLEAR, RECOVERY -> recover(session, incident, links, nodes);
         }
+    }
+
+    private void degradeLinks(List<NetworkLink> links, double severity) {
+        links.forEach(l -> {
+            l.setPacketLossRate(clamp(l.getPacketLossRate() + severity * 0.08));
+            l.setCurrentLatencyMs(l.getCurrentLatencyMs() + l.getBaseLatencyMs() * Math.max(0.5, severity));
+            l.recomputeStatus();
+        });
     }
 
     /** Recovery / clear: restore affected links/nodes and drop matching incidents. */

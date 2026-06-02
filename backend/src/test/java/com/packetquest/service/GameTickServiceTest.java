@@ -32,12 +32,22 @@ class GameTickServiceTest {
     @BeforeEach
     void setUp() {
         repo = new GameSessionRepository();
+        GameStateBroadcaster noop = (id, state) -> { /* no-op broadcaster */ };
+        // Weather generator that never fires, so tick tests stay deterministic.
+        WeatherGenerationService noWeather = new WeatherGenerationService() {
+            @Override
+            public boolean shouldGenerate(com.packetquest.model.GameDifficulty difficulty) {
+                return false;
+            }
+        };
         tick = new GameTickService(
                 repo,
                 new PacketFlowGenerationService(new TrafficProfiles()),
                 new TrafficProfiles(),
                 new ScoreCalculator(),
-                (id, state) -> { /* no-op broadcaster */ });
+                noop,
+                noWeather,
+                new IncidentService(repo, noop));
     }
 
     private NetworkLink link(GameSession s, double capacity, double load) {
@@ -58,6 +68,67 @@ class GameTickServiceTest {
         tick.tick(s.getId());
 
         assertThat(l.getCurrentLoad()).isEqualTo(60.0); // 80 * 0.75
+    }
+
+    @Test
+    void tickGeneratesIncidentInStormRoundWhenGeneratorFires() {
+        GameSessionRepository wRepo = new GameSessionRepository();
+        GameStateBroadcaster noop = (id, state) -> { };
+        // Generator that always fires this tick.
+        WeatherGenerationService alwaysFires = new WeatherGenerationService() {
+            @Override
+            public boolean shouldGenerateForRound(int round) {
+                return true;
+            }
+        };
+        GameTickService wTick = new GameTickService(
+                wRepo,
+                new PacketFlowGenerationService(new TrafficProfiles()),
+                new TrafficProfiles(),
+                new ScoreCalculator(),
+                noop,
+                alwaysFires,
+                new IncidentService(wRepo, noop));
+
+        GameSession s = new GameSession();
+        s.start();
+        s.startNextRound(Instant.now()); // round 2
+        s.startNextRound(Instant.now()); // round 3 — storm round
+        wRepo.save(s);
+
+        wTick.tick(s.getId());
+
+        // Round 3 produces a disruption (weather, link failure or degradation).
+        assertThat(s.getIncidents()).isNotEmpty();
+    }
+
+    @Test
+    void noAutoIncidentsInRoundOne() {
+        GameSessionRepository wRepo = new GameSessionRepository();
+        GameStateBroadcaster noop = (id, state) -> { };
+        WeatherGenerationService alwaysFires = new WeatherGenerationService() {
+            @Override
+            public boolean shouldGenerateForRound(int round) {
+                return true;
+            }
+        };
+        GameTickService wTick = new GameTickService(
+                wRepo,
+                new PacketFlowGenerationService(new TrafficProfiles()),
+                new TrafficProfiles(),
+                new ScoreCalculator(),
+                noop,
+                alwaysFires,
+                new IncidentService(wRepo, noop));
+
+        GameSession s = new GameSession();
+        s.start(); // round 1 — calm
+        wRepo.save(s);
+
+        wTick.tick(s.getId());
+
+        // Round 1 generates no auto-incidents even if the roll always fires.
+        assertThat(s.getIncidents()).isEmpty();
     }
 
     @Test
@@ -139,15 +210,32 @@ class GameTickServiceTest {
     }
 
     @Test
-    void matchCompletesWhenTimerEnds() {
+    void firstRoundTimerEndsIntoIntermission() {
         GameSession s = new GameSession();
         s.setDurationSeconds(60);
-        s.start(Instant.now().minusSeconds(120)); // remaining clamps to 0
+        s.start(Instant.now().minusSeconds(120)); // round 1 time clamps to 0
+        repo.save(s);
+
+        tick.tick(s.getId());
+
+        // Rounds remain, so the round freezes into intermission (not completed).
+        assertThat(s.getStatus()).isEqualTo(SessionStatus.INTERMISSION);
+        assertThat(s.getCurrentRound()).isEqualTo(1);
+    }
+
+    @Test
+    void finalRoundTimerEndsCompletesMatch() {
+        GameSession s = new GameSession();
+        s.setDurationSeconds(60);
+        s.start(Instant.now());
+        s.startNextRound(Instant.now()); // round 2
+        s.startNextRound(Instant.now().minusSeconds(120)); // round 3, time clamps to 0
         repo.save(s);
 
         tick.tick(s.getId());
 
         assertThat(s.getStatus()).isEqualTo(SessionStatus.COMPLETED);
+        assertThat(s.getCurrentRound()).isEqualTo(GameSession.TOTAL_ROUNDS);
     }
 
     @Test

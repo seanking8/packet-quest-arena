@@ -9,6 +9,7 @@ Env vars:
   SESSION_ID      if set, POST incidents to this session; otherwise print only
   SIMULATOR_SEED  optional int seed for repeatable runs
   SIMULATOR_COUNT number of incidents to emit (0 = run forever, default 0)
+  SIMULATOR_DIFFICULTY EASY, MEDIUM, or HARD (default MEDIUM)
 """
 import json
 import os
@@ -23,6 +24,7 @@ BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8080")
 SESSION_ID = os.getenv("SESSION_ID")
 SEED = os.getenv("SIMULATOR_SEED")
 COUNT = int(os.getenv("SIMULATOR_COUNT", "0"))
+DIFFICULTY = os.getenv("SIMULATOR_DIFFICULTY", "MEDIUM")
 
 
 def _post(incident):
@@ -34,8 +36,8 @@ def _post(incident):
         print(f"Failed to post incident: {exc}")
 
 
-def run(count=COUNT, seed=SEED, sleep=time.sleep):
-    generator = IncidentGenerator(seed=int(seed) if seed is not None else None)
+def run(count=COUNT, seed=SEED, sleep=time.sleep, difficulty=DIFFICULTY):
+    generator = IncidentGenerator(seed=int(seed) if seed is not None else None, difficulty=difficulty)
     print("Chaos engine started"
           + (f" (posting to session {SESSION_ID})" if SESSION_ID else " (print-only)"))
     emitted = 0

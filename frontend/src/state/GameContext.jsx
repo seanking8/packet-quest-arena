@@ -1,5 +1,5 @@
 import { createContext, useContext, useState } from 'react'
-import { createSession, joinSession, startMatch } from '../services/api'
+import { createSession, joinSession, startMatch, nextRound as nextRoundApi } from '../services/api'
 
 /**
  * Holds the player's session identity (sessionId, playerId, name) and the
@@ -11,6 +11,7 @@ export function GameProvider({ children }) {
   const [sessionId, setSessionId] = useState(null)
   const [playerId, setPlayerId] = useState(null)
   const [playerName, setPlayerName] = useState('')
+  const [mode, setMode] = useState('live')
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
 
@@ -28,9 +29,9 @@ export function GameProvider({ children }) {
   }
 
   /** Create a new session and join it as the first player (host). */
-  const host = (name) =>
+  const host = (name, difficulty = 'MEDIUM') =>
     run(async () => {
-      const { sessionId: id } = await createSession()
+      const { sessionId: id } = await createSession(difficulty)
       const { player } = await joinSession(id, name)
       setSessionId(id)
       setPlayerId(player.id)
@@ -46,13 +47,25 @@ export function GameProvider({ children }) {
       setPlayerName(name)
     })
 
-  /** Start the match (host action). */
-  const start = () => run(() => startMatch(sessionId))
+  /** Start the match with the host's chosen map family (host action). */
+  const start = (mapFamily = 'CITY') => run(() => startMatch(sessionId, mapFamily))
+
+  /** Advance from intermission to the next round (host action). */
+  const advanceRound = () => run(() => nextRoundApi(sessionId))
 
   const leave = () => {
     setSessionId(null)
     setPlayerId(null)
     setPlayerName('')
+    setMode('live')
+    setError(null)
+  }
+
+  const startTutorial = () => {
+    setSessionId(null)
+    setPlayerId('tutorial-player')
+    setPlayerName('Trainee')
+    setMode('tutorial')
     setError(null)
   }
 
@@ -60,12 +73,15 @@ export function GameProvider({ children }) {
     sessionId,
     playerId,
     playerName,
+    mode,
     error,
     busy,
     setError,
     host,
     join,
     start,
+    advanceRound,
+    startTutorial,
     leave,
   }
 

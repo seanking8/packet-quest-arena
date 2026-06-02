@@ -1,10 +1,12 @@
 package com.packetquest.service;
 
+import com.packetquest.config.RoundConfig;
 import com.packetquest.config.TrafficProfiles;
 import com.packetquest.dto.GameStateDto;
 import com.packetquest.exception.SessionNotFoundException;
 import com.packetquest.model.GameSession;
 import com.packetquest.model.IncidentEvent;
+import com.packetquest.model.IncidentType;
 import com.packetquest.model.LinkStatus;
 import com.packetquest.model.LinkType;
 import com.packetquest.model.NetworkLink;
@@ -36,23 +38,31 @@ public class GameTickService {
     public static final double LOAD_DECAY_RATE = 0.25;
     /** Loads below this snap to zero so congestion can fully clear. */
     private static final double LOAD_ZERO_EPSILON = 1.0;
+    /** Cap on simultaneous active (non-clear) weather events per session. */
+    private static final int MAX_CONCURRENT_INCIDENTS = 4;
 
     private final GameSessionRepository sessionRepo;
     private final PacketFlowGenerationService packetFlowGenerator;
     private final TrafficProfiles trafficProfiles;
     private final ScoreCalculator scoreCalculator;
     private final GameStateBroadcaster broadcaster;
+    private final WeatherGenerationService weatherGenerator;
+    private final IncidentService incidentService;
 
     public GameTickService(GameSessionRepository sessionRepo,
                            PacketFlowGenerationService packetFlowGenerator,
                            TrafficProfiles trafficProfiles,
                            ScoreCalculator scoreCalculator,
-                           GameStateBroadcaster broadcaster) {
+                           GameStateBroadcaster broadcaster,
+                           WeatherGenerationService weatherGenerator,
+                           IncidentService incidentService) {
         this.sessionRepo = sessionRepo;
         this.packetFlowGenerator = packetFlowGenerator;
         this.trafficProfiles = trafficProfiles;
         this.scoreCalculator = scoreCalculator;
         this.broadcaster = broadcaster;
+        this.weatherGenerator = weatherGenerator;
+        this.incidentService = incidentService;
     }
 
     @Scheduled(fixedRateString = "${packetquest.tick.fixed-rate-ms:1000}")
@@ -83,16 +93,45 @@ public class GameTickService {
             expireFinishedIncidents(session, now);
 
             if (session.remainingSeconds(now) <= 0) {
-                session.complete(now); // stop generating; keep final scores
+                if (session.hasNextRound()) {
+                    session.endRound(now); // freeze into intermission; wait for host
+                } else {
+                    session.complete(now); // final round done; keep final scores
+                }
             } else {
                 packetFlowGenerator.replenishPendingJobs(
-                        session, PacketFlowGenerationService.MIN_PENDING_PER_PLAYER);
+                        session, session.getDifficulty().minPendingJobsPerPlayer());
+                maybeGenerateWeather(session);
             }
 
             sessionRepo.save(session);
             GameStateDto state = GameStateDto.from(session, now);
             broadcaster.broadcast(sessionId, state);
             return state;
+        }
+    }
+
+    /**
+     * Roll a round-appropriate disruption so each round has a visible signature:
+     * round 1 calm, round 2 congestion, round 3 weather + link failures. We cap
+     * concurrent active incidents so they don't pile up, then let
+     * IncidentService apply the effect (resolution, severity scaling, broadcast).
+     */
+    private void maybeGenerateWeather(GameSession session) {
+        int round = session.getCurrentRound();
+        long activeIncidents = session.getIncidents().stream()
+                .filter(i -> i.getEventType() != IncidentType.WEATHER_CLEAR
+                        && i.getEventType() != IncidentType.RECOVERY)
+                .count();
+        if (activeIncidents >= MAX_CONCURRENT_INCIDENTS) {
+            return;
+        }
+        if (!weatherGenerator.shouldGenerateForRound(round)) {
+            return;
+        }
+        var incident = weatherGenerator.nextIncidentForRound(session, round);
+        if (incident != null) {
+            incidentService.applyIncident(session.getId(), incident);
         }
     }
 
@@ -139,8 +178,9 @@ public class GameTickService {
 
     private void recoverExpiredIncident(GameSession session, IncidentEvent incident) {
         for (NetworkLink link : session.getLinks()) {
+            boolean hasResolvedIds = !incident.getAffectedLinkIds().isEmpty();
             boolean affectedById = incident.getAffectedLinkIds().contains(link.getId());
-            boolean affectedByType = incident.getAffectedLinkTypes().contains(link.getLinkType());
+            boolean affectedByType = !hasResolvedIds && incident.getAffectedLinkTypes().contains(link.getLinkType());
             if (affectedById || affectedByType) {
                 restoreLink(link);
             }
