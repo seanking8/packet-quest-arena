@@ -28,8 +28,8 @@ services:
       mysql:
         condition: service_healthy
     healthcheck:
-      # Plain TCP check on 8080 using the JRE (no curl in the slim image).
-      test: ["CMD", "bash", "-c", "echo > /dev/tcp/localhost/8080"]
+      # Spring Boot Actuator health endpoint (bash /dev/tcp avoids needing curl).
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/8080 && echo -e 'GET /actuator/health HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q UP <&3"]
       interval: 10s
       timeout: 5s
       retries: 10
