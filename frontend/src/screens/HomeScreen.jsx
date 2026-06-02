@@ -4,16 +4,16 @@ import ErrorBanner from '../components/common/ErrorBanner'
 import LoadingScreen from '../components/common/LoadingScreen'
 
 const DIFFICULTIES = [
-  { id: 'EASY', label: 'Easy', note: 'Longer deadlines, gentler incidents' },
-  { id: 'MEDIUM', label: 'Medium', note: 'Current challenge level' },
-  { id: 'HARD', label: 'Hard', note: 'Short deadlines, sharper chaos' },
+  { id: 'EASY', label: 'Easy' },
+  { id: 'MEDIUM', label: 'Medium' },
+  { id: 'HARD', label: 'Hard' },
 ]
 
 export default function HomeScreen() {
   const { host, join, startTutorial, error, setError, busy } = useGame()
   const [name, setName] = useState('')
   const [joinId, setJoinId] = useState('')
-  const [difficulty, setDifficulty] = useState('EASY')
+  const [difficulty, setDifficulty] = useState('MEDIUM')
 
   const canHost = name.trim().length > 0
   const canJoin = name.trim().length > 0 && joinId.trim().length > 0
@@ -59,7 +59,6 @@ export default function HomeScreen() {
                   onClick={() => setDifficulty(option.id)}
                 >
                   <span>{option.label}</span>
-                  <small>{option.note}</small>
                 </button>
               ))}
             </div>
