@@ -1762,6 +1762,9 @@ code.pill, .pill {
   .loading-route-nodes circle {
     animation: none;
     opacity: 1;
+  }
+}
+
 @media (max-width: 980px) {
   .map-legend {
     max-width: calc(100vw - 24px);
