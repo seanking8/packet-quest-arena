@@ -2,6 +2,7 @@ package com.packetquest.service;
 
 import com.packetquest.dto.GameStateDto;
 import com.packetquest.exception.GameRuleException;
+import com.packetquest.config.RoundConfig;
 import com.packetquest.exception.SessionNotFoundException;
 import com.packetquest.model.GameDifficulty;
 import com.packetquest.model.GameSession;
@@ -104,9 +105,44 @@ public class GameService {
             }
             session.setMapFamily(mapFamily); // host's chosen map (ignored if null/invalid)
             topologyGenerator.populate(session);
+            // Round 1 baseline (themes ramp up over the 3 rounds).
+            RoundConfig round1 = RoundConfig.forRound(1);
+            topologyGenerator.resetForRound(session, round1.capacityFactor());
             packetFlowGenerator.generateInitialJobs(session);
-            session.setDurationSeconds(session.getDifficulty().matchDurationSeconds());
+            session.setDurationSeconds(GameSession.ROUND_LENGTH_SECONDS);
             session.start();
+            sessionRepo.save(session);
+        }
+        GameStateDto state = GameStateDto.from(session);
+        broadcaster.broadcast(sessionId, state);
+        return state;
+    }
+
+    /**
+     * Host action: advance from intermission into the next round. Banks scores
+     * (they simply persist on players), resets the network to a clean but
+     * harder baseline, regenerates jobs, and restarts the 90s clock. After the
+     * final round there is no next round to start.
+     */
+    public GameStateDto nextRound(String sessionId) {
+        GameSession session = requireSession(sessionId);
+        synchronized (session) {
+            if (session.getStatus() != SessionStatus.INTERMISSION) {
+                throw new GameRuleException("Cannot start next round: session is "
+                        + session.getStatus() + ", not in intermission.");
+            }
+            if (!session.hasNextRound()) {
+                throw new GameRuleException("No further rounds; the match is over.");
+            }
+            int next = session.getCurrentRound() + 1;
+            RoundConfig cfg = RoundConfig.forRound(next);
+            // Fresh, harder network for the new round (scores stay on players).
+            session.getIncidents().clear();
+            session.getPacketFlows().clear();
+            topologyGenerator.resetForRound(session, cfg.capacityFactor());
+            packetFlowGenerator.generateInitialJobs(session);
+            session.setDurationSeconds(GameSession.ROUND_LENGTH_SECONDS);
+            session.startNextRound(java.time.Instant.now());
             sessionRepo.save(session);
         }
         GameStateDto state = GameStateDto.from(session);

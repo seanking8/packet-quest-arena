@@ -1,5 +1,5 @@
 import { createContext, useContext, useState } from 'react'
-import { createSession, joinSession, startMatch } from '../services/api'
+import { createSession, joinSession, startMatch, nextRound as nextRoundApi } from '../services/api'
 
 /**
  * Holds the player's session identity (sessionId, playerId, name) and the
@@ -50,6 +50,9 @@ export function GameProvider({ children }) {
   /** Start the match with the host's chosen map family (host action). */
   const start = (mapFamily = 'CITY') => run(() => startMatch(sessionId, mapFamily))
 
+  /** Advance from intermission to the next round (host action). */
+  const advanceRound = () => run(() => nextRoundApi(sessionId))
+
   const leave = () => {
     setSessionId(null)
     setPlayerId(null)
@@ -77,6 +80,7 @@ export function GameProvider({ children }) {
     host,
     join,
     start,
+    advanceRound,
     startTutorial,
     leave,
   }

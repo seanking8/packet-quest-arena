@@ -58,6 +58,11 @@ code.pill, .pill {
 .difficulty-pill {
   color: #c7f8ff;
 }
+.round-pill {
+  color: #ffe0ae;
+  border-color: rgba(255, 180, 84, 0.4);
+}
+.error-text { color: var(--bad); cursor: pointer; }
 .muted { color: var(--muted); }
 .tag { font-size: 11px; background: var(--accent); color: #fff; border-radius: 6px; padding: 1px 6px; margin-left: 6px; }
 

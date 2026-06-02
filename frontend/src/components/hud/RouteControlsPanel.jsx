@@ -98,7 +98,13 @@ export default function RouteControlsPanel({
       })
       onClearPacket()
     } catch (e) {
-      setError(e.message)
+      // The round can end (intermission) in the ~1.5s between state polls; a
+      // submit landing in that window is a harmless timing race, not a failure.
+      if (/not active|INTERMISSION|COMPLETED/i.test(e.message || '')) {
+        setError('Round ended — hold on for the next round.')
+      } else {
+        setError(e.message)
+      }
     } finally {
       setBusy(false)
     }

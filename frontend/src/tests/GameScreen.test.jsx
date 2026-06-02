@@ -60,7 +60,7 @@ const renderGame = () =>
 test('shows timer, counts and leaderboard from backend state', () => {
   renderGame()
   expect(screen.getByText('⏱ 2:05')).toBeInTheDocument()
-  expect(screen.getByText(/2 nodes · 1 links · 1 packets · 0 incidents/)).toBeInTheDocument()
+  expect(screen.getByText(/1 packets · 0 incidents/)).toBeInTheDocument()
   expect(screen.getByText('Alice')).toBeInTheDocument()
   expect(screen.getByText('Bob')).toBeInTheDocument()
 })

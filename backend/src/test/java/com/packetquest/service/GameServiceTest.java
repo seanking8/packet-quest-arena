@@ -25,10 +25,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class GameServiceTest {
 
     private GameService service;
+    private GameSessionRepository repo;
 
     @BeforeEach
     void setUp() {
-        service = new GameService(new GameSessionRepository(), new TopologyGeneratorService(),
+        repo = new GameSessionRepository();
+        service = new GameService(repo, new TopologyGeneratorService(),
                 new PacketFlowGenerationService(new TrafficProfiles()),
                 (id, state) -> { /* no-op broadcaster */ });
     }
@@ -103,7 +105,9 @@ class GameServiceTest {
         GameStateDto state = service.startSession(id);
 
         assertThat(state.status()).isEqualTo(SessionStatus.ACTIVE);
-        assertThat(state.remainingSeconds()).isEqualTo(GameSession.DEFAULT_DURATION_SECONDS);
+        // A match now starts in round 1, which runs for a fixed round length.
+        assertThat(state.remainingSeconds()).isEqualTo(GameSession.ROUND_LENGTH_SECONDS);
+        assertThat(state.currentRound()).isEqualTo(1);
         assertThat(state.difficulty()).isEqualTo(GameDifficulty.MEDIUM);
         assertThat(state.nodes()).isNotEmpty();
         assertThat(state.links()).isNotEmpty();
@@ -111,6 +115,40 @@ class GameServiceTest {
         assertThat(state.packetFlows())
                 .hasSize(2 * PacketFlowGenerationService.INITIAL_JOBS_PER_PLAYER);
         assertThat(state.serverTime()).isNotNull();
+    }
+
+    @Test
+    void nextRound_advancesRoundAndKeepsScores() {
+        String id = service.createSession().getId();
+        service.joinPlayer(id, "Alice");
+        service.joinPlayer(id, "Bob");
+        service.startSession(id);
+
+        GameSession session = repo.findById(id).orElseThrow();
+        session.getPlayers().get(0).addScore(150); // banked points from round 1
+        session.endRound(java.time.Instant.now());  // simulate the round timer ending
+
+        GameStateDto state = service.nextRound(id);
+
+        assertThat(state.status()).isEqualTo(SessionStatus.ACTIVE);
+        assertThat(state.currentRound()).isEqualTo(2);
+        assertThat(state.remainingSeconds()).isEqualTo(GameSession.ROUND_LENGTH_SECONDS);
+        // Scores carry over across rounds.
+        assertThat(state.players().get(0).getScore()).isEqualTo(150);
+        // Fresh jobs generated for the new round.
+        assertThat(state.packetFlows()).isNotEmpty();
+    }
+
+    @Test
+    void nextRound_whenNotInIntermission_isRejected() {
+        String id = service.createSession().getId();
+        service.joinPlayer(id, "Alice");
+        service.joinPlayer(id, "Bob");
+        service.startSession(id); // still ACTIVE, round 1
+
+        assertThatThrownBy(() -> service.nextRound(id))
+                .isInstanceOf(GameRuleException.class)
+                .hasMessageContaining("intermission");
     }
 
     @Test

@@ -20,10 +20,17 @@ public class GameSession {
     /** Default match length in seconds. */
     public static final int DEFAULT_DURATION_SECONDS = 300;
 
+    /** A match is played as this many rising-difficulty rounds. */
+    public static final int TOTAL_ROUNDS = 3;
+    /** Fixed length of every round, in seconds (kept short for demos). */
+    public static final int ROUND_LENGTH_SECONDS = 90;
+
     private final String id = UUID.randomUUID().toString();
     private SessionStatus status = SessionStatus.WAITING;
     private GameDifficulty difficulty = GameDifficulty.MEDIUM;
     private int durationSeconds = DEFAULT_DURATION_SECONDS;
+    /** Current round (1..TOTAL_ROUNDS); 0 while still WAITING. */
+    private int currentRound = 0;
     /** Map family the host chose at start ("CITY" or "DISTRICT"); display-only,
         broadcast so every player renders the same map. */
     private String mapFamily = "CITY";
@@ -48,10 +55,30 @@ public class GameSession {
         start(Instant.now());
     }
 
-    /** Starts the match at an explicit instant (used for deterministic tests). */
+    /** Starts the match (round 1) at an explicit instant (deterministic tests). */
     public void start(Instant at) {
         this.status = SessionStatus.ACTIVE;
         this.startedAt = at;
+        if (this.currentRound < 1) this.currentRound = 1;
+    }
+
+    /** True if there is another round after the current one. */
+    public boolean hasNextRound() {
+        return currentRound < TOTAL_ROUNDS;
+    }
+
+    /** End the current round: freeze into intermission (standings shown). */
+    public void endRound(Instant at) {
+        this.status = SessionStatus.INTERMISSION;
+        this.endedAt = at; // marks when the round froze
+    }
+
+    /** Begin the next round: advance the counter and restart the clock. */
+    public void startNextRound(Instant at) {
+        this.currentRound = Math.min(TOTAL_ROUNDS, this.currentRound + 1);
+        this.status = SessionStatus.ACTIVE;
+        this.startedAt = at;
+        this.endedAt = null;
     }
 
     /** Marks the match completed using the current time. */
@@ -81,7 +108,7 @@ public class GameSession {
      * </ul>
      */
     public long remainingSeconds(Instant now) {
-        if (status == SessionStatus.COMPLETED) {
+        if (status == SessionStatus.COMPLETED || status == SessionStatus.INTERMISSION) {
             return 0;
         }
         if (status == SessionStatus.WAITING || startedAt == null) {
@@ -163,6 +190,14 @@ public class GameSession {
         if (v.equals("CITY") || v.equals("DISTRICT")) {
             this.mapFamily = v;
         }
+    }
+
+    public int getCurrentRound() {
+        return currentRound;
+    }
+
+    public int getTotalRounds() {
+        return TOTAL_ROUNDS;
     }
 
     public int getDurationSeconds() {

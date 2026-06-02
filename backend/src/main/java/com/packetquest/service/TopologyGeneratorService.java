@@ -6,6 +6,7 @@ import com.packetquest.model.MapObject;
 import com.packetquest.model.MapObjectType;
 import com.packetquest.model.NetworkLink;
 import com.packetquest.model.NetworkNode;
+import com.packetquest.model.NodeStatus;
 import com.packetquest.model.NodeType;
 import org.springframework.stereotype.Service;
 
@@ -133,6 +134,29 @@ public class TopologyGeneratorService {
     private void node(GameSession session, String id, String name, NodeType type,
                       double x, double y, double z) {
         session.addNode(new NetworkNode(id, name, type, x, y, z));
+    }
+
+    /**
+     * Reset the existing network to a clean baseline for a new round, keeping
+     * the same map. Links go back to healthy with zero load, their capacity
+     * scaled by {@code capacityFactor} (lower = congests faster); nodes go
+     * healthy. Incidents/packets are cleared by the caller.
+     */
+    public void resetForRound(GameSession session, double capacityFactor) {
+        for (NetworkLink link : session.getLinks()) {
+            double latency = baseLatencyFor(link.getLinkType());
+            link.setCapacity(capacityFor(link.getLinkType()) * capacityFactor);
+            link.setCurrentLoad(0.0);
+            link.setBaseLatencyMs(latency);
+            link.setCurrentLatencyMs(latency);
+            link.setPacketLossRate(packetLossFor(link.getLinkType()));
+            link.recomputeStatus();
+        }
+        for (NetworkNode node : session.getNodes()) {
+            node.setStatus(NodeStatus.HEALTHY);
+            node.setLatencyMultiplier(1.0);
+            node.setPacketLossRate(0.0);
+        }
     }
 
     private void link(GameSession session, String id, String sourceId, String targetId, LinkType type) {

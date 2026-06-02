@@ -62,6 +62,11 @@ public class SessionController {
                 gameService.startSession(sessionId, request != null ? request.mapFamily() : null));
     }
 
+    @PostMapping("/{sessionId}/next-round")
+    public ResponseEntity<GameStateDto> nextRound(@PathVariable String sessionId) {
+        return ResponseEntity.ok(gameService.nextRound(sessionId));
+    }
+
     @GetMapping("/{sessionId}/state")
     public ResponseEntity<GameStateDto> state(@PathVariable String sessionId) {
         return ResponseEntity.ok(gameService.getState(sessionId));

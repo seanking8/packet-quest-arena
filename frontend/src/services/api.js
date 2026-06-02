@@ -58,6 +58,10 @@ export const startMatch = (sessionId, mapFamily = 'CITY') =>
     body: JSON.stringify({ mapFamily }),
   })
 
+/** POST /api/sessions/{id}/next-round -> GameStateDto (host advances rounds) */
+export const nextRound = (sessionId) =>
+  request(`/sessions/${sessionId}/next-round`, { method: 'POST' })
+
 /** GET /api/sessions/{id}/state -> GameStateDto */
 export const getState = (sessionId) => request(`/sessions/${sessionId}/state`)
 

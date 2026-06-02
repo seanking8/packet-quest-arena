@@ -5,6 +5,7 @@ import HomeScreen from './screens/HomeScreen'
 import LobbyScreen from './screens/LobbyScreen'
 import GameScreen from './screens/GameScreen'
 import CompletedScreen from './screens/CompletedScreen'
+import IntermissionScreen from './screens/IntermissionScreen'
 import TutorialScreen from './screens/TutorialScreen'
 
 export default function App() {
@@ -30,6 +31,7 @@ function SessionRouter({ sessionId }) {
   }
 
   if (state.status === 'WAITING') return <LobbyScreen state={state} transport={transport} />
+  if (state.status === 'INTERMISSION') return <IntermissionScreen state={state} />
   if (state.status === 'COMPLETED') return <CompletedScreen state={state} />
   return (
     <GameErrorBoundary>

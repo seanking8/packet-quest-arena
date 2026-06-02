@@ -1,5 +1,6 @@
 package com.packetquest.service;
 
+import com.packetquest.config.RoundConfig;
 import com.packetquest.config.TrafficProfiles;
 import com.packetquest.dto.GameStateDto;
 import com.packetquest.exception.SessionNotFoundException;
@@ -38,7 +39,7 @@ public class GameTickService {
     /** Loads below this snap to zero so congestion can fully clear. */
     private static final double LOAD_ZERO_EPSILON = 1.0;
     /** Cap on simultaneous active (non-clear) weather events per session. */
-    private static final int MAX_CONCURRENT_WEATHER = 2;
+    private static final int MAX_CONCURRENT_INCIDENTS = 4;
 
     private final GameSessionRepository sessionRepo;
     private final PacketFlowGenerationService packetFlowGenerator;
@@ -92,7 +93,11 @@ public class GameTickService {
             expireFinishedIncidents(session, now);
 
             if (session.remainingSeconds(now) <= 0) {
-                session.complete(now); // stop generating; keep final scores
+                if (session.hasNextRound()) {
+                    session.endRound(now); // freeze into intermission; wait for host
+                } else {
+                    session.complete(now); // final round done; keep final scores
+                }
             } else {
                 packetFlowGenerator.replenishPendingJobs(
                         session, session.getDifficulty().minPendingJobsPerPlayer());
@@ -107,23 +112,27 @@ public class GameTickService {
     }
 
     /**
-     * Occasionally roll live weather so a match always has changing conditions
-     * without the external simulator. Frequency scales with difficulty. We cap
-     * concurrent weather so storms don't pile up, then let IncidentService
-     * apply it (zone→link resolution, severity scaling, broadcast).
+     * Roll a round-appropriate disruption so each round has a visible signature:
+     * round 1 calm, round 2 congestion, round 3 weather + link failures. We cap
+     * concurrent active incidents so they don't pile up, then let
+     * IncidentService apply the effect (resolution, severity scaling, broadcast).
      */
     private void maybeGenerateWeather(GameSession session) {
-        long activeWeather = session.getIncidents().stream()
-                .filter(i -> i.getEventType() != null && i.getEventType().name().startsWith("WEATHER_"))
-                .filter(i -> i.getEventType() != IncidentType.WEATHER_CLEAR)
+        int round = session.getCurrentRound();
+        long activeIncidents = session.getIncidents().stream()
+                .filter(i -> i.getEventType() != IncidentType.WEATHER_CLEAR
+                        && i.getEventType() != IncidentType.RECOVERY)
                 .count();
-        if (activeWeather >= MAX_CONCURRENT_WEATHER) {
+        if (activeIncidents >= MAX_CONCURRENT_INCIDENTS) {
             return;
         }
-        if (!weatherGenerator.shouldGenerate(session.getDifficulty())) {
+        if (!weatherGenerator.shouldGenerateForRound(round)) {
             return;
         }
-        incidentService.applyIncident(session.getId(), weatherGenerator.nextWeather());
+        var incident = weatherGenerator.nextIncidentForRound(session, round);
+        if (incident != null) {
+            incidentService.applyIncident(session.getId(), incident);
+        }
     }
 
     private void decayLinkLoad(GameSession session) {
