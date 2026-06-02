@@ -130,6 +130,7 @@ code.pill, .pill {
   gap: 8px;
 }
 .pregame-screen .field span {
+  font-family: var(--display-font);
   color: #b8dacf;
   font-size: 13px;
   font-weight: 700;
@@ -1969,4 +1970,112 @@ button:not(.ghost):not(.toggle):not(.link-btn):not(:disabled):hover {
     grid-template-columns: 1fr;
     gap: 6px;
   }
+}
+
+/* ---- final HUD frame harmonization ---- */
+.card,
+.panel,
+.map-chooser,
+.map-card,
+.tutorial-card,
+.error-banner {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(34, 217, 228, 0.36);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(8, 28, 43, 0.90), rgba(4, 13, 25, 0.92)),
+    rgba(4, 13, 25, 0.92);
+  box-shadow:
+    inset 0 1px 0 rgba(90, 255, 235, 0.08),
+    0 18px 46px rgba(0, 0, 0, 0.30);
+}
+
+.card::before,
+.panel::before,
+.map-chooser::before,
+.map-card::before,
+.tutorial-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 18px;
+  right: 18px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--frame-green), var(--frame-cyan), var(--frame-blue), transparent);
+  opacity: 0.86;
+  pointer-events: none;
+}
+
+.card::after,
+.panel::after,
+.map-chooser::after,
+.map-card::after,
+.tutorial-card::after {
+  content: "";
+  position: absolute;
+  right: 13px;
+  bottom: 13px;
+  width: 44px;
+  height: 30px;
+  border-right: 1px solid rgba(34, 217, 228, 0.52);
+  border-bottom: 1px solid rgba(67, 224, 184, 0.42);
+  pointer-events: none;
+}
+
+.panel h3,
+.card h2,
+.map-chooser h2,
+.map-card-name,
+.home-header h1,
+.loading-title {
+  color: #bedbd7;
+  text-shadow: 0 1px 0 rgba(67, 224, 184, 0.22), 0 10px 28px rgba(0,0,0,0.42);
+}
+
+.field span,
+.route-label,
+.feed-group,
+.job-type,
+.incident-type {
+  font-family: var(--display-font);
+  letter-spacing: 0.02em;
+}
+
+.panel .job-list li,
+.panel .leaderboard li,
+.panel .incident-row,
+.player-list li,
+.route-quality,
+.tutorial-condition {
+  border: 1px solid rgba(34, 217, 228, 0.18);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(6, 20, 35, 0.52), rgba(3, 10, 22, 0.44)),
+    rgba(3, 10, 22, 0.44);
+}
+
+.panel .job-list li,
+.panel .leaderboard li,
+.panel .incident-row {
+  padding: 8px 10px;
+  margin-bottom: 7px;
+  border-bottom: 1px solid rgba(34, 217, 228, 0.18);
+}
+
+.job-selected {
+  background:
+    linear-gradient(180deg, rgba(34, 217, 228, 0.16), rgba(5, 14, 28, 0.54)),
+    rgba(5, 14, 28, 0.54);
+}
+
+input,
+select,
+.pill {
+  border-color: rgba(34, 217, 228, 0.30);
+}
+
+button:not(.ghost):not(.toggle):not(.link-btn) {
+  background: linear-gradient(180deg, rgba(54, 219, 202, 0.96), rgba(32, 128, 177, 0.96));
+  box-shadow: 0 10px 24px rgba(32, 208, 190, 0.24);
 }

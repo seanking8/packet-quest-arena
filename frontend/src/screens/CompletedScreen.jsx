@@ -7,7 +7,7 @@ export default function CompletedScreen({ state }) {
   const winner = leaderOf(state.players)
 
   return (
-    <div className="screen center">
+    <div className="screen center pregame-screen completed-screen">
       <div className="lobby">
         <header className="home-header">
           <h1>Match complete</h1>
