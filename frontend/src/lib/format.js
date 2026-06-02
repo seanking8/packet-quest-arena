@@ -56,6 +56,12 @@ export function networkPressure(links) {
     capacity += l.capacity || 0
   }
   const ratio = capacity > 0 ? Math.min(1, load / capacity) : 0
-  const band = ratio >= 0.66 ? 'HIGH' : ratio >= 0.33 ? 'MEDIUM' : 'LOW'
-  return { ratio, band }
+  return { ratio, band: pressureBand(ratio) }
+}
+
+/** Low/Medium/High band for a 0..1 pressure ratio. */
+function pressureBand(ratio) {
+  if (ratio >= 0.66) return 'HIGH'
+  if (ratio >= 0.33) return 'MEDIUM'
+  return 'LOW'
 }

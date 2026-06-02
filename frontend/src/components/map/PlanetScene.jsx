@@ -53,7 +53,7 @@ function Earth() {
           emissive="#16305a"
           emissiveIntensity={0.35}
           roughness={0.85}
-          metalness={0.0}
+          metalness={0}
         />
       </mesh>
 
@@ -82,11 +82,17 @@ function OrbitRing({ radius = ORBIT_R, tilt = 0 }) {
   )
 }
 
+/** Emissive intensity by node health: dim when failed, half when degraded. */
+function emissiveForStatus(status) {
+  if (status === 'FAILED') return 0.1
+  if (status === 'DEGRADED') return 0.5
+  return 1
+}
+
 function SatelliteNode({ node, position }) {
   const color = nodeColor(node)
   const failed = node.status === 'FAILED'
-  const degraded = node.status === 'DEGRADED'
-  const bodyEmissive = failed ? 0.1 : degraded ? 0.5 : 1.0
+  const bodyEmissive = emissiveForStatus(node.status)
 
   return (
     <group position={position} scale={1.35}>
@@ -110,11 +116,11 @@ function SatelliteNode({ node, position }) {
       </mesh>
       {/* Solar panels */}
       <mesh position={[1.75, 0, 0]}>
-        <boxGeometry args={[2.0, 0.06, 0.9]} />
+        <boxGeometry args={[2, 0.06, 0.9]} />
         <meshStandardMaterial color="#2f5fd0" emissive="#1b3a8a" emissiveIntensity={0.55} metalness={0.4} roughness={0.4} />
       </mesh>
       <mesh position={[-1.75, 0, 0]}>
-        <boxGeometry args={[2.0, 0.06, 0.9]} />
+        <boxGeometry args={[2, 0.06, 0.9]} />
         <meshStandardMaterial color="#2f5fd0" emissive="#1b3a8a" emissiveIntensity={0.55} metalness={0.4} roughness={0.4} />
       </mesh>
     </group>

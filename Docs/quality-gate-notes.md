@@ -8,13 +8,12 @@ this repository. Reproduce them with the commands in the README / below.
 - SonarQube Community Edition (Docker, `sonarqube:community`) on `localhost:9001`.
 - Scanner: `sonarsource/sonar-scanner-cli` (Docker), config in
   `sonar-project.properties`.
-- Coverage inputs generated before the scan:
+- Coverage inputs generated before the scan (all three suites measured):
   - Backend: JaCoCo (`backend/target/site/jacoco/jacoco.xml`)
   - Simulator: pytest-cov (`simulator/coverage.xml`)
-  - Frontend: **not measured** in this run (`@vitest/coverage-v8` not installed),
-    so the frontend counts as 0% and drags the overall coverage down.
+  - Frontend: Vitest + `@vitest/coverage-v8` (`frontend/coverage/lcov.info`)
 
-## Result (scan of commit 800f295)
+## Result (rescan of commit 12d4d0c with frontend coverage included)
 
 | Metric | Value |
 |---|---|
@@ -23,7 +22,7 @@ this repository. Reproduce them with the commands in the README / below.
 | Vulnerabilities | 0 |
 | Security hotspots | 10 (to review) |
 | Code smells | 1559 |
-| Coverage (overall) | 36.0% |
+| Coverage (overall) | 31.5% |
 | Duplicated lines | 14.2% |
 | Lines of code (ncloc) | 12,120 |
 | Security rating | A |
@@ -36,7 +35,13 @@ Component coverage (measured directly):
 |---|---|---|
 | Backend (JaCoCo) | 112 pass | ~82% instructions, ~82% lines, ~64% branches |
 | Simulator (pytest-cov) | 18 pass | ~98% lines |
-| Frontend (Vitest) | 26 pass | not measured this run |
+| Frontend (Vitest) | 26 pass | ~19% lines |
+
+> Note: overall coverage (31.5%) is *lower* than the first scan (36%) precisely
+> because the frontend is now **included** with its real ~19% — earlier the
+> frontend was excluded from the denominator, which flattered the number. The
+> frontend tests cover utils/api/format well but the large screen components
+> and 3D scenes are mostly untested — the clearest place to add tests next.
 
 ## Interpretation (honest)
 

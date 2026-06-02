@@ -39,11 +39,6 @@ public class WeatherGenerationService {
             new VisualZone("zone-core", 112, 12, 40),
             new VisualZone("zone-south", -42, -72, 42));
 
-    private static final List<IncidentType> WEATHER_TYPES = List.of(
-            IncidentType.WEATHER_ELECTRICAL_STORM,
-            IncidentType.WEATHER_HIGH_WINDS,
-            IncidentType.WEATHER_CLEAR);
-
     // Per-second chance an incident rolls, by round. Round 1 is calm; rounds 2
     // and 3 are deliberately frequent so disruptions are clearly visible inside
     // a 90s round. (Tunable.)
@@ -162,9 +157,13 @@ public class WeatherGenerationService {
     /** @deprecated prefer {@link #shouldGenerateForRound(int)}. */
     @Deprecated
     public boolean shouldGenerate(GameDifficulty difficulty) {
-        double chance = difficulty == GameDifficulty.HARD ? 0.075
-                : difficulty == GameDifficulty.EASY ? 0.04 : 0.055;
-        return rng.nextDouble() < chance;
+        return rng.nextDouble() < chanceFor(difficulty);
+    }
+
+    private static double chanceFor(GameDifficulty difficulty) {
+        if (difficulty == GameDifficulty.HARD) return 0.075;
+        if (difficulty == GameDifficulty.EASY) return 0.04;
+        return 0.055;
     }
 
     /** @deprecated prefer {@link #nextIncidentForRound(GameSession, int)}. */

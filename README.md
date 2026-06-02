@@ -145,9 +145,18 @@ sonar-scanner -Dsonar.host.url=<url> -Dsonar.login=<token>
 Viewing JaCoCo locally: open `backend/target/site/jacoco/index.html` in a
 browser for the line/branch coverage report.
 
-Latest locally measured coverage should be regenerated after new commits. The
-most recent recorded SonarQube details are in
-[Docs/quality-gate-notes.md](Docs/quality-gate-notes.md).
+Latest locally-measured coverage (regenerate to confirm):
+
+| Suite | Tests | Coverage |
+|---|---|---|
+| Backend (JaCoCo) | 112 pass | ~82% instructions, ~82% lines, ~64% branches |
+| Simulator (pytest-cov) | 18 pass | ~98% lines |
+| Frontend (Vitest + coverage-v8) | 26 pass | ~19% lines |
+
+A real local SonarQube scan has been run with all three suites' coverage —
+**Quality Gate: PASSED** (8 bugs, 0 vulnerabilities, ~31.5% overall coverage:
+backend ~82%, simulator ~98%, frontend ~19%). Full results and how to reproduce
+them are in [`Docs/quality-gate-notes.md`](Docs/quality-gate-notes.md).
 
 ## Project Structure
 

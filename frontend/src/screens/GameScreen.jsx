@@ -18,6 +18,13 @@ import { zoneCenter } from '../components/map/incidents'
 const DEFAULT_PANELS = { jobs: true, leaderboard: true, incidents: true, route: true }
 const DEFAULT_LAYERS = { weather: true, incidents: true, labels: false }
 
+/** HUD modifier class for the jobs sidebar state. */
+function jobsLayoutClass(jobsVisible, jobsCollapsed) {
+  if (!jobsVisible) return 'jobs-hidden'
+  if (jobsCollapsed) return 'jobs-collapsed'
+  return ''
+}
+
 export default function GameScreen({ state, transport }) {
   const { playerId } = useGame()
   const { play, playMusic } = useAudio()
@@ -29,6 +36,9 @@ export default function GameScreen({ state, transport }) {
   // session, so every player renders the same map for the whole match. There
   // is no in-game switch between families.
   const mapFamily = (state.mapFamily || 'CITY').toLowerCase() === 'district' ? 'district' : 'city'
+  // Pick the map components for the chosen family once, so the render stays flat.
+  const Map2D = mapFamily === 'district' ? TacticalMap : CityMap2D
+  const Map3D = mapFamily === 'district' ? DistrictScene : NetworkScene
 
   // Background music — pick track based on map family, start once on mount.
   useEffect(() => {
@@ -69,7 +79,7 @@ export default function GameScreen({ state, transport }) {
   useEffect(() => {
     if (!selectedPacket) return
     const latest = (state.packetFlows || []).find((f) => f.id === selectedPacket.id)
-    if (!latest || latest.status !== 'PENDING') {
+    if (latest?.status !== 'PENDING') {
       handleSelectPacket(null)
     } else if (latest !== selectedPacket) {
       setSelectedPacket(latest)
@@ -126,7 +136,7 @@ export default function GameScreen({ state, transport }) {
       setRoutePath((prev) => {
         const nodeId = item.kind === 'node'
           ? item.data.id
-          : nextNodeFromLink(item.data, prev[prev.length - 1])
+          : nextNodeFromLink(item.data, prev.at(-1))
         if (!nodeId) {
           setRouteNotice('Click a highlighted next-hop link connected to your current node.')
           return prev
@@ -136,7 +146,7 @@ export default function GameScreen({ state, transport }) {
           setRouteNotice(null)
           return prev.slice(0, existingIndex + 1)
         }
-        const last = prev[prev.length - 1]
+        const last = prev.at(-1)
         if (last === selectedPacket.destinationNodeId) {
           setRouteNotice('Route already reaches the destination — submit it, or Undo to change it.')
           return prev
@@ -155,16 +165,17 @@ export default function GameScreen({ state, transport }) {
 
       // Determine validity outside the setter for the audio call.
       const prev = routePath
+      const last = prev.at(-1)
       const nodeId = item.kind === 'node'
         ? item.data.id
-        : nextNodeFromLink(item.data, prev[prev.length - 1])
+        : nextNodeFromLink(item.data, last)
       if (!nodeId) {
         play('hopInvalid')
-      } else if (prev.indexOf(nodeId) >= 0) {
+      } else if (prev.includes(nodeId)) {
         play('hopValid') // trim back counts as valid navigation
-      } else if (prev[prev.length - 1] === selectedPacket.destinationNodeId) {
+      } else if (last === selectedPacket.destinationNodeId) {
         play('hopInvalid')
-      } else if (!prev[prev.length - 1] || connected(state.links || [], prev[prev.length - 1], nodeId)) {
+      } else if (!last || connected(state.links || [], last, nodeId)) {
         play('hopValid')
       } else {
         play('hopInvalid')
@@ -187,7 +198,7 @@ export default function GameScreen({ state, transport }) {
   }
 
   return (
-    <div className={`hud ${!panels.jobs ? 'jobs-hidden' : jobsCollapsed ? 'jobs-collapsed' : ''}`}>
+    <div className={`hud ${jobsLayoutClass(panels.jobs, jobsCollapsed)}`}>
       <TopBar state={state} transport={transport} panels={panels} onToggle={toggle} />
 
       {panels.jobs && (
@@ -215,46 +226,24 @@ export default function GameScreen({ state, transport }) {
       <div className="hud-center">
       <div className="map-layer">
         {view === 'tactical' ? (
-          mapFamily === 'district' ? (
-            <TacticalMap
-              state={state}
-              onSelect={handleSelect}
-              routePath={routePath}
-              selectedPacket={selectedPacket}
-              layers={layers}
-            />
-          ) : (
-            <CityMap2D
-              state={state}
-              onSelect={handleSelect}
-              routePath={routePath}
-              selectedPacket={selectedPacket}
-              layers={layers}
-            />
-          )
+          <Map2D
+            state={state}
+            onSelect={handleSelect}
+            routePath={routePath}
+            selectedPacket={selectedPacket}
+            layers={layers}
+          />
         ) : (
           <SceneErrorBoundary onError={handleSceneError}>
-            {mapFamily === 'district' ? (
-              <DistrictScene
-                state={state}
-                onSelect={handleSelect}
-                routePath={routePath}
-                selectedPacket={selectedPacket}
-                view={view}
-                layers={layers}
-                focus={focus}
-              />
-            ) : (
-              <NetworkScene
-                state={state}
-                onSelect={handleSelect}
-                routePath={routePath}
-                selectedPacket={selectedPacket}
-                view={view}
-                layers={layers}
-                focus={focus}
-              />
-            )}
+            <Map3D
+              state={state}
+              onSelect={handleSelect}
+              routePath={routePath}
+              selectedPacket={selectedPacket}
+              view={view}
+              layers={layers}
+              focus={focus}
+            />
           </SceneErrorBoundary>
         )}
       </div>
@@ -319,11 +308,11 @@ class SceneErrorBoundary extends Component {
 }
 
 function canUseWebGL() {
-  if (typeof window === 'undefined' || typeof document === 'undefined') return true
+  if (globalThis.window === undefined || globalThis.document === undefined) return true
   try {
     const canvas = document.createElement('canvas')
     return Boolean(
-      window.WebGLRenderingContext
+      globalThis.WebGLRenderingContext
       && (canvas.getContext('webgl2') || canvas.getContext('webgl') || canvas.getContext('experimental-webgl'))
     )
   } catch {

@@ -62,7 +62,7 @@ export function nodeSize(type) {
     case 'O_RU':
       return 1.2
     default:
-      return 1.0
+      return 1
   }
 }
 

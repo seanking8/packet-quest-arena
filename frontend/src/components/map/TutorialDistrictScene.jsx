@@ -2,7 +2,21 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Html, OrbitControls, Line } from '@react-three/drei'
 import * as THREE from 'three'
-import { nodeColor, linkColor, isBrokenLink } from './colors'
+import { isBrokenLink } from './colors'
+import {
+  districtNodeColor,
+  nodeRouteRole,
+  nodeTypeRadius,
+  nodeEmissiveIntensity,
+  nodeMaterialOpacity,
+  haloOpacity,
+  linkStrokeColor,
+  linkStrokeWidth,
+  linkStrokeOpacity,
+  linkHandleOpacity,
+  buildingColor,
+  buildingOpacity,
+} from './districtStyle'
 import { isWeather, incidentColor } from './incidents'
 import IncidentZones from './IncidentZones'
 import PlanetScene from './PlanetScene'
@@ -282,22 +296,12 @@ function NodeMesh({
   dimmed,
 }) {
   const [hovered, setHovered] = useState(false)
-  const color = isSource
-    ? '#36c98d'
-    : isDest
-      ? '#ff4f9a'
-      : isSuggestedNext
-        ? '#b8f7ff'
-        : isValidNext
-          ? '#66e6ff'
-          : inPath
-            ? '#ffd479'
-            : nodeColor(node)
+  const color = districtNodeColor(node, { isSource, isDest, isSuggestedNext, isValidNext, inPath })
   const failed = node.status === 'FAILED'
   const degraded = node.status === 'DEGRADED'
   const active = hovered || inPath || isSource || isDest || isCurrent || isValidNext || isSuggestedNext
   const anchor = nodeAnchor(node)
-  const hitRadius = node.type === 'SATELLITE' ? 5.2 : node.type === 'DATA_CENTRE' || node.type === 'CORE' ? 8 : 5
+  const hitRadius = nodeTypeRadius(node.type, 5.2)
 
   const handleSelect = (e) => {
     e.stopPropagation()
@@ -340,7 +344,7 @@ function NodeMesh({
         color={color}
         active={active}
         dimmed={dimmed}
-        role={isSource ? 'start' : isDest ? 'dest' : isCurrent ? 'current' : isSuggestedNext ? 'suggested' : isValidNext ? 'next' : null}
+        role={nodeRouteRole({ isSource, isDest, isCurrent, isSuggestedNext, isValidNext })}
         onSelect={handleSelect}
       />
     </group>
@@ -351,9 +355,9 @@ function NodeVisual({ node, color, failed, degraded, active, dimmed }) {
   const mat = {
     color,
     emissive: color,
-    emissiveIntensity: active ? 0.55 : degraded ? 0.35 : failed ? 0.04 : 0.18,
+    emissiveIntensity: nodeEmissiveIntensity(active, degraded, failed),
     transparent: failed || dimmed,
-    opacity: failed ? 0.55 : dimmed ? 0.38 : 1,
+    opacity: nodeMaterialOpacity(failed, dimmed),
   }
 
   switch (node.type) {
@@ -371,7 +375,7 @@ function NodeVisual({ node, color, failed, degraded, active, dimmed }) {
     case 'UPF':
       return <GatewayExchange color={color} mat={mat} />
     case 'CORE':
-      return <DataCentre color={color} mat={mat} scale={1.0} label="CORE" />
+      return <DataCentre color={color} mat={mat} scale={1} label="CORE" />
     case 'DATA_CENTRE':
       return <DataCentre color={color} mat={mat} scale={1.15} label="CLOUD" />
     case 'SATELLITE':
@@ -561,11 +565,11 @@ function SignalRing({ y, color, radius }) {
 
 function StatusHalo({ node, color, active, failed, dimmed, onSelect }) {
   const anchor = nodeAnchor(node)
-  const radius = node.type === 'SATELLITE' ? 6 : node.type === 'DATA_CENTRE' || node.type === 'CORE' ? 8 : 5
+  const radius = nodeTypeRadius(node.type, 6)
   return (
     <mesh position={[0, node.type === 'SATELLITE' ? anchor.y : 0.25, 0]} rotation={[Math.PI / 2, 0, 0]} onClick={onSelect}>
       <torusGeometry args={[radius, active ? 0.18 : 0.08, 8, 64]} />
-      <meshBasicMaterial color={failed ? '#ff5d6c' : color} transparent opacity={dimmed ? 0.12 : active ? 0.9 : 0.38} />
+      <meshBasicMaterial color={failed ? '#ff5d6c' : color} transparent opacity={haloOpacity(dimmed, active)} />
     </mesh>
   )
 }
@@ -623,11 +627,12 @@ function NextHopMarker({ node, suggested, onSelect }) {
 
 function NodeLabel({ node, color, active, dimmed, role, onSelect }) {
   const anchor = nodeAnchor(node)
+  const roleClass = role ? `role-${role}` : ''
   return (
     <Html
       center
       position={[0, anchor.y + (node.type === 'SATELLITE' ? 5 : 8), 0]}
-      className={`node-label node-label-3d ${active ? 'active' : ''} ${dimmed ? 'dimmed' : ''} ${role ? `role-${role}` : ''}`}
+      className={`node-label node-label-3d ${active ? 'active' : ''} ${dimmed ? 'dimmed' : ''} ${roleClass}`}
       style={{ '--node-color': color }}
     >
       <button type="button" onClick={onSelect}>
@@ -643,26 +648,12 @@ function NodeLabel({ node, color, active, dimmed, role, onSelect }) {
 function LinkLine({ link, a, b, onSelect, inRoute, isValidNext, isSuggested, dimmed, affectedColor }) {
   const points = useMemo(() => linkPoints(a, b, link), [a, b, link])
   const broken = isBrokenLink(link.status)
-  // Broken links are unmistakable: bright red, thick, dashed, with a ✕ DOWN tag.
-  const color = broken
-    ? '#ff3b4e'
-    : inRoute ? '#ffd479' : isValidNext ? '#66e6ff' : isSuggested ? '#b8f7ff' : linkColor(link)
   const isGround = link.linkType === 'FIBRE' || link.linkType === 'LEGACY'
+  // Broken links are unmistakable: bright red, thick, dashed, with a ✕ DOWN tag.
+  const color = linkStrokeColor({ broken, inRoute, isValidNext, isSuggested, link, brokenColor: '#ff3b4e' })
   const mid = points[Math.floor(points.length / 2)]
-  const lineWidth = broken
-    ? 4.2
-    : inRoute
-      ? 5.2
-      : isValidNext
-        ? 4.5
-        : isSuggested
-          ? 3.4
-          : link.status === 'OVERLOADED' || link.status === 'CONGESTED'
-            ? 3.8
-            : isGround
-              ? 2.4
-              : 1.8
-  const opacity = dimmed ? 0.2 : broken ? 0.95 : inRoute ? 1 : isValidNext ? 0.96 : isSuggested ? 0.62 : isGround ? 0.92 : 0.78
+  const lineWidth = linkStrokeWidth({ broken, inRoute, isValidNext, isSuggested, status: link.status, isGround, brokenWidth: 4.2 })
+  const opacity = linkStrokeOpacity({ dimmed, broken, inRoute, isValidNext, isSuggested, isGround, brokenOpacity: 0.95, brokenHighPriority: true })
   const selectLink = (e) => {
     e.stopPropagation()
     onSelect({ kind: 'link', data: link })
@@ -700,7 +691,7 @@ function LinkLine({ link, a, b, onSelect, inRoute, isValidNext, isSuggested, dim
       )}
       <mesh position={[mid.x, mid.y, mid.z]} onClick={selectLink}>
         <sphereGeometry args={[isValidNext ? 2.4 : 1.35, 10, 10]} />
-        <meshBasicMaterial color={color} transparent opacity={dimmed ? 0.04 : isValidNext ? 0.28 : 0.16} />
+        <meshBasicMaterial color={color} transparent opacity={linkHandleOpacity(dimmed, isValidNext)} />
       </mesh>
     </group>
   )
@@ -759,7 +750,7 @@ function Building({ obj, decorative = false }) {
   const h = obj.sizeY || obj.h || 8
   const sx = obj.sizeX || obj.w || 8
   const sz = obj.sizeZ || obj.d || 8
-  const color = obj.color || (construction ? '#b77e36' : tall ? '#636b78' : '#56616a')
+  const color = buildingColor(obj, construction, tall)
 
   if (construction) {
     return (
@@ -782,7 +773,7 @@ function Building({ obj, decorative = false }) {
     <group position={[obj.x, 0, obj.z]}>
       <mesh position={[0, h / 2, 0]}>
         <boxGeometry args={[sx, h, sz]} />
-        <meshStandardMaterial color={color} transparent opacity={decorative ? 0.9 : tall ? 0.82 : 0.88} roughness={0.82} />
+        <meshStandardMaterial color={color} transparent opacity={buildingOpacity(decorative, tall)} roughness={0.82} />
       </mesh>
       <mesh position={[0, h + 0.15, 0]}>
         <boxGeometry args={[sx * 0.92, 0.3, sz * 0.92]} />
@@ -949,7 +940,7 @@ function incidentTouchesLink(incident, link, nodeIndex) {
 function pointInZone(point, zone, radius) {
   const dx = (point.x || 0) - zone.x
   const dz = (point.z || 0) - zone.z
-  return Math.sqrt(dx * dx + dz * dz) <= radius
+  return Math.hypot(dx, dz) <= radius
 }
 
 function nodeAnchor(node) {

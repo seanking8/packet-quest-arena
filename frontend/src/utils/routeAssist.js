@@ -1,7 +1,7 @@
 const BROKEN_STATUS = new Set(['FAILED', 'EXPIRED'])
 
 export function edgeKey(a, b) {
-  return [a, b].sort().join('--')
+  return [a, b].sort((x, y) => x.localeCompare(y)).join('--')
 }
 
 export function linkBetween(links, a, b) {
@@ -20,7 +20,7 @@ export function buildRouteAssist(state, selectedPacket, routePath = []) {
   const links = state.links || []
   const sourceId = selectedPacket?.sourceNodeId
   const destId = selectedPacket?.destinationNodeId
-  const currentId = routePath[routePath.length - 1] || sourceId
+  const currentId = routePath.at(-1) || sourceId
 
   if (!selectedPacket || !sourceId || !destId || !currentId) {
     return {
@@ -158,16 +158,8 @@ export function estimatePath(state, path, packet) {
   }
 
   const lossPct = Math.max(0, Math.min(100, (1 - successProbability) * 100))
-  const complete = packet && path[0] === packet.sourceNodeId && path[path.length - 1] === packet.destinationNodeId
-  const quality = blocked
-    ? 'blocked'
-    : !complete
-      ? 'building'
-      : worstUtilisation >= 0.9 || lossPct >= 8
-        ? 'risky'
-        : worstUtilisation >= 0.65 || lossPct >= 4
-          ? 'caution'
-          : 'good'
+  const complete = packet && path[0] === packet.sourceNodeId && path.at(-1) === packet.destinationNodeId
+  const quality = pathQuality({ blocked, complete, worstUtilisation, lossPct })
 
   return {
     hops: path.length - 1,
@@ -202,6 +194,15 @@ function linkWeight(link) {
 
 function effectiveLatency(link) {
   return Number(link.currentLatencyMs || link.baseLatencyMs || 10)
+}
+
+/** Route quality band from path health. Order matters: worst conditions first. */
+function pathQuality({ blocked, complete, worstUtilisation, lossPct }) {
+  if (blocked) return 'blocked'
+  if (!complete) return 'building'
+  if (worstUtilisation >= 0.9 || lossPct >= 8) return 'risky'
+  if (worstUtilisation >= 0.65 || lossPct >= 4) return 'caution'
+  return 'good'
 }
 
 function qualityLabel(quality) {

@@ -7,6 +7,14 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: './src/setupTests.js',
+    coverage: {
+      provider: 'v8',
+      // lcov for SonarQube, text/html for humans.
+      reporter: ['text', 'lcov', 'html'],
+      reportsDirectory: './coverage',
+      include: ['src/**/*.{js,jsx}'],
+      exclude: ['src/tests/**', 'src/**/*.test.{js,jsx}', 'src/setupTests.js', 'src/main.jsx'],
+    },
   },
   server: {
     proxy: {

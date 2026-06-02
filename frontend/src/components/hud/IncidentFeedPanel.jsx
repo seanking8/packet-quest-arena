@@ -44,12 +44,11 @@ export default function IncidentFeedPanel({ state, onFocus }) {
 function IncidentRow({ incident, serverTime, onFocus }) {
   const meta = incidentMeta(incident.eventType)
   const remaining = remainingSeconds(incident, serverTime)
-  return (
-    <li
-      className={`incident-row${onFocus ? ' clickable' : ''}`}
-      onClick={onFocus ? () => onFocus(incident) : undefined}
-      title={onFocus ? 'Focus map on this incident' : undefined}
-    >
+  // The row's contents. When the row is focusable we wrap these in a real
+  // <button> (display:contents, so the layout is unchanged) to get native
+  // click + keyboard handling instead of bolting handlers onto the <li>.
+  const body = (
+    <>
       <span className="incident-type" style={{ color: meta.color }}>
         {meta.icon} {meta.label}
       </span>
@@ -59,6 +58,21 @@ function IncidentRow({ incident, serverTime, onFocus }) {
         <span className="sev">sev {Math.round((incident.severity || 0) * 100)}%</span>
         {remaining != null && <span className="sev">{remaining}s left</span>}
       </span>
+    </>
+  )
+  return (
+    <li className={`incident-row${onFocus ? ' clickable' : ''}`}>
+      {onFocus ? (
+        <button
+          type="button"
+          className="incident-row-action"
+          style={{ display: 'contents' }}
+          onClick={() => onFocus(incident)}
+          title="Focus map on this incident"
+        >
+          {body}
+        </button>
+      ) : body}
     </li>
   )
 }

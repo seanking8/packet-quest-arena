@@ -138,13 +138,27 @@ function HopMarker() {
   )
 }
 
+/** Selection highlight colour for a node, or null when not part of the route. */
+function nodeHighlight(isSource, isDest, inPath) {
+  if (isSource) return '#36c98d'
+  if (isDest) return '#ff7ab6'
+  if (inPath) return '#ffd479'
+  return null
+}
+
+/** Ring colour by node health when not otherwise highlighted. */
+function nodeHealthColor(node) {
+  if (node.status === 'FAILED') return '#ff5d6c'
+  if (node.status === 'DEGRADED') return '#ffb454'
+  return nodeColor(node)
+}
+
 function NodeMesh({ node, onSelect, inPath, isSource, isDest, isNextHop }) {
   const [hovered, setHovered] = useState(false)
   const failed = node.status === 'FAILED'
-  const degraded = node.status === 'DEGRADED'
-  const highlight = isSource ? '#36c98d' : isDest ? '#ff7ab6' : inPath ? '#ffd479' : null
+  const highlight = nodeHighlight(isSource, isDest, inPath)
   // Ring shows selection first, then health, then the node-type colour.
-  const ringColor = highlight || (failed ? '#ff5d6c' : degraded ? '#ffb454' : nodeColor(node))
+  const ringColor = highlight || nodeHealthColor(node)
   const active = hovered || inPath || isSource || isDest
   const sat = node.type === 'SATELLITE'
   const s = nodeSize(node.type)
@@ -211,12 +225,35 @@ function linkPoints(a, b, arc) {
   return [start, mid, end]
 }
 
+/** Link colour: route edges glow yellow, candidates cyan, else normal colour. */
+function linkLineColor(inRoute, candidate, link) {
+  if (inRoute) return '#ffd479'
+  if (candidate) return '#4fe0ff'
+  return linkColor(link)
+}
+
+/** Link thickness: route > candidate > congested > normal. */
+function linkLineWidth(inRoute, candidate, status) {
+  if (inRoute) return 4
+  if (candidate) return 3
+  if (status === 'OVERLOADED' || status === 'CONGESTED') return 3
+  return 1.6
+}
+
+/** Link opacity: solid for route, near-solid for candidates, faded when broken. */
+function linkLineOpacity(inRoute, candidate, broken) {
+  if (inRoute) return 1
+  if (candidate) return 0.95
+  if (broken) return 0.6
+  return 0.9
+}
+
 function LinkLine({ link, a, b, onSelect, inRoute, candidate, affectedColor }) {
   const arc = isArcLink(link.linkType)
   const points = useMemo(() => linkPoints(a, b, arc), [a, b, arc])
   // Route edges glow yellow; valid next-hop candidates glow cyan (matching the
   // node HopMarkers); everything else keeps its normal link colour.
-  const color = inRoute ? '#ffd479' : candidate ? '#4fe0ff' : linkColor(link)
+  const color = linkLineColor(inRoute, candidate, link)
   const broken = isBrokenLink(link.status)
   const mid = points[Math.floor(points.length / 2)]
   return (
@@ -224,12 +261,12 @@ function LinkLine({ link, a, b, onSelect, inRoute, candidate, affectedColor }) {
       <Line
         points={points}
         color={color}
-        lineWidth={inRoute ? 4 : candidate ? 3 : link.status === 'OVERLOADED' || link.status === 'CONGESTED' ? 3 : 1.6}
+        lineWidth={linkLineWidth(inRoute, candidate, link.status)}
         dashed={broken}
         dashSize={1}
         gapSize={0.6}
         transparent
-        opacity={inRoute ? 1 : candidate ? 0.95 : broken ? 0.6 : 0.9}
+        opacity={linkLineOpacity(inRoute, candidate, broken)}
       />
       {/* At-risk overlay: this link is touched by an active weather/incident. */}
       {affectedColor && !inRoute && (
@@ -250,6 +287,12 @@ function LinkLine({ link, a, b, onSelect, inRoute, candidate, affectedColor }) {
   )
 }
 
+function buildingColor(construction, tall) {
+  if (construction) return '#caa24a'
+  if (tall) return '#3a4775'
+  return '#2b3358'
+}
+
 function Building({ obj }) {
   const tall = obj.type === 'TALL_OBSTRUCTION'
   const construction = obj.type === 'CONSTRUCTION_ZONE'
@@ -258,7 +301,7 @@ function Building({ obj }) {
     <mesh position={[obj.x, h / 2, obj.z]}>
       <boxGeometry args={[obj.sizeX || 6, h, obj.sizeZ || 6]} />
       <meshStandardMaterial
-        color={construction ? '#caa24a' : tall ? '#3a4775' : '#2b3358'}
+        color={buildingColor(construction, tall)}
         transparent
         opacity={tall ? 0.45 : 0.28}
       />
@@ -426,7 +469,7 @@ function SceneContent({ state, onSelect, routePath, selectedPacket, layers }) {
 
   // While building a route, the nodes you're actually allowed to click next:
   // neighbours of the current path end that aren't already on the path.
-  const lastInPath = routePath[routePath.length - 1]
+  const lastInPath = routePath.at(-1)
   // While building a route, the valid next moves from the current path end:
   // usable links to unvisited neighbours. We track both the neighbour node ids
   // (for the cyan markers) and the candidate edges (so the links glow too).
@@ -565,5 +608,5 @@ export default function NetworkScene({ state, onSelect, routePath = [], selected
 }
 
 function edgeKey(a, b) {
-  return [a, b].sort().join('--')
+  return [a, b].sort((x, y) => x.localeCompare(y)).join('--')
 }

@@ -8,7 +8,7 @@ import './styles/global.css'
 let _audioCtx = null
 let _clickBuffer = null
 function getClickBuffer() {
-  if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)()
+  if (!_audioCtx) _audioCtx = new (globalThis.AudioContext || globalThis.webkitAudioContext)()
   if (!_clickBuffer) {
     _clickBuffer = fetch('/audio/button-click.mp3')
       .then((r) => r.arrayBuffer())
@@ -21,7 +21,7 @@ function playButtonClick() {
     const src = _audioCtx.createBufferSource()
     src.buffer = decoded
     const gain = _audioCtx.createGain()
-    gain.gain.value = 3.0
+    gain.gain.value = 3
     src.connect(gain)
     gain.connect(_audioCtx.destination)
     src.start(0)

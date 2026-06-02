@@ -44,7 +44,7 @@ export default function CityMap2D({ state, onSelect, routePath = [], selectedPac
     () => nextHopSets(links, routePath, selectedPacket),
     [links, routePath, selectedPacket]
   )
-  const currentNodeId = routePath[routePath.length - 1]
+  const currentNodeId = routePath.at(-1)
   const sourceId = selectedPacket?.sourceNodeId
   const destId = selectedPacket?.destinationNodeId
 
@@ -119,7 +119,7 @@ export default function CityMap2D({ state, onSelect, routePath = [], selectedPac
           const b = project(target)
           const routeEdge = routeEdges.has(edgeKey(link.sourceNodeId, link.targetNodeId))
           const candidate = !routeEdge && nextHopEdges.has(edgeKey(link.sourceNodeId, link.targetNodeId))
-          const color = routeEdge ? '#1b2740' : candidate ? '#4fe0ff' : (affectedLinks.get(link.id) || linkColor(link))
+          const color = link2dColor(routeEdge, candidate, affectedLinks.get(link.id), link)
           const broken = isBrokenLink(link.status)
           return (
             <line
@@ -130,7 +130,7 @@ export default function CityMap2D({ state, onSelect, routePath = [], selectedPac
               x2={b.x}
               y2={b.y}
               stroke={color}
-              strokeWidth={routeEdge ? 2.6 : candidate ? 2.2 : 1.4}
+              strokeWidth={link2dWidth(routeEdge, candidate)}
               strokeDasharray={broken ? '3 3' : undefined}
               onClick={() => onSelect?.({ kind: 'link', data: link })}
             >
@@ -184,6 +184,20 @@ export default function CityMap2D({ state, onSelect, routePath = [], selectedPac
 
 // Fit the viewBox tightly to the actual nodes (+ a proportional margin) so the
 // network fills the canvas instead of clumping in the middle of a huge grid.
+/** Link stroke colour: route edges dark, candidates cyan, else incident/base colour. */
+function link2dColor(routeEdge, candidate, affectedColor, link) {
+  if (routeEdge) return '#1b2740'
+  if (candidate) return '#4fe0ff'
+  return affectedColor || linkColor(link)
+}
+
+/** Link stroke width: thickest for the chosen route, thinner for candidates. */
+function link2dWidth(routeEdge, candidate) {
+  if (routeEdge) return 2.6
+  if (candidate) return 2.2
+  return 1.4
+}
+
 function mapBounds(nodes, objects) {
   const xs = nodes.map((n) => n.x)
   const ys = nodes.map((n) => -n.z)
@@ -219,14 +233,14 @@ function routeEdgeSet(routePath) {
 }
 
 function edgeKey(a, b) {
-  return [a, b].sort().join('::')
+  return [a, b].sort((x, y) => x.localeCompare(y)).join('::')
 }
 
 function nextHopSets(links, routePath, selectedPacket) {
   const nextHopIds = new Set()
   const nextHopEdges = new Set()
   if (!selectedPacket) return { nextHopIds, nextHopEdges }
-  const current = routePath[routePath.length - 1] || selectedPacket.sourceNodeId
+  const current = routePath.at(-1) || selectedPacket.sourceNodeId
   const visited = new Set(routePath)
   links.forEach((link) => {
     if (!isUsableLink(link)) return
@@ -286,7 +300,7 @@ function incidentTouchesLink(incident, link, nodeIndex) {
 function pointInZone(point, zone, radius) {
   const dx = (point.x || 0) - zone.x
   const dz = (point.z || 0) - zone.z
-  return Math.sqrt(dx * dx + dz * dz) <= radius
+  return Math.hypot(dx, dz) <= radius
 }
 
 function isUsableLink(link) {

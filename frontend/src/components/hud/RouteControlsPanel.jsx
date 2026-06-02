@@ -48,7 +48,7 @@ export default function RouteControlsPanel({
   const routeComplete = selectedPacket
     && routePath.length >= 2
     && routePath[0] === selectedPacket.sourceNodeId
-    && routePath[routePath.length - 1] === selectedPacket.destinationNodeId
+    && routePath.at(-1) === selectedPacket.destinationNodeId
 
   // Fetch a non-binding backend estimate when a real match has a complete
   // candidate route. The tutorial keeps using its local guided estimate.
@@ -73,7 +73,7 @@ export default function RouteControlsPanel({
 
   const nextHint = useMemo(() => {
     if (!selectedPacket) return null
-    const last = routePath[routePath.length - 1]
+    const last = routePath.at(-1)
     if (last === selectedPacket.destinationNodeId) return 'Route reaches the destination. Ready to submit.'
     const suggested = routeAssist.suggestedNextId ? friendlyNodeName(nodeIndex[routeAssist.suggestedNextId] || routeAssist.suggestedNextId) : null
     return suggested
@@ -165,7 +165,7 @@ export default function RouteControlsPanel({
       {selectedPacket && routeComplete && (
         <div className="route-preview">
           {previewing && <span className="muted">Estimating...</span>}
-          {!previewing && preview && preview.valid && (
+          {!previewing && preview?.valid && (
             <div className="route-preview-row">
               <span className="preview-stat">~{Math.round(preview.estimatedLatencyMs)}ms</span>
               <span className={`risk risk-${preview.packetLossRisk.toLowerCase()}`}>
@@ -181,7 +181,7 @@ export default function RouteControlsPanel({
           )}
           {!previewing && preview && preview.warnings?.length > 0 && (
             <ul className="route-warnings">
-              {preview.warnings.map((warning, index) => <li key={index}>Warning: {warning}</li>)}
+              {preview.warnings.map((warning) => <li key={warning}>Warning: {warning}</li>)}
             </ul>
           )}
         </div>

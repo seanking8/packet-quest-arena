@@ -20,6 +20,14 @@ const STUCK_AFTER_MS = 9000
 const DEFAULT_PANELS = { jobs: true, leaderboard: false, incidents: true, route: true }
 const TUTORIAL_LAYERS = { weather: true, incidents: true, labels: false }
 
+/** Which on-screen element the "👉 Click here" cue should point at right now. */
+function nextCueTarget(packetStatus, selectedPacket, routeComplete) {
+  if (packetStatus === 'DELIVERED') return 'none'
+  if (!selectedPacket) return 'route-button' // step 1: click Route on the job
+  if (routeComplete) return 'submit-button'  // step 4: click Submit route
+  return 'next-node'                          // steps 2-3: click the glowing next node
+}
+
 export default function TutorialScreen() {
   const { leave } = useGame()
   const { playMusic } = useAudio()
@@ -45,7 +53,7 @@ export default function TutorialScreen() {
     [remainingSeconds, packetStatus, paused, routePath, lesson]
   )
   // The active job is the pending one (lesson 2 also lists lesson 1 as done).
-  const currentPacket = state.packetFlows.find((f) => f.status === 'PENDING') || state.packetFlows[state.packetFlows.length - 1]
+  const currentPacket = state.packetFlows.find((f) => f.status === 'PENDING') || state.packetFlows.at(-1)
   const routeAssist = useMemo(
     () => buildRouteAssist(state, selectedPacket, routePath),
     [state, selectedPacket, routePath]
@@ -65,14 +73,8 @@ export default function TutorialScreen() {
   // Which on-screen target the player should click right now, so we can point
   // a "👉 Click here" cue at the exact element for each step.
   const routeComplete = selectedPacket
-    && routePath[routePath.length - 1] === selectedPacket.destinationNodeId
-  const cueTarget = packetStatus === 'DELIVERED'
-    ? 'none'
-    : !selectedPacket
-      ? 'route-button'      // step 1: click Route on the job
-      : routeComplete
-        ? 'submit-button'   // step 4: click Submit route
-        : 'next-node'       // steps 2-3: click the glowing next node
+    && routePath.at(-1) === selectedPacket.destinationNodeId
+  const cueTarget = nextCueTarget(packetStatus, selectedPacket, routeComplete)
 
   useEffect(() => {
     if (!selectedPacket || currentPacket.status !== 'PENDING') return
@@ -161,7 +163,7 @@ export default function TutorialScreen() {
   }
 
   const extendRouteFromSelection = (item) => {
-    const currentNodeId = routePath[routePath.length - 1] || selectedPacket.sourceNodeId
+    const currentNodeId = routePath.at(-1) || selectedPacket.sourceNodeId
     const nodeId = item.kind === 'node'
       ? item.data.id
       : nextNodeFromLink(item.data, currentNodeId)
@@ -400,7 +402,7 @@ function coachCopy({ selectedPacket, routePath, packetStatus, paused, misses, ro
   }
 
   const nodes = state.nodes || []
-  const currentId = routePath[routePath.length - 1]
+  const currentId = routePath.at(-1)
   const destId = selectedPacket.destinationNodeId
   const suggested = routeAssist.suggestedNextId
   const currentName = friendlyNodeName(nodes.find((n) => n.id === currentId) || currentId)

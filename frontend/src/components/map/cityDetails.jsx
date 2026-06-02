@@ -85,7 +85,7 @@ function CellTower() {
   return (
     <group>
       <mesh position={[0, TOWER_H / 2, 0]}>
-        <cylinderGeometry args={[0.28, 1.0, TOWER_H, 6]} />
+        <cylinderGeometry args={[0.28, 1, TOWER_H, 6]} />
         <meshStandardMaterial {...METAL} />
       </mesh>
       {[3, 6, 9, 12, 15, 18].map((y) => (
@@ -256,11 +256,8 @@ function distToSeg(px, pz, ax, az, bx, bz) {
   return Math.hypot(px - (ax + t * dx), pz - (az + t * dz))
 }
 
-// Curved avenues removed at the user's request.
-const CURVES = []
-function nearCurve() {
-  return false
-}
+// Curved avenues were removed at the user's request; the related geometry and
+// proximity check were dead code and have been removed too.
 
 export function DecorBuildings({ nodes, links, nodeIndex }) {
   const items = useMemo(() => {
@@ -286,7 +283,6 @@ export function DecorBuildings({ nodes, links, nodeIndex }) {
         const z = gz + (r2 - 0.5) * 2.4
         // Clear the road by a building half-width so no footprint edge spills onto it.
         if (onRoad(x, ROAD_X, 4) || onRoad(z, ROAD_Z, 4)) continue
-        if (nearCurve(x, z)) continue // ...and off the curved avenues
         if (nearNode(x, z, 14)) continue
         if (nearLink(x, z, 7)) continue
         const downtown = Math.hypot(x - 10, z) < 55
@@ -412,27 +408,6 @@ export function Roads() {
           )}
         </group>
       ))}
-
-      {/* Curved avenues, drawn as short rotated road segments along each curve. */}
-      {CURVES.map((c, ci) =>
-        c.poly.slice(0, -1).map((p, i) => {
-          const q = c.poly[i + 1]
-          const dx = q[0] - p[0]
-          const dz = q[1] - p[1]
-          const len = Math.hypot(dx, dz)
-          return (
-            <mesh
-              key={`c${ci}_${i}`}
-              position={[(p[0] + q[0]) / 2, 0.06, (p[1] + q[1]) / 2]}
-              rotation={[0, Math.atan2(dx, dz), 0]}
-              raycast={() => null}
-            >
-              <boxGeometry args={[c.width, 0.12, len + 0.8]} />
-              <meshStandardMaterial color="#3a3f47" roughness={1} />
-            </mesh>
-          )
-        })
-      )}
     </group>
   )
 }

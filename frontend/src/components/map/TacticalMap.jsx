@@ -41,7 +41,7 @@ export default function TacticalMap({ state, onSelect, routePath = [], selectedP
     () => nextHopSet(links, routePath, selectedPacket),
     [links, routePath, selectedPacket]
   )
-  const currentNodeId = routePath[routePath.length - 1]
+  const currentNodeId = routePath.at(-1)
   // Edges from the current node to a valid next hop, so candidate links glow
   // (not just the candidate nodes).
   const nextHopEdges = useMemo(() => {
@@ -177,12 +177,12 @@ function routeEdgeSet(routePath) {
 }
 
 function edgeKey(a, b) {
-  return [a, b].sort().join('::')
+  return [a, b].sort((x, y) => x.localeCompare(y)).join('::')
 }
 
 function nextHopSet(links, routePath, selectedPacket) {
   if (!selectedPacket) return new Set()
-  const current = routePath[routePath.length - 1] || selectedPacket.sourceNodeId
+  const current = routePath.at(-1) || selectedPacket.sourceNodeId
   const visited = new Set(routePath)
   const result = new Set()
   links.forEach((link) => {
@@ -240,7 +240,7 @@ function incidentTouchesLink(incident, link, nodeIndex) {
 function pointInZone(point, zone, radius) {
   const dx = (point.x || 0) - zone.x
   const dz = (point.z || 0) - zone.z
-  return Math.sqrt(dx * dx + dz * dz) <= radius
+  return Math.hypot(dx, dz) <= radius
 }
 
 function isUsableLink(link) {

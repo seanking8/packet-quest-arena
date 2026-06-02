@@ -26,6 +26,23 @@ import org.springframework.stereotype.Service;
 @Service
 public class TopologyGeneratorService {
 
+    // Stable node ids, referenced when defining both the nodes and the links
+    // between them. Kept as constants so each id has a single source of truth.
+    private static final String RU_NORTH = "ru-north";
+    private static final String RU_SOUTH = "ru-south";
+    private static final String RU_EAST = "ru-east";
+    private static final String RU_WEST = "ru-west";
+    private static final String ORU_CENTRAL = "oru-central";
+    private static final String SC_PLAZA = "sc-plaza";
+    private static final String ODU_1 = "odu-1";
+    private static final String ODU_2 = "odu-2";
+    private static final String OCU_1 = "ocu-1";
+    private static final String EDGE_1 = "edge-1";
+    private static final String UPF_1 = "upf-1";
+    private static final String CORE_1 = "core-1";
+    private static final String SAT_1 = "sat-1";
+    private static final String SAT_2 = "sat-2";
+
     /**
      * Populates {@code session} with nodes, links and decorative map objects.
      * No-op if the session already has a topology (idempotent on restart).
@@ -41,70 +58,70 @@ public class TopologyGeneratorService {
 
     private void addNodes(GameSession session) {
         // Radio access across a wider metro/region map.
-        node(session, "ru-north", "North Suburb Cell Tower", NodeType.RADIO_TOWER, -70, 3, 85);
-        node(session, "ru-south", "South Hospital Macro Tower", NodeType.RADIO_TOWER, -65, 3, -90);
-        node(session, "ru-east", "Airport District Cell Tower", NodeType.RADIO_TOWER, 95, 3, 70);
-        node(session, "ru-west", "Remote Hill Radio Tower", NodeType.RADIO_TOWER, -135, 3, 5);
-        node(session, "oru-central", "Downtown Rooftop O-RU", NodeType.O_RU, -20, 2, 10);
+        node(session, RU_NORTH, "North Suburb Cell Tower", NodeType.RADIO_TOWER, -70, 3, 85);
+        node(session, RU_SOUTH, "South Hospital Macro Tower", NodeType.RADIO_TOWER, -65, 3, -90);
+        node(session, RU_EAST, "Airport District Cell Tower", NodeType.RADIO_TOWER, 95, 3, 70);
+        node(session, RU_WEST, "Remote Hill Radio Tower", NodeType.RADIO_TOWER, -135, 3, 5);
+        node(session, ORU_CENTRAL, "Downtown Rooftop O-RU", NodeType.O_RU, -20, 2, 10);
 
         // Small cells on/near buildings.
-        node(session, "sc-plaza", "City Plaza Small Cell", NodeType.SMALL_CELL, -35, 2, 48);
+        node(session, SC_PLAZA, "City Plaza Small Cell", NodeType.SMALL_CELL, -35, 2, 48);
         node(session, "sc-market", "Market Quarter Small Cell", NodeType.SMALL_CELL, 5, 2, 58);
         node(session, "sc-harbor", "Harbor Small Cell", NodeType.SMALL_CELL, 35, 2, -82);
 
         // Aggregation / control.
-        node(session, "odu-1", "North Aggregation Hub", NodeType.O_DU, -4, 1, 35);
-        node(session, "odu-2", "South Aggregation Hub", NodeType.O_DU, -5, 1, -38);
-        node(session, "ocu-1", "Metro O-CU Control Centre", NodeType.O_CU, 42, 1, 8);
+        node(session, ODU_1, "North Aggregation Hub", NodeType.O_DU, -4, 1, 35);
+        node(session, ODU_2, "South Aggregation Hub", NodeType.O_DU, -5, 1, -38);
+        node(session, OCU_1, "Metro O-CU Control Centre", NodeType.O_CU, 42, 1, 8);
 
         // Core transport chain.
-        node(session, "edge-1", "East Edge Data Centre", NodeType.EDGE, 76, 1, 45);
-        node(session, "upf-1", "Carrier UPF Gateway", NodeType.UPF, 86, 1, 0);
-        node(session, "core-1", "Core Network Campus", NodeType.CORE, 118, 1, -5);
+        node(session, EDGE_1, "East Edge Data Centre", NodeType.EDGE, 76, 1, 45);
+        node(session, UPF_1, "Carrier UPF Gateway", NodeType.UPF, 86, 1, 0);
+        node(session, CORE_1, "Core Network Campus", NodeType.CORE, 118, 1, -5);
         node(session, "dc-1", "Regional Cloud Data Centre", NodeType.DATA_CENTRE, 150, 1, 38);
 
         // Fixed satellite relays high above the city.
-        node(session, "sat-1", "Emergency Satellite Alpha", NodeType.SATELLITE, -25, 95, -25);
-        node(session, "sat-2", "Emergency Satellite Beta", NodeType.SATELLITE, 115, 105, 35);
+        node(session, SAT_1, "Emergency Satellite Alpha", NodeType.SATELLITE, -25, 95, -25);
+        node(session, SAT_2, "Emergency Satellite Beta", NodeType.SATELLITE, 115, 105, 35);
     }
 
     private void addLinks(GameSession session) {
         // RADIO: access towers into the network.
-        link(session, "l-runorth-oru", "ru-north", "oru-central", LinkType.RADIO);
-        link(session, "l-rusouth-oru", "ru-south", "oru-central", LinkType.RADIO);
-        link(session, "l-ruwest-oru", "ru-west", "oru-central", LinkType.RADIO);
-        link(session, "l-rueast-ocu", "ru-east", "ocu-1", LinkType.RADIO);
+        link(session, "l-runorth-oru", RU_NORTH, ORU_CENTRAL, LinkType.RADIO);
+        link(session, "l-rusouth-oru", RU_SOUTH, ORU_CENTRAL, LinkType.RADIO);
+        link(session, "l-ruwest-oru", RU_WEST, ORU_CENTRAL, LinkType.RADIO);
+        link(session, "l-rueast-ocu", RU_EAST, OCU_1, LinkType.RADIO);
 
         // MMWAVE: small cells, high capacity / short reach.
-        link(session, "l-scplaza-oru", "sc-plaza", "oru-central", LinkType.MMWAVE);
-        link(session, "l-scplaza-runorth", "sc-plaza", "ru-north", LinkType.MMWAVE);
-        link(session, "l-scmarket-ocu", "sc-market", "ocu-1", LinkType.MMWAVE);
-        link(session, "l-scharbor-ocu", "sc-harbor", "ocu-1", LinkType.MMWAVE);
+        link(session, "l-scplaza-oru", SC_PLAZA, ORU_CENTRAL, LinkType.MMWAVE);
+        link(session, "l-scplaza-runorth", SC_PLAZA, RU_NORTH, LinkType.MMWAVE);
+        link(session, "l-scmarket-ocu", "sc-market", OCU_1, LinkType.MMWAVE);
+        link(session, "l-scharbor-ocu", "sc-harbor", OCU_1, LinkType.MMWAVE);
 
         // MICROWAVE: tower-to-tower backhaul.
-        link(session, "l-runorth-rueast", "ru-north", "ru-east", LinkType.MICROWAVE);
-        link(session, "l-ruwest-rusouth", "ru-west", "ru-south", LinkType.MICROWAVE);
+        link(session, "l-runorth-rueast", RU_NORTH, RU_EAST, LinkType.MICROWAVE);
+        link(session, "l-ruwest-rusouth", RU_WEST, RU_SOUTH, LinkType.MICROWAVE);
 
         // FIBRE: O-DU / O-CU / edge / UPF / core transport.
-        link(session, "l-oru-odu1", "oru-central", "odu-1", LinkType.FIBRE);
-        link(session, "l-oru-odu2", "oru-central", "odu-2", LinkType.FIBRE);
-        link(session, "l-odu1-ocu", "odu-1", "ocu-1", LinkType.FIBRE);
-        link(session, "l-odu2-ocu", "odu-2", "ocu-1", LinkType.FIBRE);
-        link(session, "l-ocu-edge", "ocu-1", "edge-1", LinkType.FIBRE);
-        link(session, "l-ocu-upf", "ocu-1", "upf-1", LinkType.FIBRE);
-        link(session, "l-edge-upf", "edge-1", "upf-1", LinkType.FIBRE);
-        link(session, "l-upf-core", "upf-1", "core-1", LinkType.FIBRE);
-        link(session, "l-core-dc", "core-1", "dc-1", LinkType.FIBRE);
+        link(session, "l-oru-odu1", ORU_CENTRAL, ODU_1, LinkType.FIBRE);
+        link(session, "l-oru-odu2", ORU_CENTRAL, ODU_2, LinkType.FIBRE);
+        link(session, "l-odu1-ocu", ODU_1, OCU_1, LinkType.FIBRE);
+        link(session, "l-odu2-ocu", ODU_2, OCU_1, LinkType.FIBRE);
+        link(session, "l-ocu-edge", OCU_1, EDGE_1, LinkType.FIBRE);
+        link(session, "l-ocu-upf", OCU_1, UPF_1, LinkType.FIBRE);
+        link(session, "l-edge-upf", EDGE_1, UPF_1, LinkType.FIBRE);
+        link(session, "l-upf-core", UPF_1, CORE_1, LinkType.FIBRE);
+        link(session, "l-core-dc", CORE_1, "dc-1", LinkType.FIBRE);
 
         // LEGACY: reliable backups, higher latency / lower capacity.
-        link(session, "l-runorth-odu1", "ru-north", "odu-1", LinkType.LEGACY);
-        link(session, "l-odu1-odu2", "odu-1", "odu-2", LinkType.LEGACY);
+        link(session, "l-runorth-odu1", RU_NORTH, ODU_1, LinkType.LEGACY);
+        link(session, "l-odu1-odu2", ODU_1, ODU_2, LinkType.LEGACY);
 
         // SATELLITE: high-latency wide-area backup paths.
-        link(session, "l-sat1-rusouth", "sat-1", "ru-south", LinkType.SATELLITE);
-        link(session, "l-sat1-core", "sat-1", "core-1", LinkType.SATELLITE);
-        link(session, "l-sat2-rueast", "sat-2", "ru-east", LinkType.SATELLITE);
-        link(session, "l-sat2-dc", "sat-2", "dc-1", LinkType.SATELLITE);
+        link(session, "l-sat1-rusouth", SAT_1, RU_SOUTH, LinkType.SATELLITE);
+        link(session, "l-sat1-core", SAT_1, CORE_1, LinkType.SATELLITE);
+        link(session, "l-sat2-rueast", SAT_2, RU_EAST, LinkType.SATELLITE);
+        link(session, "l-sat2-dc", SAT_2, "dc-1", LinkType.SATELLITE);
     }
 
     /** A few lightweight decorative / obstruction objects for the 3D city. */

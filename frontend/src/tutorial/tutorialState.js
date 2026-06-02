@@ -95,8 +95,10 @@ export function createTutorialState({ remainingSeconds = 75, status, packetStatu
   // the lesson's default path only if somehow empty).
   const deliveredPath = routePath && routePath.length >= 2 ? routePath : job.fallbackPath
   // Lesson 1 banks 120 once delivered; lesson 2 adds another 90.
-  const bankedScore = (lesson >= 2 ? 120 : 0) + (packetStatus === 'DELIVERED' ? (lesson >= 2 ? 90 : 120) : 0)
+  const deliveryBonus = lesson >= 2 ? 90 : 120
+  const priorLessonScore = lesson >= 2 ? 120 : 0
   const delivered = packetStatus === 'DELIVERED'
+  const bankedScore = priorLessonScore + (delivered ? deliveryBonus : 0)
 
   // The current lesson's active job.
   const currentFlow = {
@@ -112,7 +114,7 @@ export function createTutorialState({ remainingSeconds = 75, status, packetStatu
     status: packetStatus,
     selectedPath: delivered ? deliveredPath : null,
     latencyMs: delivered ? 28 : 0,
-    scoreDelta: delivered ? (lesson >= 2 ? 90 : 120) : 0,
+    scoreDelta: delivered ? deliveryBonus : 0,
   }
 
   // On lesson 2, keep lesson 1's job listed above (shown as delivered) so the

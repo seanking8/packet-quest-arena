@@ -48,7 +48,7 @@ export default function useGameState(sessionId) {
     getState(sessionId).then(apply).catch(recordError)
 
     try {
-      const host = window.location.hostname || 'localhost'
+      const host = globalThis.location.hostname || 'localhost'
       ws = new WebSocket(`ws://${host}:8080/ws/game/${sessionId}`)
       ws.onopen = () => active && setTransport('websocket')
       ws.onmessage = (event) => {

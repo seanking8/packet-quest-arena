@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { createSession, joinSession, startMatch, nextRound as nextRoundApi } from '../services/api'
 
 /**
@@ -10,9 +10,9 @@ const GameContext = createContext(null)
 const SESSION_STORAGE_KEY = 'packetQuest.liveSession.v1'
 
 function readStoredSession() {
-  if (typeof window === 'undefined') return {}
+  if (globalThis.localStorage === undefined) return {}
   try {
-    const stored = JSON.parse(window.localStorage.getItem(SESSION_STORAGE_KEY) || '{}')
+    const stored = JSON.parse(globalThis.localStorage.getItem(SESSION_STORAGE_KEY) || '{}')
     if (!stored.sessionId || !stored.playerId) return {}
     return {
       sessionId: stored.sessionId,
@@ -25,13 +25,13 @@ function readStoredSession() {
 }
 
 function writeStoredSession(session) {
-  if (typeof window === 'undefined') return
-  window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session))
+  if (globalThis.localStorage === undefined) return
+  globalThis.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session))
 }
 
 function clearStoredSession() {
-  if (typeof window === 'undefined') return
-  window.localStorage.removeItem(SESSION_STORAGE_KEY)
+  if (globalThis.localStorage === undefined) return
+  globalThis.localStorage.removeItem(SESSION_STORAGE_KEY)
 }
 
 export function GameProvider({ children }) {
@@ -51,7 +51,7 @@ export function GameProvider({ children }) {
     }
   }, [mode, sessionId, playerId, playerName])
 
-  const run = async (fn) => {
+  const run = useCallback(async (fn) => {
     setError(null)
     setBusy(true)
     try {
@@ -62,52 +62,52 @@ export function GameProvider({ children }) {
     } finally {
       setBusy(false)
     }
-  }
+  }, [])
 
   /** Create a new session and join it as the first player (host). */
-  const host = (name, difficulty = 'MEDIUM') =>
+  const host = useCallback((name, difficulty = 'MEDIUM') =>
     run(async () => {
       const { sessionId: id } = await createSession(difficulty)
       const { player } = await joinSession(id, name)
       setSessionId(id)
       setPlayerId(player.id)
       setPlayerName(name)
-    })
+    }), [run])
 
   /** Join an existing session by id. */
-  const join = (id, name) =>
+  const join = useCallback((id, name) =>
     run(async () => {
       const { player } = await joinSession(id, name)
       setSessionId(id)
       setPlayerId(player.id)
       setPlayerName(name)
-    })
+    }), [run])
 
   /** Start the match with the host's chosen map family (host action). */
-  const start = (mapFamily = 'CITY') => run(() => startMatch(sessionId, mapFamily))
+  const start = useCallback((mapFamily = 'CITY') => run(() => startMatch(sessionId, mapFamily)), [run, sessionId])
 
   /** Advance from intermission to the next round (host action). */
-  const advanceRound = () => run(() => nextRoundApi(sessionId))
+  const advanceRound = useCallback(() => run(() => nextRoundApi(sessionId)), [run, sessionId])
 
-  const leave = () => {
+  const leave = useCallback(() => {
     setSessionId(null)
     setPlayerId(null)
     setPlayerName('')
     setMode('live')
     setError(null)
     clearStoredSession()
-  }
+  }, [])
 
-  const startTutorial = () => {
+  const startTutorial = useCallback(() => {
     setSessionId(null)
     setPlayerId('tutorial-player')
     setPlayerName('Trainee')
     setMode('tutorial')
     setError(null)
     clearStoredSession()
-  }
+  }, [])
 
-  const value = {
+  const value = useMemo(() => ({
     sessionId,
     playerId,
     playerName,
@@ -121,7 +121,7 @@ export function GameProvider({ children }) {
     advanceRound,
     startTutorial,
     leave,
-  }
+  }), [sessionId, playerId, playerName, mode, error, busy, host, join, start, advanceRound, startTutorial, leave])
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>
 }

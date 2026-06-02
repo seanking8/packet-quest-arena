@@ -33,3 +33,6 @@ frontend/coverage/
 .env.local
 *.log
 *.err
+
+# SonarScanner local output
+.scannerwork/

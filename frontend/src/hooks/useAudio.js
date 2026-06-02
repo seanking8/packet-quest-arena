@@ -22,7 +22,7 @@ const SFX_GAIN = 2.5
 // Shared AudioContext is created once on first interaction.
 let audioCtx = null
 function getAudioContext() {
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)()
+  if (!audioCtx) audioCtx = new (globalThis.AudioContext || globalThis.webkitAudioContext)()
   return audioCtx
 }
 
