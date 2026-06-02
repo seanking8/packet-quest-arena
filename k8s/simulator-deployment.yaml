@@ -15,6 +15,7 @@ spec:
       containers:
         - name: simulator
           image: packetquest/simulator:latest
+          imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef:
                 name: packetquest-config

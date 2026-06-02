@@ -15,6 +15,9 @@ spec:
       containers:
         - name: backend
           image: packetquest/backend:latest
+          # Use the locally-built image (Docker Desktop / kind) rather than
+          # trying to pull packetquest/backend from a remote registry.
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
           envFrom:
