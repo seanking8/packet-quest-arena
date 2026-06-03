@@ -20,7 +20,7 @@ const DEFAULT_LAYERS = { weather: true, incidents: true, labels: false }
 
 export default function GameScreen({ state, transport }) {
   const { playerId, selectedMapFamily } = useGame()
-  const { play } = useAudio()
+  const { play, playMusic } = useAudio()
   const [webglAvailable, setWebglAvailable] = useState(canUseWebGL)
   const [panels, setPanels] = useState(DEFAULT_PANELS)
   const [jobsCollapsed, setJobsCollapsed] = useState(false)
@@ -29,6 +29,11 @@ export default function GameScreen({ state, transport }) {
   // session, so every player renders the same map for the whole match. There
   // is no in-game switch between families.
   const mapFamily = (selectedMapFamily || state.mapFamily || 'CITY').toLowerCase() === 'district' ? 'district' : 'city'
+
+  // Background music — pick track based on map family, start once on mount.
+  useEffect(() => {
+    playMusic(mapFamily === 'district' ? 'districtMusic' : 'cityMusic')
+  }, [mapFamily, playMusic])
   const [view, setView] = useState(() => (canUseWebGL() ? 'iso' : 'tactical'))
   const [focus, setFocus] = useState(null)
   const [selected, setSelected] = useState(null)

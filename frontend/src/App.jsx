@@ -1,7 +1,7 @@
 import { Component, useEffect, useState } from 'react'
 import { useGame } from './state/GameContext'
 import useGameState from './hooks/useGameState'
-import useAudio from './hooks/useAudio'
+import useAudio, { toggleMute } from './hooks/useAudio'
 import HomeScreen from './screens/HomeScreen'
 import LobbyScreen from './screens/LobbyScreen'
 import GameScreen from './screens/GameScreen'
@@ -34,9 +34,9 @@ export default function App() {
   }, [booting, sessionId, mode, playMusic, stopMusic])
 
   if (booting) return <LoadingScreen message="Booting the 5G arena network." />
-  if (mode === 'tutorial') return <TutorialScreen />
-  if (!sessionId) return <HomeScreen />
-  return <SessionRouter sessionId={sessionId} playMusic={playMusic} stopMusic={stopMusic} />
+  if (mode === 'tutorial') return <><TutorialScreen /><MuteButton /></>
+  if (!sessionId) return <><HomeScreen /><MuteButton /></>
+  return <><SessionRouter sessionId={sessionId} playMusic={playMusic} stopMusic={stopMusic} /><MuteButton /></>
 }
 
 /** Routes between lobby / active / intermission / completed based on status. */
@@ -114,4 +114,25 @@ class GameErrorBoundary extends Component {
 
     return this.props.children
   }
+}
+
+function MuteButton() {
+  const [muted, setMuted] = useState(false)
+  const handleClick = () => setMuted(toggleMute())
+  return (
+    <button
+      onClick={handleClick}
+      title={muted ? 'Unmute audio' : 'Mute audio'}
+      style={{
+        position: 'fixed', bottom: 16, right: 16, zIndex: 9999,
+        width: 36, height: 36, padding: 0,
+        background: 'rgba(7,18,32,0.82)',
+        border: '1px solid rgba(36,220,216,0.34)',
+        borderRadius: 8, cursor: 'pointer',
+        fontSize: 18, lineHeight: '36px', textAlign: 'center',
+      }}
+    >
+      {muted ? '🔇' : '🔊'}
+    </button>
+  )
 }

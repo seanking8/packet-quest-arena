@@ -4,6 +4,8 @@ import App from './App'
 import { GameProvider } from './state/GameContext'
 import './styles/global.css'
 
+import { isMuted } from './hooks/useAudio'
+
 // Global button-click SFX — fires for every <button> click without per-component wiring.
 let _audioCtx = null
 let _clickBuffer = null
@@ -17,6 +19,7 @@ function getClickBuffer() {
   return _clickBuffer
 }
 function playButtonClick() {
+  if (isMuted()) return
   getClickBuffer().then((decoded) => {
     const src = _audioCtx.createBufferSource()
     src.buffer = decoded
