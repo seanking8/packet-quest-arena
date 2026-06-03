@@ -24,6 +24,8 @@ export default function LobbyScreen({ state }) {
   const { sessionId, playerId, start, leave, error, setError, busy } = useGame()
   const players = state.players || []
   const canStart = players.length >= 2
+  // Only the session creator (the first player to join) may start the match.
+  const isHost = players.length > 0 && players[0].id === playerId
 
   const [choosingMap, setChoosingMap] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -71,9 +73,15 @@ export default function LobbyScreen({ state }) {
         </section>
 
         <div className="row">
-          <button disabled={!canStart || busy} onClick={() => setChoosingMap(true)}>
-            {canStart ? 'Start match' : 'Need 2+ players'}
-          </button>
+          {isHost ? (
+            <button disabled={!canStart || busy} onClick={() => setChoosingMap(true)}>
+              {canStart ? 'Start match' : 'Need 2+ players'}
+            </button>
+          ) : (
+            <p className="muted">
+              {canStart ? 'Waiting for the host to start the match…' : 'Waiting for more players…'}
+            </p>
+          )}
           <button className="ghost" onClick={leave}>
             Leave
           </button>

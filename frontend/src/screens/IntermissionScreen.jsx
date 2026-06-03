@@ -10,7 +10,7 @@ const ROUND_PREVIEW = {
 }
 
 export default function IntermissionScreen({ state }) {
-  const { playerId, advanceRound, busy, error, setError } = useGame()
+  const { playerId, advanceRound, busy, error, setError, leave } = useGame()
   const players = state.players || []
   const ranked = rankedPlayers(players)
   const isHost = players.length > 0 && players[0].id === playerId
@@ -63,6 +63,7 @@ export default function IntermissionScreen({ state }) {
           ) : (
             <p className="muted">Waiting for the host to start Round {next}…</p>
           )}
+          <button className="ghost" onClick={leave}>Leave game</button>
         </div>
       </div>
     </div>
