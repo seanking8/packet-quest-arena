@@ -20,7 +20,7 @@ const MAP_CHOICES = [
   },
 ]
 
-export default function LobbyScreen({ state, transport }) {
+export default function LobbyScreen({ state }) {
   const { sessionId, playerId, start, leave, error, setError, busy } = useGame()
   const players = state.players || []
   const canStart = players.length >= 2
@@ -46,16 +46,11 @@ export default function LobbyScreen({ state, transport }) {
           <h1>Lobby</h1>
           <p className="muted">
             Session <code className="pill code">#{shortCode}...</code>
-            <span className="transport"> - {transport}</span>
-          </p>
-          <p className="muted">Difficulty <code className="pill">{state.difficulty || 'MEDIUM'}</code></p>
-          <div className="session-code-box">
-            <span className="session-code-label">Session code</span>
-            <code className="session-code-value">{sessionId}</code>
             <button className="ghost copy-btn" onClick={copyCode}>
               {copied ? 'Code copied' : 'Copy code'}
             </button>
-          </div>
+          </p>
+          <p className="muted">Difficulty <code className="pill">{state.difficulty || 'MEDIUM'}</code></p>
           <p className="muted">Share the code with players. They enter a name, join, then wait for the host to start.</p>
         </header>
 
