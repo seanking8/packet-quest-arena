@@ -277,7 +277,9 @@ public class MatchHistoryService {
                                 Integer scoreDelta, Double latencyMs) {
         String eventType = event.getEventType() != null ? event.getEventType() : "EVENT";
         if (eventType.startsWith("PACKET_")) {
-            String result = statusFromEventType(eventType);
+            // In this branch the status is the part after "PACKET_" — derive it
+            // directly so it is provably non-null (avoids a false-positive NPE).
+            String result = eventType.substring("PACKET_".length());
             String summary = actor + " packet " + fallbackId(event.getSubjectId()) + " was "
                     + result.toLowerCase(Locale.ROOT);
             if (scoreDelta != null || latencyMs != null) {

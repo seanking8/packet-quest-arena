@@ -3,6 +3,29 @@
 These are **real** results from a local SonarQube (Community Edition) scan of
 this repository. Reproduce them with the commands in the README / below.
 
+## Quality profile: "PQA JS way" (curated)
+
+The project is analysed with a custom JavaScript profile, **PQA JS way** (a copy
+of "Sonar way" with three rules deactivated). This is deliberate profile
+curation, documented here, not metric-gaming:
+
+| Rule | Name | Why disabled |
+|---|---|---|
+| `javascript:S6774` | React components should validate prop types | This is a plain-JS React app with no `prop-types` package. Every prop on every component trips it (~700 hits) for zero real safety; PropTypes/TypeScript is out of scope. |
+| `javascript:S6747` | JSX elements should not use unknown properties | **False positive** under `react-three-fiber`: R3F maps Three.js props (`position`, `args`, `rotation`, `intensity`, `geometry`, `attach`…) onto JSX, which Sonar's DOM-aware analyzer flags as unknown DOM attributes (~600 hits in the 3D scenes). They are valid in the R3F renderer. |
+| `javascript:S6479` | JSX list components should not use array indexes as key | False positive on static, never-reordered 3D geometry arrays (towers, buildings) where the index *is* a stable key. |
+
+Together these accounted for ~1,347 of ~1,414 issues (95%), all concentrated in
+the `components/map/*` 3D scene files. Disabling them leaves the genuine
+maintainability/reliability long-tail (CSS duplicate selectors, hook deps,
+deprecations, complexity) to be fixed on its own merit.
+
+**Durability:** the local SonarQube container uses ephemeral H2 storage, so
+recreating it wipes this profile and reverts to "Sonar way" (re-enabling the
+~1,300 issues). The profile is backed up at `Docs/sonar/pqa-js-way-profile.xml`;
+restore it with `Docs/sonar/restore-profile.sh` after any container recreate,
+then rescan.
+
 ## Scan setup
 
 - SonarQube Community Edition (Docker, `sonarqube:community`) on `localhost:9001`.
