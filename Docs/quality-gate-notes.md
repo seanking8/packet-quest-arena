@@ -29,19 +29,26 @@ this repository. Reproduce them with the commands in the README / below.
 | Maintainability rating | A |
 | Reliability rating | D |
 
-Component coverage (measured directly):
+Component coverage (measured directly — latest local run on branch
+`feature/sonar-code-quality`):
 
 | Suite | Tests | Coverage |
 |---|---|---|
-| Backend (JaCoCo) | 112 pass | ~82% instructions, ~82% lines, ~64% branches |
+| Backend (JaCoCo) | 113 pass | ~84% instructions, ~83% lines, ~66% branches |
 | Simulator (pytest-cov) | 18 pass | ~98% lines |
-| Frontend (Vitest) | 26 pass | ~19% lines |
+| Frontend (Vitest) | 69 pass | ~28% lines, ~72% branches |
 
-> Note: overall coverage (31.5%) is *lower* than the first scan (36%) precisely
-> because the frontend is now **included** with its real ~19% — earlier the
-> frontend was excluded from the denominator, which flattered the number. The
-> frontend tests cover utils/api/format well but the large screen components
-> and 3D scenes are mostly untested — the clearest place to add tests next.
+> The component coverage above is the **current** local measurement. The
+> full-dashboard metrics in the table further up (bugs, code smells, overall
+> 31.5% coverage, ratings) are from the last *complete* SonarQube scan at commit
+> `12d4d0c`; re-run the scan (see "How to reproduce") to refresh those numbers
+> against this branch.
+>
+> Note: overall coverage was *lower* than the first scan (36%) once the frontend
+> was **included** with its real coverage — earlier the frontend was excluded
+> from the denominator, which flattered the number. Frontend coverage has since
+> risen (~19% → ~28%) as screen/HUD and a full end-to-end gameplay test were
+> added; the large 3D scene files remain the main untested area.
 
 ## Interpretation (honest)
 
