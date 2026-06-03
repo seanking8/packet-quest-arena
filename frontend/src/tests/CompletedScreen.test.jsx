@@ -1,5 +1,5 @@
 import { expect, test, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { GameProvider } from '../state/GameContext'
 import CompletedScreen from '../screens/CompletedScreen'
 
@@ -56,13 +56,23 @@ const STATE = {
   ],
 }
 
-test('completed screen shows database report and same-difficulty leaderboard', async () => {
+test('match timeline is hidden until toggled, then shows the saved report', async () => {
   render(<GameProvider><CompletedScreen state={STATE} /></GameProvider>)
 
   expect(screen.getByText('Final scores')).toBeInTheDocument()
-  expect(await screen.findByText('Database report')).toBeInTheDocument()
+  // The same-difficulty leaderboard stays visible; the timeline starts hidden.
   expect(await screen.findByText('Hard leaderboard')).toBeInTheDocument()
+  expect(screen.queryByText('Match timeline')).not.toBeInTheDocument()
+
+  // Player opts in to view the timeline.
+  fireEvent.click(screen.getByRole('button', { name: 'Show match timeline' }))
+
+  expect(await screen.findByText('Match timeline')).toBeInTheDocument()
   expect(screen.getByText(/Alice won with 140 points/)).toBeInTheDocument()
   expect(screen.getByText(/Alice routed packet/)).toBeInTheDocument()
   expect(screen.getByText(/best 140 pts/)).toBeInTheDocument()
+
+  // And it can be collapsed again.
+  fireEvent.click(screen.getByRole('button', { name: 'Hide match timeline' }))
+  expect(screen.queryByText('Match timeline')).not.toBeInTheDocument()
 })
