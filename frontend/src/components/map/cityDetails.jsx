@@ -227,7 +227,7 @@ function hash2(i, j) {
 // wide avenues and narrow side streets (not a perfect grid), and buildings are
 // kept off them. The same ROAD_X / ROAD_Z lines drive <Roads/> and the skipping
 // in <DecorBuildings/> so blocks and streets always line up.
-const CITY = { x0: -120, x1: 135, z0: -66, z1: 40, step: 10 }
+const CITY = { x0: -150, x1: 165, z0: -112, z1: 42, step: 10 }
 
 function roadLines(min, max) {
   const lines = []
@@ -245,7 +245,64 @@ function roadLines(min, max) {
 
 const ROAD_X = roadLines(CITY.x0, CITY.x1)
 const ROAD_Z = roadLines(CITY.z0, CITY.z1)
-const onRoad = (v, lines, pad = 1.5) => lines.some((L) => Math.abs(v - L.p) < L.width / 2 + pad)
+const insideCityLand = (x, z) => x >= CITY.x0 && x <= CITY.x1 && z >= CITY.z0 && z <= CITY.z1
+const roadHit = (v, lines, half = 0, pad = 0.8) => lines.some((L) => Math.abs(v - L.p) < L.width / 2 + half + pad)
+const footprintOnRoad = (x, z, w = 2, d = 2, pad = 0.8) => (
+  roadHit(x, ROAD_X, w / 2, pad) || roadHit(z, ROAD_Z, d / 2, pad)
+)
+
+function nearestSafeAxisValue(v, lines, min, max, half, pad) {
+  const intervals = lines
+    .map((L) => [Math.max(min, L.p - L.width / 2 - half - pad), Math.min(max, L.p + L.width / 2 + half + pad)])
+    .sort((a, b) => a[0] - b[0])
+
+  const gaps = []
+  let cursor = min
+  intervals.forEach(([a, b]) => {
+    if (a - cursor > 0.5) gaps.push([cursor, a])
+    cursor = Math.max(cursor, b)
+  })
+  if (max - cursor > 0.5) gaps.push([cursor, max])
+  if (!gaps.length) return Math.max(min, Math.min(max, v))
+
+  let bestValue = Math.max(gaps[0][0] + 0.25, Math.min(gaps[0][1] - 0.25, v))
+  let bestDistance = Math.abs(bestValue - v)
+  gaps.forEach((gap) => {
+    const candidate = Math.max(gap[0] + 0.25, Math.min(gap[1] - 0.25, v))
+    const distance = Math.abs(candidate - v)
+    if (distance < bestDistance) {
+      bestValue = candidate
+      bestDistance = distance
+    }
+  })
+  return bestValue
+}
+
+export function roadSafePosition(x, z, w = 3, d = 3, seed = 0) {
+  if (!footprintOnRoad(x, z, w, d, 1.2) && insideCityLand(x, z)) return { x, z }
+
+  const angles = [0, Math.PI, Math.PI / 2, -Math.PI / 2, Math.PI / 4, -Math.PI / 4, 3 * Math.PI / 4, -3 * Math.PI / 4]
+  const offset = Math.abs(seed) % angles.length
+  for (let ring = 0; ring < 7; ring += 1) {
+    const radius = 7 + ring * 5
+    for (let i = 0; i < angles.length; i += 1) {
+      const a = angles[(i + offset) % angles.length]
+      const nx = x + Math.cos(a) * radius
+      const nz = z + Math.sin(a) * radius
+      if (insideCityLand(nx, nz) && !footprintOnRoad(nx, nz, w, d, 1.2)) {
+        return { x: nx, z: nz }
+      }
+    }
+  }
+  return {
+    x: nearestSafeAxisValue(x, ROAD_X, CITY.x0, CITY.x1, w / 2, 1.2),
+    z: nearestSafeAxisValue(z, ROAD_Z, CITY.z0, CITY.z1, d / 2, 1.2),
+  }
+}
+
+export function roadSafeFootprint(x, z, w = 3, d = 3, pad = 1.2) {
+  return insideCityLand(x, z) && !footprintOnRoad(x, z, w, d, pad)
+}
 
 function distToSeg(px, pz, ax, az, bx, bz) {
   const dx = bx - ax
@@ -279,14 +336,17 @@ export function DecorBuildings({ nodes, links, nodeIndex }) {
         const r2 = hash2(gz * 1.3, gx * 0.7)
         const r3 = hash2(gx * 0.5, gz * 1.7)
         if (r3 < 0.06) continue // only the occasional empty lot
-        const x = gx + (r1 - 0.5) * 2.4
-        const z = gz + (r2 - 0.5) * 2.4
-        // Clear the road by a building half-width so no footprint edge spills onto it.
-        if (onRoad(x, ROAD_X, 4) || onRoad(z, ROAD_Z, 4)) continue
-        if (nearNode(x, z, 14)) continue
-        if (nearLink(x, z, 7)) continue
-        const downtown = Math.hypot(x - 10, z) < 55
-        out.push({ x, z, r1, r2, r3, downtown })
+        const rawX = gx + (r1 - 0.5) * 2.4
+        const rawZ = gz + (r2 - 0.5) * 2.4
+        const downtown = Math.hypot(rawX - 10, rawZ) < 55
+        const aspect = 0.7 + r2 * 0.6
+        const approxW = downtown && r3 > 0.42 ? 2.8 + r2 * 2 : r3 > 0.5 ? 3.4 + r2 * 2 : 3 + r2 * 1.6
+        const approxD = approxW * aspect
+        const safe = roadSafePosition(rawX, rawZ, approxW, approxD, Math.floor(r1 * 10))
+        if (!roadSafeFootprint(safe.x, safe.z, approxW, approxD, 1.2)) continue
+        if (nearNode(safe.x, safe.z, 14)) continue
+        if (nearLink(safe.x, safe.z, 7)) continue
+        out.push({ x: safe.x, z: safe.z, r1, r2, r3, downtown })
       }
     }
     return out
@@ -362,6 +422,56 @@ export function DecorBuildings({ nodes, links, nodeIndex }) {
         <mesh position={[0, bh + 0.85, 0]} rotation={[0, Math.PI / 4, 0]}>
           <coneGeometry args={[Math.max(w, d) * 0.62, 1.7, 4]} />
           <meshStandardMaterial color={ROOFS[Math.floor(b.r3 * 100) % ROOFS.length]} roughness={1} />
+        </mesh>
+      </group>
+    )
+  })
+}
+
+export function EdgeBuildings({ nodes }) {
+  const items = useMemo(() => {
+    const pts = nodes.filter((n) => n.type !== 'SATELLITE').map((n) => [n.x, n.z])
+    const nearNode = (x, z, r) => pts.some(([px, pz]) => (px - x) ** 2 + (pz - z) ** 2 < r * r)
+    const bands = [
+      { x0: -150, x1: -126, z0: -104, z1: 36 },
+      { x0: 142, x1: 164, z0: -104, z1: 34 },
+      { x0: -122, x1: 138, z0: -110, z1: -76 },
+    ]
+    const out = []
+    bands.forEach((band, bi) => {
+      for (let x = band.x0; x <= band.x1; x += 8) {
+        for (let z = band.z0; z <= band.z1; z += 8) {
+          const r1 = hash2(x + bi * 17, z)
+          const r2 = hash2(z * 1.7, x * 0.4 + bi)
+          const r3 = hash2(x * 0.9, z * 0.5)
+          if (r3 < 0.22) continue
+          const w = 3.2 + r1 * 2.2
+          const d = w * (0.75 + r2 * 0.45)
+          const rawX = x + (r1 - 0.5) * 2.8
+          const rawZ = z + (r2 - 0.5) * 2.8
+          if (!insideCityLand(rawX, rawZ) || footprintOnRoad(rawX, rawZ, w, d, 1.5)) continue
+          if (nearNode(rawX, rawZ, 18)) continue
+          out.push({ x: rawX, z: rawZ, w, d, r1, r2, r3, tall: r3 > 0.72 })
+        }
+      }
+    })
+    return out
+  }, [nodes])
+
+  const facades = facadeTextures()
+
+  return items.map((b, i) => {
+    const facade = facades[Math.floor(hash2(b.x * 0.23, b.z * 0.81) * facades.length) % facades.length]
+    const h = b.tall ? 6 + b.r1 * 9 : 2.8 + b.r2 * 4
+    return (
+      <group key={`edge-${i}`} position={[b.x, 0, b.z]}>
+        <mesh position={[0, h / 2, 0]}>
+          <boxGeometry args={[b.w, h, b.d]} />
+          <meshStandardMaterial map={facade} roughness={0.76} metalness={b.tall ? 0.18 : 0.05} />
+        </mesh>
+        <mesh position={[0, h + 0.16, 0]}>
+          <boxGeometry args={[b.w * 1.02, 0.28, b.d * 1.02]} />
+          <meshStandardMaterial color="#5d6672" roughness={0.84} />
         </mesh>
       </group>
     )
@@ -447,7 +557,7 @@ export function Greenery({ parks }) {
           const tx = p.x + i + (r - 0.5) * 2
           const tz = p.z + j + (hash2(j, i) - 0.5) * 2
           // Parks sit in a group offset +10 on x, so world-x is tx + 10.
-          if (onRoad(tx + 10, ROAD_X, 1) || onRoad(tz, ROAD_Z, 1)) continue
+          if (footprintOnRoad(tx + 10, tz, 2.2, 2.2, 1)) continue
           out.push({ x: tx, z: tz, s: 0.8 + r * 0.7 })
         }
       }
@@ -506,12 +616,16 @@ function TrafficLight({ position, phase }) {
 
 export function TrafficLights() {
   const lights = useMemo(() => {
-    const xs = ROAD_X.filter((L) => L.main).map((L) => L.p)
-    const zs = ROAD_Z.filter((L) => L.main).map((L) => L.p)
+    const xs = ROAD_X.filter((L) => L.main)
+    const zs = ROAD_Z.filter((L) => L.main)
     const out = []
-    xs.forEach((x, i) => {
-      zs.forEach((z, j) => {
-        out.push({ x: x + 3.2, z: z + 3.2, phase: ((i * 3 + j) % 4) * 1.5 })
+    xs.forEach((xLine, i) => {
+      zs.forEach((zLine, j) => {
+        out.push({
+          x: xLine.p + xLine.width / 2 + 1.4,
+          z: zLine.p + zLine.width / 2 + 1.4,
+          phase: ((i * 3 + j) % 4) * 1.5,
+        })
       })
     })
     return out
@@ -576,7 +690,7 @@ export function StreetTrees({ nodes }) {
         const jx = x + (hash2(x, z) - 0.5) * 4
         const jz = z + (hash2(z, x) - 0.5) * 4
         // Stay well clear of the roads (and therefore the bridge approaches).
-        if (onRoad(jx, ROAD_X, 2.5) || onRoad(jz, ROAD_Z, 2.5)) continue
+        if (footprintOnRoad(jx, jz, 2.4, 2.4, 1.4)) continue
         if (pts.some(([px, pz]) => (px - jx) ** 2 + (pz - jz) ** 2 < 30)) continue
         out.push({ x: jx, z: jz, s: 0.65 + r * 0.5 })
       }

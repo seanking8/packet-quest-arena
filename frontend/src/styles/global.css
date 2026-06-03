@@ -117,6 +117,11 @@ code.pill, .pill {
 .home-screen .home {
   width: min(900px, 92vw);
 }
+.home-screen.screen.center,
+.completed-screen.screen.center {
+  align-items: flex-start;
+  overflow: auto;
+}
 .home-screen > .home > .field {
   margin-bottom: 20px;
 }
@@ -358,6 +363,96 @@ code.pill, .pill {
   .map-chooser-grid { grid-template-columns: 1fr; }
 }
 .home-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+.database-insights {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 16px;
+}
+.compact-card {
+  min-height: 0;
+  padding: 16px;
+}
+.pregame-screen .compact-card,
+.pregame-screen .report-card {
+  min-height: 0;
+}
+.compact-card h2,
+.report-card h2 {
+  margin-top: 18px;
+  margin-bottom: 10px;
+}
+.insight-list,
+.timeline-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.insight-row,
+.match-history-row,
+.timeline-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(34, 217, 228, 0.14);
+}
+.insight-row:last-child,
+.match-history-row:last-child,
+.timeline-row:last-child {
+  border-bottom: 0;
+}
+.insight-row .rank {
+  width: 18px;
+  color: var(--muted);
+}
+.match-meta {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.25;
+}
+.report-card {
+  margin-top: 16px;
+}
+.report-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 14px 0 12px;
+}
+.report-metric {
+  display: grid;
+  gap: 4px;
+  padding: 9px 10px;
+  border: 1px solid rgba(34, 217, 228, 0.18);
+  border-radius: 8px;
+  background: rgba(2, 8, 18, 0.22);
+}
+.report-metric span {
+  color: var(--muted);
+  font-size: 11px;
+}
+.report-metric strong {
+  color: var(--text);
+  font-size: 16px;
+}
+.timeline-title {
+  margin: 12px 0 8px;
+  font-size: 15px;
+}
+.timeline-row {
+  align-items: flex-start;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.timeline-time {
+  flex: 0 0 76px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
 .tutorial-card {
   display: flex;
   justify-content: space-between;
@@ -1204,6 +1299,42 @@ code.pill, .pill {
 .node-label.role-suggested span {
   border-color: rgba(102, 230, 255, 0.8);
 }
+.district-node-label {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  color: transparent;
+  min-width: 0;
+  padding: 0;
+  text-shadow: none;
+  backdrop-filter: none;
+}
+.district-node-label span,
+.district-node-label.active span,
+.district-node-label.role-start span,
+.district-node-label.role-dest span,
+.district-node-label.role-next span,
+.district-node-label.role-suggested span {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  color: rgba(218, 255, 249, 0.86);
+  font-size: 11px;
+  font-weight: 800;
+  padding: 0;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.95), 0 0 10px rgba(34, 219, 210, 0.28);
+}
+.district-node-label.role-start span {
+  color: #9effd7;
+}
+.district-node-label.role-dest span {
+  color: #ffc6dd;
+}
+.district-node-label.role-next span,
+.district-node-label.role-suggested span {
+  color: #c5fbff;
+}
 .district-label {
   color: rgba(233, 241, 255, 0.58);
   font-size: 12px;
@@ -1883,7 +2014,9 @@ code.pill, .pill {
     overflow: auto;
   }
 
-  .home-screen .home-cards {
+  .home-screen .home-cards,
+  .database-insights,
+  .report-grid {
     grid-template-columns: 1fr;
   }
 
@@ -2920,33 +3053,41 @@ button:not(.link-btn):not(:disabled):hover,
   font-size: 11px;
 }
 
-/* ---- Final override: keep 3D map node labels small and tightly fitted ----
-   Several earlier rules (and a merged teammate pass) gave node labels wide,
-   boxed pills. These end-of-file rules win and force compact text. */
-.node-label-3d,
-.node-label-3d span,
-.node-mini-label {
-  min-width: 0 !important;
-  max-width: none !important;
-  width: auto !important;
-}
-.node-label-3d,
-.node-mini-label {
-  background: none !important;
-  border: none !important;
-  padding: 0 !important;
+/* District map labels are plain map text, not HUD buttons/cards. Keep this at
+   the end so the broad .hud button rules cannot paint cyan boxes over them. */
+.hud .district-node-label,
+.hud .district-node-label button,
+.hud .district-node-label span,
+.hud .district-node-label.active,
+.hud .district-node-label.active button,
+.hud .district-node-label.active span,
+.hud .district-node-label.role-start button,
+.hud .district-node-label.role-start span,
+.hud .district-node-label.role-dest button,
+.hud .district-node-label.role-dest span,
+.hud .district-node-label.role-next button,
+.hud .district-node-label.role-next span,
+.hud .district-node-label.role-suggested button,
+.hud .district-node-label.role-suggested span {
+  background: transparent !important;
+  background-image: none !important;
+  border: 0 !important;
+  border-radius: 0 !important;
   box-shadow: none !important;
+  backdrop-filter: none !important;
 }
-.node-label-3d span,
-.node-mini-label {
-  display: inline-block !important;
-  white-space: nowrap !important;
-  background: rgba(7, 10, 18, 0.62) !important;
-  border: none !important;
-  border-radius: 4px !important;
-  padding: 0 4px !important;
-  font-size: 8.5px !important;
-  font-weight: 600 !important;
-  line-height: 1.25 !important;
-  letter-spacing: 0 !important;
+
+.hud .district-node-label button {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  transform: none !important;
+}
+
+.hud .district-node-label span {
+  color: rgba(218, 255, 249, 0.88) !important;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 0 !important;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.95), 0 0 10px rgba(34, 219, 210, 0.28);
 }

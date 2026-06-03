@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useGame } from '../state/GameContext'
+import { getMatchHistory, getPersistentLeaderboard } from '../services/api'
 import ErrorBanner from '../components/common/ErrorBanner'
 import LoadingScreen from '../components/common/LoadingScreen'
 
@@ -14,6 +15,26 @@ export default function HomeScreen() {
   const [name, setName] = useState('')
   const [joinId, setJoinId] = useState('')
   const [difficulty, setDifficulty] = useState('MEDIUM')
+  const [history, setHistory] = useState({ matches: [], leaderboard: [], loading: true, error: null })
+
+  useEffect(() => {
+    let cancelled = false
+    setHistory((current) => ({ ...current, loading: true, error: null }))
+    Promise.all([getMatchHistory(), getPersistentLeaderboard(difficulty)])
+      .then(([matches, leaderboard]) => {
+        if (!cancelled) {
+          setHistory({ matches: matches || [], leaderboard: leaderboard || [], loading: false, error: null })
+        }
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          setHistory({ matches: [], leaderboard: [], loading: false, error: e.message })
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [difficulty])
 
   const canHost = name.trim().length > 0
   const canJoin = name.trim().length > 0 && joinId.trim().length > 0
@@ -82,7 +103,77 @@ export default function HomeScreen() {
             </button>
           </section>
         </div>
+
+        <DatabaseInsightsPanel {...history} difficulty={difficulty} />
       </div>
     </div>
   )
+}
+
+function DatabaseInsightsPanel({ matches, leaderboard, loading, error, difficulty }) {
+  return (
+    <div className="database-insights">
+      <section className="card compact-card">
+        <h2>{formatDifficulty(difficulty)} leaderboard</h2>
+        {loading && <p className="muted">Loading saved scores.</p>}
+        {!loading && error && <p className="muted">Saved scores are unavailable right now.</p>}
+        {!loading && !error && leaderboard.length === 0 && (
+          <p className="muted">No completed matches yet.</p>
+        )}
+        {!loading && !error && leaderboard.length > 0 && (
+          <ol className="insight-list">
+            {leaderboard.slice(0, 5).map((entry, index) => (
+              <li key={entry.playerName} className="insight-row">
+                <span className="rank">{index + 1}</span>
+                <span className="grow">{entry.playerName}</span>
+                <span className="score">{entry.totalScore} pts</span>
+                <span className="match-meta">{entry.wins} wins</span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
+
+      <section className="card compact-card">
+        <h2>Recent matches</h2>
+        {loading && <p className="muted">Loading match history.</p>}
+        {!loading && error && <p className="muted">Match history is unavailable right now.</p>}
+        {!loading && !error && matches.length === 0 && (
+          <p className="muted">Finish a match to save a report.</p>
+        )}
+        {!loading && !error && matches.length > 0 && (
+          <ol className="insight-list">
+            {matches.slice(0, 5).map((match) => (
+              <li key={match.sessionId} className="match-history-row">
+                <span className="grow">
+                  {match.winnerName || 'No winner'}
+                  <span className="match-meta">
+                    {match.difficulty} - {match.deliveredPackets} delivered - {formatHistoryDate(match.updatedAt)}
+                  </span>
+                </span>
+                <span className="score">{match.winnerScore} pts</span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
+    </div>
+  )
+}
+
+function formatHistoryDate(value) {
+  if (!value) return 'unknown time'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return 'unknown time'
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
+}
+
+function formatDifficulty(value) {
+  const text = String(value || 'MEDIUM').toLowerCase()
+  return text.charAt(0).toUpperCase() + text.slice(1)
 }

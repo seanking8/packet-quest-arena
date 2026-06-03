@@ -53,7 +53,7 @@ export const joinSession = (sessionId, displayName) =>
 
 /** POST /api/sessions/{id}/start -> GameStateDto */
 export const startMatch = (sessionId, mapFamily = 'CITY') =>
-  request(`/sessions/${sessionId}/start`, {
+  request(`/sessions/${sessionId}/start?mapFamily=${encodeURIComponent(mapFamily)}`, {
     method: 'POST',
     body: JSON.stringify({ mapFamily }),
   })
@@ -86,3 +86,14 @@ export const previewRoute = (sessionId, { playerId, packetFlowId, path }) =>
 /** POST /api/sessions/{id}/tick -> GameStateDto */
 export const tick = (sessionId) =>
   request(`/sessions/${sessionId}/tick`, { method: 'POST' })
+
+/** GET /api/history/matches -> MatchSummaryDto[] */
+export const getMatchHistory = () => request('/history/matches')
+
+/** GET /api/history/leaderboard?difficulty=MEDIUM -> LeaderboardEntryDto[] */
+export const getPersistentLeaderboard = (difficulty = 'MEDIUM') =>
+  request(`/history/leaderboard?difficulty=${encodeURIComponent(difficulty)}`)
+
+/** GET /api/history/matches/{id}/report -> MatchReportDto */
+export const getMatchReport = (sessionId) =>
+  request(`/history/matches/${sessionId}/report`)

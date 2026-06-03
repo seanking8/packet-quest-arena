@@ -68,15 +68,20 @@ public class TopologyGeneratorService {
         node(session, SC_PLAZA, "City Plaza Small Cell", NodeType.SMALL_CELL, -35, 2, 48);
         node(session, "sc-market", "Market Quarter Small Cell", NodeType.SMALL_CELL, 5, 2, 58);
         node(session, "sc-harbor", "Harbor Small Cell", NodeType.SMALL_CELL, 35, 2, -82);
+        node(session, "sc-campus", "Campus Rooftop Small Cell", NodeType.SMALL_CELL, -112, 2, -105);
+        node(session, "sc-riverside", "Riverside Rooftop Small Cell", NodeType.SMALL_CELL, 130, 2, 96);
 
         // Aggregation / control.
         node(session, ODU_1, "North Aggregation Hub", NodeType.O_DU, -4, 1, 35);
         node(session, ODU_2, "South Aggregation Hub", NodeType.O_DU, -5, 1, -38);
         node(session, OCU_1, "Metro O-CU Control Centre", NodeType.O_CU, 42, 1, 8);
+        node(session, "oru-harbor", "Harbor Rooftop O-RU", NodeType.O_RU, 58, 2, -118);
 
         // Core transport chain.
+        node(session, "edge-west", "West Edge Micro DC", NodeType.EDGE, -150, 1, -35);
         node(session, EDGE_1, "East Edge Data Centre", NodeType.EDGE, 76, 1, 45);
         node(session, UPF_1, "Carrier UPF Gateway", NodeType.UPF, 86, 1, 0);
+        node(session, "upf-harbor", "Harbor UPF Gateway", NodeType.UPF, 62, 1, -112);
         node(session, CORE_1, "Core Network Campus", NodeType.CORE, 118, 1, -5);
         node(session, "dc-1", "Regional Cloud Data Centre", NodeType.DATA_CENTRE, 150, 1, 38);
 
@@ -97,6 +102,10 @@ public class TopologyGeneratorService {
         link(session, "l-scplaza-runorth", SC_PLAZA, RU_NORTH, LinkType.MMWAVE);
         link(session, "l-scmarket-ocu", "sc-market", OCU_1, LinkType.MMWAVE);
         link(session, "l-scharbor-ocu", "sc-harbor", OCU_1, LinkType.MMWAVE);
+        link(session, "l-sccampus-ruwest", "sc-campus", RU_WEST, LinkType.MMWAVE);
+        link(session, "l-sccampus-odu2", "sc-campus", ODU_2, LinkType.MMWAVE);
+        link(session, "l-scriverside-rueast", "sc-riverside", RU_EAST, LinkType.MMWAVE);
+        link(session, "l-oruharbor-scharbor", "oru-harbor", "sc-harbor", LinkType.MMWAVE);
 
         // MICROWAVE: tower-to-tower backhaul.
         link(session, "l-runorth-rueast", RU_NORTH, RU_EAST, LinkType.MICROWAVE);
@@ -105,17 +114,22 @@ public class TopologyGeneratorService {
         // FIBRE: O-DU / O-CU / edge / UPF / core transport.
         link(session, "l-oru-odu1", ORU_CENTRAL, ODU_1, LinkType.FIBRE);
         link(session, "l-oru-odu2", ORU_CENTRAL, ODU_2, LinkType.FIBRE);
+        link(session, "l-oruharbor-odu2", "oru-harbor", ODU_2, LinkType.FIBRE);
         link(session, "l-odu1-ocu", ODU_1, OCU_1, LinkType.FIBRE);
         link(session, "l-odu2-ocu", ODU_2, OCU_1, LinkType.FIBRE);
+        link(session, "l-edgewest-odu2", "edge-west", ODU_2, LinkType.FIBRE);
         link(session, "l-ocu-edge", OCU_1, EDGE_1, LinkType.FIBRE);
         link(session, "l-ocu-upf", OCU_1, UPF_1, LinkType.FIBRE);
         link(session, "l-edge-upf", EDGE_1, UPF_1, LinkType.FIBRE);
+        link(session, "l-upfharbor-oru", "upf-harbor", "oru-harbor", LinkType.FIBRE);
+        link(session, "l-upfharbor-upf", "upf-harbor", UPF_1, LinkType.FIBRE);
         link(session, "l-upf-core", UPF_1, CORE_1, LinkType.FIBRE);
         link(session, "l-core-dc", CORE_1, "dc-1", LinkType.FIBRE);
 
         // LEGACY: reliable backups, higher latency / lower capacity.
         link(session, "l-runorth-odu1", RU_NORTH, ODU_1, LinkType.LEGACY);
         link(session, "l-odu1-odu2", ODU_1, ODU_2, LinkType.LEGACY);
+        link(session, "l-edgewest-upf", "edge-west", UPF_1, LinkType.LEGACY);
 
         // SATELLITE: high-latency wide-area backup paths.
         link(session, "l-sat1-rusouth", SAT_1, RU_SOUTH, LinkType.SATELLITE);

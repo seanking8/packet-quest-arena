@@ -16,17 +16,34 @@ const SOUNDS = {
 }
 
 const MUSIC_VOLUME = 0.35
-// Gain values can exceed 1.0 using Web Audio API GainNode.
-const SFX_GAIN = 2.5
+const MUSIC_VOLUME_OVERRIDE = {
+  districtMusic: 0.7,
+}
 
-// Shared AudioContext is created once on first interaction.
+const SFX_GAIN = 2.5
+const SFX_GAIN_OVERRIDE = {
+  aboutToExpire: 0.25,  // significantly quieter
+}
+
+// --- Module-level mute state (shared across all hook instances) ---
+let muted = false
+const muteListeners = new Set()
+
+export function isMuted() { return muted }
+
+export function toggleMute() {
+  muted = !muted
+  muteListeners.forEach((fn) => fn(muted))
+  return muted
+}
+
+// --- Web Audio API ---
 let audioCtx = null
 function getAudioContext() {
   if (!audioCtx) audioCtx = new (globalThis.AudioContext || globalThis.webkitAudioContext)()
   return audioCtx
 }
 
-// Cache decoded buffers so each file is only fetched + decoded once.
 const bufferCache = {}
 function getBuffer(src) {
   if (!bufferCache[src]) {
@@ -37,10 +54,8 @@ function getBuffer(src) {
   return bufferCache[src]
 }
 
-/**
- * Play a sound via Web Audio API with a gain boost (allows volume > 1.0).
- */
-function playWithGain(src, gain = SFX_GAIN) {
+function playWithGain(src, gain) {
+  if (muted) return
   getBuffer(src).then((decoded) => {
     const ctx = getAudioContext()
     const source = ctx.createBufferSource()
@@ -55,9 +70,9 @@ function playWithGain(src, gain = SFX_GAIN) {
 
 /**
  * Central audio hook. Returns:
- *   play(name)          - play a one-shot SFX
- *   playMusic(name)     - start a looping background track (stops the current one)
- *   stopMusic()         - stop background music
+ *   play(name)      — one-shot SFX
+ *   playMusic(name) — looping background track
+ *   stopMusic()     — stop background music
  */
 export default function useAudio() {
   const bgRef  = useRef(null)
@@ -65,7 +80,7 @@ export default function useAudio() {
 
   const play = useCallback((name) => {
     const src = SOUNDS[name]
-    if (src) playWithGain(src, SFX_GAIN)
+    if (src) playWithGain(src, SFX_GAIN_OVERRIDE[name] ?? SFX_GAIN)
   }, [])
 
   const playMusic = useCallback((name) => {
@@ -78,9 +93,8 @@ export default function useAudio() {
     if (!src) return
     const audio = new Audio(src)
     audio.loop   = true
-    audio.volume = MUSIC_VOLUME
-    const playResult = audio.play()
-    if (playResult?.catch) playResult.catch(() => {})
+    audio.volume = muted ? 0 : (MUSIC_VOLUME_OVERRIDE[name] ?? MUSIC_VOLUME)
+    audio.play().catch(() => {})
     bgRef.current  = audio
     bgName.current = name
   }, [])
@@ -92,6 +106,22 @@ export default function useAudio() {
     }
     bgRef.current  = null
     bgName.current = null
+  }, [])
+
+  // Respond to mute toggle — silence or restore the current music track.
+  useEffect(() => {
+    const handler = (nowMuted) => {
+      if (!bgRef.current) return
+      if (nowMuted) {
+        bgRef.current.volume = 0
+      } else {
+        bgRef.current.volume = MUSIC_VOLUME_OVERRIDE[bgName.current] ?? MUSIC_VOLUME
+        // Resume if the browser paused the element when volume hit 0
+        if (bgRef.current.paused) bgRef.current.play().catch(() => {})
+      }
+    }
+    muteListeners.add(handler)
+    return () => muteListeners.delete(handler)
   }, [])
 
   useEffect(() => () => stopMusic(), [stopMusic])

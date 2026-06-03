@@ -26,7 +26,7 @@ function jobsLayoutClass(jobsVisible, jobsCollapsed) {
 }
 
 export default function GameScreen({ state, transport }) {
-  const { playerId } = useGame()
+  const { playerId, selectedMapFamily } = useGame()
   const { play, playMusic } = useAudio()
   const [webglAvailable, setWebglAvailable] = useState(canUseWebGL)
   const [panels, setPanels] = useState(DEFAULT_PANELS)
@@ -35,7 +35,7 @@ export default function GameScreen({ state, transport }) {
   // The map family is chosen once by the host at start and stored on the
   // session, so every player renders the same map for the whole match. There
   // is no in-game switch between families.
-  const mapFamily = (state.mapFamily || 'CITY').toLowerCase() === 'district' ? 'district' : 'city'
+  const mapFamily = (selectedMapFamily || state.mapFamily || 'CITY').toLowerCase() === 'district' ? 'district' : 'city'
   // Pick the map components for the chosen family once, so the render stays flat.
   const Map2D = mapFamily === 'district' ? TacticalMap : CityMap2D
   const Map3D = mapFamily === 'district' ? DistrictScene : NetworkScene
