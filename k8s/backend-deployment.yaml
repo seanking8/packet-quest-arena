@@ -60,6 +60,12 @@ spec:
   ports:
     - port: 8080
 ---
+# Horizontal scaling for the backend (satisfies the "horizontal scaling for at
+# least one service" requirement). NOTE: live match state is held in-memory per
+# pod (GameSessionRepository), so scaling past one replica needs sticky routing
+# by sessionId (or moving live state to Redis) to avoid splitting a session
+# across pods. See Docs/scalability-notes.md ("In-Memory, Single-Instance Live
+# State") for the trade-off and mitigation path.
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
