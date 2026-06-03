@@ -9,6 +9,7 @@ export default function CompletedScreen({ state }) {
   const winner = leaderOf(state.players)
   const [report, setReport] = useState(null)
   const [reportError, setReportError] = useState(null)
+  const [showReport, setShowReport] = useState(false)
   const [difficultyLeaderboard, setDifficultyLeaderboard] = useState(null)
   const [leaderboardError, setLeaderboardError] = useState(null)
 
@@ -72,7 +73,18 @@ export default function CompletedScreen({ state }) {
           </ol>
         </section>
 
-        <DatabaseReportCard report={report} error={reportError} />
+        <div className="row">
+          <button
+            className="ghost"
+            type="button"
+            aria-expanded={showReport}
+            onClick={() => setShowReport((shown) => !shown)}
+          >
+            {showReport ? 'Hide game timeline' : 'Show game timeline'}
+          </button>
+        </div>
+
+        {showReport && <GameTimelineCard report={report} error={reportError} />}
 
         <DifficultyLeaderboardCard
           difficulty={state.difficulty}
@@ -134,11 +146,11 @@ function DifficultyLeaderboardCard({ difficulty, leaderboard, error }) {
   )
 }
 
-function DatabaseReportCard({ report, error }) {
+function GameTimelineCard({ report, error }) {
   if (error) {
     return (
       <section className="card report-card">
-        <h2>Database report</h2>
+        <h2>Game timeline</h2>
         <p className="muted">Saved report is unavailable right now.</p>
       </section>
     )
@@ -147,7 +159,7 @@ function DatabaseReportCard({ report, error }) {
   if (!report) {
     return (
       <section className="card report-card">
-        <h2>Database report</h2>
+        <h2>Game timeline</h2>
         <p className="muted">Loading saved match report.</p>
       </section>
     )
@@ -157,7 +169,7 @@ function DatabaseReportCard({ report, error }) {
 
   return (
     <section className="card report-card">
-      <h2>Database report</h2>
+      <h2>Game timeline</h2>
       <p className="muted">{report.highlight}</p>
 
       <div className="report-grid">
