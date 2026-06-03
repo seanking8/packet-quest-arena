@@ -48,8 +48,7 @@ export default function useGameState(sessionId) {
     getState(sessionId).then(apply).catch(recordError)
 
     try {
-      const host = window.location.hostname || 'localhost'
-      ws = new WebSocket(`ws://${host}:8080/ws/game/${sessionId}`)
+      ws = new WebSocket(buildGameWebSocketUrl(sessionId))
       ws.onopen = () => active && setTransport('websocket')
       ws.onmessage = (event) => {
         try {
@@ -78,4 +77,10 @@ export default function useGameState(sessionId) {
   }, [sessionId])
 
   return { state, transport, error, notFound }
+}
+
+export function buildGameWebSocketUrl(sessionId, locationLike = window.location) {
+  const protocol = locationLike.protocol === 'https:' ? 'wss:' : 'ws:'
+  const host = locationLike.host || `${locationLike.hostname || 'localhost'}:8080`
+  return `${protocol}//${host}/ws/game/${encodeURIComponent(sessionId)}`
 }

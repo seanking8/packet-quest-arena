@@ -8,15 +8,15 @@ const MAP_CHOICES = [
     id: 'CITY',
     name: 'City map',
     shortBlurb: 'Streets, towers, parks.',
-    blurb: 'A realistic daytime city — streets, buildings, parks and traffic. Fly around it in 3D.',
-    art: '🏙️',
+    blurb: 'A realistic daytime city with streets, buildings, parks and traffic. Fly around it in 3D.',
+    art: 'CITY',
   },
   {
     id: 'DISTRICT',
     name: 'District map',
     shortBlurb: 'Clear districts and labels.',
     blurb: 'A clean strategic view with named districts and clear node labels. Easier to read at a glance.',
-    art: '🗺️',
+    art: 'MAP',
   },
 ]
 
@@ -26,21 +26,25 @@ export default function LobbyScreen({ state, transport }) {
   const canStart = players.length >= 2
 
   const [choosingMap, setChoosingMap] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const [copied, setCopied] = useState('')
   const shortCode = sessionId ? sessionId.slice(0, 8) : ''
+  const inviteLink = buildInviteLink(sessionId)
+  const localOnlyHost = isLocalOnlyHost()
 
   if (busy) {
     return <LoadingScreen message="Starting match systems." />
   }
 
+  const copyInvite = async () => {
+    await copyText(inviteLink)
+    setCopied('link')
+    setTimeout(() => setCopied(''), 1500)
+  }
+
   const copyCode = async () => {
-    try {
-      await navigator.clipboard.writeText(sessionId)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    } catch {
-      /* clipboard unavailable — ignore */
-    }
+    await copyText(sessionId)
+    setCopied('code')
+    setTimeout(() => setCopied(''), 1500)
   }
 
   return (
@@ -49,14 +53,28 @@ export default function LobbyScreen({ state, transport }) {
         <header className="home-header">
           <h1>Lobby</h1>
           <p className="muted">
-            Session <code className="pill code">#{shortCode}…</code>
-            <button className="ghost copy-btn" onClick={copyCode}>
-              {copied ? 'Copied ✓' : 'Copy'}
-            </button>
-            <span className="transport"> · {transport}</span>
+            Session <code className="pill code">#{shortCode}...</code>
+            <span className="transport"> - {transport}</span>
           </p>
           <p className="muted">Difficulty <code className="pill">{state.difficulty || 'MEDIUM'}</code></p>
-          <p className="muted">Copy the session code and share it so others can join (2-10 players).</p>
+          <div className="invite-box">
+            <span className="invite-label">Invite link</span>
+            <code className="share-link">{inviteLink}</code>
+            <div className="invite-actions">
+              <button className="ghost copy-btn" onClick={copyInvite}>
+                {copied === 'link' ? 'Link copied' : 'Copy link'}
+              </button>
+              <button className="ghost copy-btn" onClick={copyCode}>
+                {copied === 'code' ? 'Code copied' : 'Copy code'}
+              </button>
+            </div>
+          </div>
+          {localOnlyHost && (
+            <p className="muted host-warning">
+              This link uses localhost, so it only works on this laptop. For teammate laptops, open the game with this host laptop's Wi-Fi IP first, then copy the link.
+            </p>
+          )}
+          <p className="muted">Share the link with players on the same Wi-Fi. They enter a name, join, then wait for the host to start.</p>
         </header>
 
         <ErrorBanner message={error} onDismiss={() => setError(null)} />
@@ -112,4 +130,48 @@ export default function LobbyScreen({ state, transport }) {
       )}
     </div>
   )
+}
+
+function buildInviteLink(sessionId) {
+  if (!sessionId || typeof window === 'undefined') return sessionId || ''
+  try {
+    const url = new URL(window.location.href)
+    url.search = ''
+    url.hash = ''
+    url.searchParams.set('join', sessionId)
+    return url.toString()
+  } catch {
+    return sessionId
+  }
+}
+
+function isLocalOnlyHost() {
+  if (typeof window === 'undefined') return false
+  const host = window.location.hostname
+  return host === 'localhost' || host === '127.0.0.1' || host === '::1'
+}
+
+async function copyText(text) {
+  if (!text) return
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text)
+      return
+    }
+  } catch {
+    /* fall through to textarea copy */
+  }
+
+  const area = document.createElement('textarea')
+  area.value = text
+  area.setAttribute('readonly', '')
+  area.style.position = 'fixed'
+  area.style.top = '-1000px'
+  document.body.appendChild(area)
+  area.select()
+  try {
+    document.execCommand('copy')
+  } finally {
+    document.body.removeChild(area)
+  }
 }

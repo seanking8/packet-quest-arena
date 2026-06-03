@@ -11,11 +11,15 @@ const DIFFICULTIES = [
 ]
 
 export default function HomeScreen() {
-  const { host, join, startTutorial, error, setError, busy } = useGame()
+  const { host, join, startTutorial, inviteSessionId, error, setError, busy } = useGame()
   const [name, setName] = useState('')
-  const [joinId, setJoinId] = useState('')
+  const [joinId, setJoinId] = useState(inviteSessionId || '')
   const [difficulty, setDifficulty] = useState('MEDIUM')
   const [history, setHistory] = useState({ matches: [], leaderboard: [], loading: true, error: null })
+
+  useEffect(() => {
+    if (inviteSessionId) setJoinId(inviteSessionId)
+  }, [inviteSessionId])
 
   useEffect(() => {
     let cancelled = false
@@ -47,6 +51,13 @@ export default function HomeScreen() {
     <div className="screen center pregame-screen home-screen">
       <div className="home">
         <ErrorBanner message={error} onDismiss={() => setError(null)} />
+
+        {inviteSessionId && (
+          <div className="invite-banner">
+            <strong>Shared match invite loaded.</strong>
+            <span>Enter your display name, then join the session.</span>
+          </div>
+        )}
 
         <label className="field">
           <span>Display name</span>

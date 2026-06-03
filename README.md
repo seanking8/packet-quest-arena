@@ -24,8 +24,8 @@ Services and default host ports:
 
 | Service | URL / Port | Notes |
 | --- | --- | --- |
-| Frontend | http://localhost:3000 | nginx serving the built React app |
-| Backend | http://localhost:8080 | Spring Boot API with healthcheck |
+| Frontend | http://localhost:3000 | nginx serving the built React app; also proxies `/api` and `/ws` to the backend |
+| Backend | http://localhost:8080 | Spring Boot API with healthcheck; direct access is useful for curl/debugging |
 | MySQL | localhost:3307 -> 3306 | 3307 avoids clashing with a local MySQL |
 | Simulator | no port | optional incident generator, opt-in |
 
@@ -40,6 +40,22 @@ exists for demos/tests:
 ```bash
 curl -X POST http://localhost:8080/api/sessions/<sessionId>/tick
 ```
+
+## One-Host Multiplayer Demo
+
+For a one-time live demo with teammates on separate laptops, run Docker Compose
+on one host laptop and have everyone join through that laptop's Wi-Fi/LAN IP:
+
+```text
+http://<HOST_IPV4>:3000
+```
+
+The frontend now proxies REST and WebSocket traffic, so players only need the
+frontend URL. The lobby provides an invite link that pre-fills the session id
+for joining players.
+
+See [Docs/shared-multiplayer-demo.md](Docs/shared-multiplayer-demo.md) for the
+host checklist, player checklist, firewall notes, and demo talk track.
 
 ## Database Persistence
 
@@ -120,6 +136,7 @@ See [Docs/test-evidence.md](Docs/test-evidence.md).
 
 - [Architecture summary](Docs/design/architecture-summary.md) - components, data flow, game loop, real-time updates
 - [Database persistence](Docs/database-persistence.md) - MySQL snapshot and audit tables
+- [Shared multiplayer demo](Docs/shared-multiplayer-demo.md) - one-host live demo setup for separate player laptops
 - [Security & anti-cheat notes](Docs/security-notes.md) - backend-authoritative design, validation, no secrets
 - [Scalability notes](Docs/scalability-notes.md) - behaviour and mitigations under load
 - [Test evidence](Docs/test-evidence.md) - latest local verification evidence

@@ -5,9 +5,10 @@ Last verified on 2026-06-03.
 | Area | Command | Result |
 | --- | --- | --- |
 | Backend | `cd backend && mvn test` | 115 tests passed, 0 failures, 0 errors |
-| Frontend | `cd frontend && cmd.exe /c npx vitest run --cache=false` | 7 files passed, 29 tests passed |
+| Frontend | `cd frontend && cmd.exe /c npx vitest run --cache=false` | 8 files passed, 32 tests passed |
 | Simulator | `python -m pytest simulator/tests -q` | 18 tests passed |
-| Frontend build | `cd frontend && cmd.exe /c npm run build` | Production build succeeded |
+| Frontend build | `cd frontend && npm.cmd run build` | Production build succeeded; Vite large chunk warning only |
+| Docker Compose | `docker compose up --build -d` | Full stack rebuilt and started; backend and MySQL healthy |
 
 ## Backend Coverage Highlights
 
@@ -19,9 +20,11 @@ Last verified on 2026-06-03.
 ## Frontend Coverage Highlights
 
 - Home screen session creation and difficulty selection.
+- Shared invite link pre-fills the join session id.
 - API client behavior for create/join/preview/submit and safe client payloads.
 - Completed screen database report, replay timeline, and same-difficulty leaderboard.
 - Game screen HUD, leaderboard, map mount, job panel behavior, and deadline countdown.
+- WebSocket URL construction uses the frontend origin so Docker/nginx can proxy `/ws`.
 - Incident/weather presentation helpers.
 
 ## Simulator Coverage Highlights
