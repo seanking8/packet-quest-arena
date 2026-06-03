@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { OrbitControls, Line, Html } from '@react-three/drei'
+import { OrbitControls, Line, Html, Sky, ContactShadows, Instances, Instance } from '@react-three/drei'
+import { EffectComposer, Bloom } from '@react-three/postprocessing'
 import * as THREE from 'three'
 import { nodeColor, linkColor, nodeSize, isArcLink, isBrokenLink } from './colors'
 import { isWeather, incidentColor } from './incidents'
@@ -19,6 +20,9 @@ import {
   anchorY,
   roadSafeFootprint,
   roadSafePosition,
+  CITY_BOUNDS,
+  MAIN_ROAD_X,
+  MAIN_ROAD_Z,
 } from './cityDetails'
 import { friendlyNodeName } from '../../utils/mapDisplay'
 
@@ -330,11 +334,6 @@ function CityGround() {
         <planeGeometry args={[320, 240]} />
         <meshStandardMaterial color="#74815b" roughness={1} />
       </mesh>
-      {/* River along the north edge (clear of the node field). */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 82]}>
-        <planeGeometry args={[320, 76]} />
-        <meshStandardMaterial color="#2f6f9e" emissive="#1d4d72" emissiveIntensity={0.25} roughness={0.4} metalness={0.2} />
-      </mesh>
       {PARKS.map((p, i) => (
         <mesh key={i} rotation={[-Math.PI / 2, 0, 0]} position={[p.x, 0.02, p.z]}>
           <planeGeometry args={[p.w, p.d]} />
@@ -342,6 +341,215 @@ function CityGround() {
         </mesh>
       ))}
       <Greenery parks={PARKS} />
+    </group>
+  )
+}
+
+// Large land plane under everything so the city never ends in an abrupt void —
+// matches the city ground colour and fades into fog on the south/east/west.
+function Ground() {
+  // Well below the city ground (-0.05) so the two big planes never z-fight.
+  return (
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[10, -0.6, 0]}>
+      <planeGeometry args={[2000, 2000]} />
+      <meshStandardMaterial color="#74815b" roughness={1} />
+    </mesh>
+  )
+}
+
+// The sea — the city's waterfront on the NORTH, where the original river and the
+// bridges are. Drawn ABOVE the city ground (y=0 > -0.05) like the old river, so
+// it paints over the land instead of fighting it. Spans the bridge crossing
+// (z ≈ 44..155) and is wide; the far bank lies beyond it.
+function Sea() {
+  return (
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[10, 0, 99]}>
+      <planeGeometry args={[1500, 112]} />
+      <meshStandardMaterial color="#2f6f9e" emissive="#1d4d72" emissiveIntensity={0.22} roughness={0.4} metalness={0.2} />
+    </mesh>
+  )
+}
+
+// A cheap, unlit, non-fogged sun disc aligned with the sky's sun direction. It's
+// bright and toneMapped=false so the bloom pass glows it; a faint larger sphere
+// adds a soft halo.
+function Sun() {
+  const pos = useMemo(() => new THREE.Vector3(60, 95, 35).normalize().multiplyScalar(640), [])
+  return (
+    <group position={[pos.x, pos.y, pos.z]}>
+      <mesh>
+        <sphereGeometry args={[28, 24, 24]} />
+        <meshBasicMaterial color="#fff6d8" toneMapped={false} fog={false} />
+      </mesh>
+      <mesh>
+        <sphereGeometry args={[52, 24, 24]} />
+        <meshBasicMaterial color="#ffe7ad" transparent opacity={0.3} toneMapped={false} fog={false} />
+      </mesh>
+    </group>
+  )
+}
+
+// Pastel palette matching the main city facades, so the far/outskirt buildings
+// read soft and colourful instead of dark grey. These tint a white window
+// texture, so the building shows the colour with darker windows.
+const CITY_COLORS = ['#aecbe8', '#a9ddd1', '#ecbfae', '#eedcae', '#c4e2bb', '#d2bfe6', '#ecc1d4', '#c2d6ec', '#f0d6a8']
+
+// A white facade with a grid of dark windows. White base so the per-instance
+// colour tints it — every distant building gets its own colour but still reads
+// as a real windowed building rather than a flat box.
+function cityTexture() {
+  if (typeof document === 'undefined') return null
+  const c = document.createElement('canvas')
+  c.width = 32
+  c.height = 64
+  const ctx = c.getContext('2d')
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, 32, 64)
+  ctx.fillStyle = 'rgba(28, 38, 52, 0.85)'
+  for (let y = 5; y < 62; y += 7) {
+    for (let x = 4; x < 30; x += 7) {
+      ctx.fillRect(x, y, 4, 4)
+    }
+  }
+  const tex = new THREE.CanvasTexture(c)
+  tex.colorSpace = THREE.SRGBColorSpace
+  return tex
+}
+
+// Outskirt highways: continue the city's real main avenues outward so they line
+// up with the in-city roads (shared so building/tree placement can avoid them).
+const OUTSKIRT_ROADS = [
+  // Each main N-S avenue extended south past the city edge.
+  ...MAIN_ROAD_X.map((L) => {
+    const zStart = CITY_BOUNDS.z0 + 4 // overlap the city road a touch — no gap
+    const zEnd = -330
+    return { x: L.p, z: (zStart + zEnd) / 2, w: L.width, l: zStart - zEnd, vertical: true }
+  }),
+  // Each main E-W road extended both east and west past the city edges.
+  ...MAIN_ROAD_Z.flatMap((L) => {
+    const eStart = CITY_BOUNDS.x1 - 4
+    const wStart = CITY_BOUNDS.x0 + 4
+    return [
+      { x: (eStart + 380) / 2, z: L.p, w: L.width, l: 380 - eStart, vertical: false },
+      { x: (wStart - 380) / 2, z: L.p, w: L.width, l: wStart + 380, vertical: false },
+    ]
+  }),
+]
+
+// The sea footprint (z 43..155) spans the full width, so anything in this band
+// would sit in the water.
+function inWater(z) {
+  return z >= 38 && z <= 160
+}
+
+function onOutskirtRoad(x, z, pad = 5) {
+  return OUTSKIRT_ROADS.some((r) => {
+    const halfX = (r.vertical ? r.w : r.l) / 2 + pad
+    const halfZ = (r.vertical ? r.l : r.w) / 2 + pad
+    return Math.abs(x - r.x) < halfX && Math.abs(z - r.z) < halfZ
+  })
+}
+
+// Real-looking (windowed, coloured) filler buildings, one instanced draw call.
+// A dense city on the far bank across the water (north) with a taller downtown
+// cluster, plus a wrap on the other sides. Distance + fog fades it out.
+function FarCity() {
+  const tex = useMemo(() => cityTexture(), [])
+  const buildings = useMemo(() => {
+    let seed = 9277
+    const rand = () => {
+      seed = (seed * 1664525 + 1013904223) % 4294967296
+      return seed / 4294967296
+    }
+    const out = []
+    // Far bank across the water (north of z≈158): dense grid that fades into fog.
+    for (let z = 162; z <= 460; z += 19) {
+      for (let x = -340; x <= 360; x += 21) {
+        if (rand() < 0.16) continue // a few gaps so it isn't a perfect grid
+        const jx = x + (rand() - 0.5) * 11
+        const jz = z + (rand() - 0.5) * 11
+        if (onOutskirtRoad(jx, jz)) continue
+        const downtown = Math.hypot(jx - 10, jz - 230) < 120
+        const h = (downtown ? 26 : 13) + rand() * (downtown ? 64 : 32)
+        const w = 7 + rand() * 9
+        out.push({ x: jx, z: jz, h, w, color: CITY_COLORS[Math.floor(rand() * CITY_COLORS.length)], key: `f${x}_${z}` })
+      }
+    }
+    // Wrap the other three sides, starting close to the city so the outskirts
+    // aren't bare green, fading out toward the fog.
+    const RING = 170
+    for (let i = 0; i < RING; i += 1) {
+      const ang = (i / RING) * Math.PI * 2 + (rand() - 0.5) * 0.3
+      const radius = 168 + rand() * 210
+      const x = 10 + Math.cos(ang) * radius
+      const z = Math.sin(ang) * radius
+      if (z > 130) continue // north is the far bank, handled above
+      if (inWater(z) || onOutskirtRoad(x, z)) continue // not in the sea or on a road
+      const h = 12 + rand() * 48
+      const w = 7 + rand() * 10
+      out.push({ x, z, h, w, color: CITY_COLORS[Math.floor(rand() * CITY_COLORS.length)], key: `r${i}` })
+    }
+    return out
+  }, [])
+
+  return (
+    <Instances limit={buildings.length} range={buildings.length}>
+      <boxGeometry args={[1, 1, 1]} />
+      <meshStandardMaterial map={tex} roughness={0.85} metalness={0.05} />
+      {buildings.map((b) => (
+        <Instance key={b.key} position={[b.x, b.h / 2, b.z]} scale={[b.w, b.h, b.w]} color={b.color} />
+      ))}
+    </Instances>
+  )
+}
+
+const TREE_GREENS = ['#3f6f3a', '#4a7d40', '#37623a', '#52864a']
+
+// Scattered tree clusters (instanced cones) filling the green outskirts around
+// the city so the edges don't read as empty grass. One draw call.
+function OutskirtsGreenery() {
+  const trees = useMemo(() => {
+    let seed = 4421
+    const rand = () => {
+      seed = (seed * 1664525 + 1013904223) % 4294967296
+      return seed / 4294967296
+    }
+    const out = []
+    const N = 260
+    for (let i = 0; i < N; i += 1) {
+      const ang = rand() * Math.PI * 2
+      const radius = 158 + rand() * 210
+      const x = 10 + Math.cos(ang) * radius
+      const z = Math.sin(ang) * radius
+      if (inWater(z) || onOutskirtRoad(x, z, 7)) continue // not in the sea or on a road
+      const s = 1.5 + rand() * 2.4
+      out.push({ x, z, s, color: TREE_GREENS[Math.floor(rand() * TREE_GREENS.length)], key: i })
+    }
+    return out
+  }, [])
+
+  return (
+    <Instances limit={trees.length} range={trees.length}>
+      <coneGeometry args={[1, 2.2, 8]} />
+      <meshStandardMaterial roughness={1} />
+      {trees.map((t) => (
+        <Instance key={t.key} position={[t.x, t.s * 1.1, t.z]} scale={[t.s, t.s * 1.9, t.s]} color={t.color} />
+      ))}
+    </Instances>
+  )
+}
+
+// A few highways continuing out of the city into the outskirts (south/east/west)
+// so the road grid doesn't stop dead at the city edge.
+function OutskirtRoads() {
+  return (
+    <group>
+      {OUTSKIRT_ROADS.map((r, i) => (
+        <mesh key={i} position={[r.x, 0.05, r.z]} rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
+          <planeGeometry args={r.vertical ? [r.w, r.l] : [r.l, r.w]} />
+          <meshStandardMaterial color="#3c4149" roughness={1} />
+        </mesh>
+      ))}
     </group>
   )
 }
@@ -496,9 +704,15 @@ function SceneContent({ state, onSelect, routePath, selectedPacket, layers }) {
 
   return (
     <>
-      <hemisphereLight args={['#dce8ff', '#5b6446', 0.7]} />
-      <ambientLight intensity={0.5} />
-      <directionalLight position={[60, 95, 35]} intensity={1.5} color="#fff4dc" />
+      <hemisphereLight args={['#eaf3ff', '#6f7757', 0.95]} />
+      <ambientLight intensity={0.62} />
+      <directionalLight position={[60, 95, 35]} intensity={1.75} color="#fff1d4" />
+      <Sun />
+      <Ground />
+      <OutskirtRoads />
+      <Sea />
+      <FarCity />
+      <OutskirtsGreenery />
       <CityGround />
       <Roads />
       <Bridges />
@@ -581,9 +795,17 @@ export default function NetworkScene({ state, onSelect, routePath = [], selected
   return (
     <div className="scene-wrap">
       <div style={{ position: 'absolute', inset: 0, visibility: planet ? 'hidden' : 'visible' }}>
-        <Canvas camera={{ position: VIEWS.iso.pos, fov: 45 }} onPointerMissed={() => onSelect(null)}>
-          <color attach="background" args={['#9fb3cf']} />
-          <fog attach="fog" args={['#9fb3cf', 180, 360]} />
+        <Canvas
+          camera={{ position: VIEWS.iso.pos, fov: 45 }}
+          /* Cap pixel ratio so retina laptops don't render at 4x cost (matters for bloom). */
+          dpr={[1, 1.5]}
+          gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.28 }}
+          onPointerMissed={() => onSelect(null)}
+        >
+          <color attach="background" args={['#c4d2e4']} />
+          <fog attach="fog" args={['#c4d2e4', 270, 640]} />
+          {/* Procedural gradient sky (cheap — no HDRI download), sun aligned to the key light. */}
+          <Sky sunPosition={[60, 95, 35]} turbidity={3} rayleigh={0.6} mieCoefficient={0.004} mieDirectionalG={0.85} />
           <CameraRig view={view} focus={focus} />
           <OrbitControls
             makeDefault
@@ -593,6 +815,13 @@ export default function NetworkScene({ state, onSelect, routePath = [], selected
             maxPolarAngle={Math.PI / 2 - 0.05}
           />
           <SceneContent state={cityState} onSelect={onSelect} routePath={routePath} selectedPacket={selectedPacket} layers={layers} />
+          {/* Soft ground shadow over the city LAND only (south of the water), baked once. */}
+          <ContactShadows position={[10, 0.04, -35]} scale={[470, 180]} resolution={512} blur={2.4} opacity={0.22} far={70} frames={1} color="#1a2433" />
+          {/* High threshold so ONLY emissive game elements (links, node rings, beacons,
+              packets) bloom — lit building surfaces stay their own colour, no white wash. */}
+          <EffectComposer disableNormalPass>
+            <Bloom mipmapBlur luminanceThreshold={0.95} luminanceSmoothing={0.1} intensity={0.7} radius={0.55} />
+          </EffectComposer>
         </Canvas>
       </div>
 

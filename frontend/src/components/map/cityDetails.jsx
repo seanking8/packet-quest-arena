@@ -246,6 +246,12 @@ function roadLines(min, max) {
 const ROAD_X = roadLines(CITY.x0, CITY.x1)
 const ROAD_Z = roadLines(CITY.z0, CITY.z1)
 const insideCityLand = (x, z) => x >= CITY.x0 && x <= CITY.x1 && z >= CITY.z0 && z <= CITY.z1
+
+// Exposed so the outskirt highways (drawn in NetworkScene) can extend the city's
+// real main avenues outward and stay aligned with them.
+export const CITY_BOUNDS = CITY
+export const MAIN_ROAD_X = ROAD_X.filter((L) => L.main).map((L) => ({ p: L.p, width: L.width }))
+export const MAIN_ROAD_Z = ROAD_Z.filter((L) => L.main).map((L) => ({ p: L.p, width: L.width }))
 const roadHit = (v, lines, half = 0, pad = 0.8) => lines.some((L) => Math.abs(v - L.p) < L.width / 2 + half + pad)
 const footprintOnRoad = (x, z, w = 2, d = 2, pad = 0.8) => (
   roadHit(x, ROAD_X, w / 2, pad) || roadHit(z, ROAD_Z, d / 2, pad)
@@ -662,10 +668,10 @@ export function TrafficLights() {
 // Bridges spanning the north river, aligned to a few main avenues.
 // ---------------------------------------------------------------------------
 function Bridge({ x }) {
-  // The river spans roughly z 44..120; the deck runs from the city edge all the
-  // way across to the far bank so it fully covers the water.
+  // The sea spans roughly z 43..155; the deck runs from the city edge all the
+  // way across the water to land on the green far bank (z ≈ 160).
   const z0 = 34
-  const z1 = 128
+  const z1 = 160
   const len = z1 - z0
   const cz = (z0 + z1) / 2
   const deckY = 2.4
