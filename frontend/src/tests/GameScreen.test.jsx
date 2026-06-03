@@ -61,10 +61,11 @@ afterEach(() => {
 const renderGame = (state = STATE) =>
   render(<GameProvider><GameScreen state={state} transport="websocket" /></GameProvider>)
 
-test('shows timer, counts and leaderboard from backend state', () => {
+test('shows timer, level and leaderboard from backend state', () => {
   renderGame()
   expect(screen.getByText('⏱ 2:05')).toBeInTheDocument()
-  expect(screen.getByText(/1 packets · 0 incidents/)).toBeInTheDocument()
+  expect(screen.getByText('Level')).toBeInTheDocument()
+  expect(screen.getByText('Medium')).toBeInTheDocument()
   expect(screen.getByText('Alice')).toBeInTheDocument()
   expect(screen.getByText('Bob')).toBeInTheDocument()
 })

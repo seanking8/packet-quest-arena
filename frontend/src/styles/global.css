@@ -88,6 +88,27 @@ code.pill, .pill {
   color: #ffe0ae;
   border-color: rgba(255, 180, 84, 0.4);
 }
+/* Stacked label-over-value stat blocks in the top bar (Round / Level). */
+.hud-stat {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+  padding: 1px 12px;
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+}
+.hud-stat-label {
+  font-size: 10px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.hud-stat-value {
+  font-size: 15px;
+  font-weight: 700;
+}
+.round-stat .hud-stat-value { color: #ffe0ae; }
+.level-stat .hud-stat-value { color: #c7f8ff; }
 .error-text { color: var(--bad); cursor: pointer; }
 .muted { color: var(--muted); }
 .tag { font-size: 11px; background: var(--accent); color: #fff; border-radius: 6px; padding: 1px 6px; margin-left: 6px; }

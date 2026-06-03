@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useGame } from '../../state/GameContext'
-import { formatTimer, timerUrgency, networkPressure } from '../../lib/format'
+import { formatTimer, timerUrgency } from '../../lib/format'
 
 const TOGGLES = [
   { key: 'jobs', label: 'Jobs' },
@@ -8,6 +8,12 @@ const TOGGLES = [
   { key: 'incidents', label: 'Incidents' },
   { key: 'route', label: 'Route' },
 ]
+
+/** "MEDIUM" -> "Medium" for a readable difficulty label. */
+function formatLevel(difficulty) {
+  const text = String(difficulty || 'MEDIUM').toLowerCase()
+  return text.charAt(0).toUpperCase() + text.slice(1)
+}
 
 // Tick the clock down locally between server updates so it never looks frozen
 // if a broadcast is briefly missed; re-sync whenever fresh state arrives.
@@ -28,9 +34,6 @@ function useLiveSeconds(serverSeconds, running) {
 
 export default function TopBar({ state, panels, onToggle }) {
   const { leave } = useGame()
-  const packets = state.packetFlows?.length ?? 0
-  const incidents = state.incidents?.length ?? 0
-  const pressure = networkPressure(state.links)
   const liveSeconds = useLiveSeconds(state.remainingSeconds, state.status === 'ACTIVE')
   const urgency = timerUrgency(liveSeconds)
 
@@ -39,23 +42,20 @@ export default function TopBar({ state, panels, onToggle }) {
       <div className="hud-top-left">
         <strong className="hud-game-title">Packet Quest Arena</strong>
         {state.currentRound > 0 && (
-          <span className="pill round-pill" title={state.roundTagline}>
-            Round {state.currentRound}/{state.totalRounds || 3} · {state.roundTitle}
+          <span className="hud-stat round-stat" title={state.roundTagline || state.roundTitle}>
+            <span className="hud-stat-label">Round</span>
+            <span className="hud-stat-value">{state.currentRound} / {state.totalRounds || 3}</span>
           </span>
         )}
-        <span className="pill difficulty-pill">{state.difficulty || 'MEDIUM'}</span>
+        <span className="hud-stat level-stat">
+          <span className="hud-stat-label">Level</span>
+          <span className="hud-stat-value">{formatLevel(state.difficulty)}</span>
+        </span>
       </div>
 
       <div className="hud-top-center">
         <span className={`timer ${urgency}`} aria-label="Time remaining">
           ⏱ {formatTimer(liveSeconds)}
-        </span>
-        <span
-          className={`pressure pressure-${pressure.band.toLowerCase()}`}
-          title="Network pressure: total link load vs capacity"
-        >
-          <span className="pressure-bar"><span style={{ width: `${Math.round(pressure.ratio * 100)}%` }} /></span>
-          {pressure.band} load · {packets} packets · {incidents} incidents
         </span>
       </div>
 
