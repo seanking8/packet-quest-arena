@@ -7,6 +7,8 @@ vi.mock('../services/api', () => ({
   createSession: vi.fn().mockResolvedValue({ sessionId: 's1', status: 'WAITING' }),
   joinSession: vi.fn().mockResolvedValue({ player: { id: 'p1' }, state: {} }),
   startMatch: vi.fn(),
+  getMatchHistory: vi.fn().mockResolvedValue([]),
+  getPersistentLeaderboard: vi.fn().mockResolvedValue([]),
 }))
 
 import { createSession } from '../services/api'

@@ -1,11 +1,11 @@
 # Test Evidence
 
-Last verified on 2026-06-02.
+Last verified on 2026-06-03.
 
 | Area | Command | Result |
 | --- | --- | --- |
-| Backend | `cd backend && mvn test` | 113 tests passed, 0 failures, 0 errors |
-| Frontend | `cd frontend && cmd.exe /c npm test` | 6 files passed, 26 tests passed |
+| Backend | `cd backend && mvn test` | 115 tests passed, 0 failures, 0 errors |
+| Frontend | `cd frontend && cmd.exe /c npx vitest run --cache=false` | 7 files passed, 29 tests passed |
 | Simulator | `python -m pytest simulator/tests -q` | 18 tests passed |
 | Frontend build | `cd frontend && cmd.exe /c npm run build` | Production build succeeded |
 
@@ -13,12 +13,14 @@ Last verified on 2026-06-02.
 
 - `FullMatchFlowTest`: create session, join two players, start match, generate traffic, submit route, verify packet status and score change.
 - `PersistenceIntegrationTest`: verify session snapshots plus route action/event audit rows are persisted through JPA/H2.
+- `MatchHistoryIntegrationTest`: verify persisted snapshots/actions/events drive match history, persistent leaderboard, post-game report, and replay timeline.
 - Service tests cover routing validation, scoring, congestion, packet expiry, incidents, topology generation, packet generation, and invalid actions.
 
 ## Frontend Coverage Highlights
 
 - Home screen session creation and difficulty selection.
 - API client behavior for create/join/preview/submit and safe client payloads.
+- Completed screen database report, replay timeline, and same-difficulty leaderboard.
 - Game screen HUD, leaderboard, map mount, job panel behavior, and deadline countdown.
 - Incident/weather presentation helpers.
 

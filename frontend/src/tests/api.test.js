@@ -1,5 +1,12 @@
 import { beforeEach, expect, test, vi } from 'vitest'
-import { createSession, joinSession, previewRoute, submitRoute, ApiError } from '../services/api'
+import {
+  createSession,
+  getPersistentLeaderboard,
+  joinSession,
+  previewRoute,
+  submitRoute,
+  ApiError,
+} from '../services/api'
 
 beforeEach(() => {
   global.fetch = vi.fn()
@@ -47,6 +54,12 @@ test('submitRoute sends only playerId, packetFlowId and path (no score/latency)'
   const [, options] = fetch.mock.calls[0]
   expect(fetch.mock.calls[0][0]).toBe('/api/sessions/s1/actions/route')
   expect(JSON.parse(options.body)).toEqual({ playerId: 'p1', packetFlowId: 'pkt1', path: ['A', 'B'] })
+})
+
+test('persistent leaderboard is requested for a specific difficulty', async () => {
+  fetch.mockResolvedValue({ ok: true, status: 200, json: async () => [] })
+  await getPersistentLeaderboard('HARD')
+  expect(fetch).toHaveBeenCalledWith('/api/history/leaderboard?difficulty=HARD', expect.any(Object))
 })
 
 test('network failure becomes a friendly ApiError', async () => {

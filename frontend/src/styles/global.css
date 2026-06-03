@@ -117,6 +117,11 @@ code.pill, .pill {
 .home-screen .home {
   width: min(900px, 92vw);
 }
+.home-screen.screen.center,
+.completed-screen.screen.center {
+  align-items: flex-start;
+  overflow: auto;
+}
 .home-screen > .home > .field {
   margin-bottom: 20px;
 }
@@ -358,6 +363,96 @@ code.pill, .pill {
   .map-chooser-grid { grid-template-columns: 1fr; }
 }
 .home-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+.database-insights {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 16px;
+}
+.compact-card {
+  min-height: 0;
+  padding: 16px;
+}
+.pregame-screen .compact-card,
+.pregame-screen .report-card {
+  min-height: 0;
+}
+.compact-card h2,
+.report-card h2 {
+  margin-top: 18px;
+  margin-bottom: 10px;
+}
+.insight-list,
+.timeline-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.insight-row,
+.match-history-row,
+.timeline-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(34, 217, 228, 0.14);
+}
+.insight-row:last-child,
+.match-history-row:last-child,
+.timeline-row:last-child {
+  border-bottom: 0;
+}
+.insight-row .rank {
+  width: 18px;
+  color: var(--muted);
+}
+.match-meta {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.25;
+}
+.report-card {
+  margin-top: 16px;
+}
+.report-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 14px 0 12px;
+}
+.report-metric {
+  display: grid;
+  gap: 4px;
+  padding: 9px 10px;
+  border: 1px solid rgba(34, 217, 228, 0.18);
+  border-radius: 8px;
+  background: rgba(2, 8, 18, 0.22);
+}
+.report-metric span {
+  color: var(--muted);
+  font-size: 11px;
+}
+.report-metric strong {
+  color: var(--text);
+  font-size: 16px;
+}
+.timeline-title {
+  margin: 12px 0 8px;
+  font-size: 15px;
+}
+.timeline-row {
+  align-items: flex-start;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.timeline-time {
+  flex: 0 0 76px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
 .tutorial-card {
   display: flex;
   justify-content: space-between;
@@ -1919,7 +2014,9 @@ code.pill, .pill {
     overflow: auto;
   }
 
-  .home-screen .home-cards {
+  .home-screen .home-cards,
+  .database-insights,
+  .report-grid {
     grid-template-columns: 1fr;
   }
 

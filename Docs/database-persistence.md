@@ -10,6 +10,15 @@ The project uses MySQL for persistence and auditability while keeping the live g
 | `player_action_audit` | Stores each submitted route action with player id, packet id, path JSON, result status, latency, and score delta. | Player actions, scoring audit |
 | `traffic_event_audit` | Stores packet delivery/drop events and incident events with JSON payloads. | Traffic events, incident history |
 
+## Player-Facing Database Features
+
+The database is now used by the game UI and not only by manual SQL inspection:
+
+- **Difficulty leaderboard**: `GET /api/history/leaderboard?difficulty=MEDIUM` aggregates completed-match scores, wins, best score, deliveries, and drops only within the selected difficulty.
+- **Match history**: `GET /api/history/matches` lists recently completed matches with winner, score, difficulty, delivery/drop counts, and saved time.
+- **Post-game report**: `GET /api/history/matches/{sessionId}/report` reconstructs the completed match from the saved snapshot plus action/event audit rows.
+- **Replay timeline**: the report includes a chronological route/action/incident timeline so teams can explain how routing choices and incidents affected the result.
+
 ## Why Snapshot JSON Is Used
 
 The game state is an aggregate made of players, nodes, links, packet flows, incidents, map objects, timers, and round state. Mapping every nested object as a large relational graph would add risk late in the project. Snapshot persistence gives the team a durable, inspectable database record without changing the authoritative game rules.
@@ -37,4 +46,12 @@ FROM player_action_audit;
 
 SELECT session_id, event_type, subject_id, created_at
 FROM traffic_event_audit;
+```
+
+5. Verify the read APIs:
+
+```bash
+curl "http://localhost:8080/api/history/leaderboard?difficulty=MEDIUM"
+curl http://localhost:8080/api/history/matches
+curl http://localhost:8080/api/history/matches/<sessionId>/report
 ```
