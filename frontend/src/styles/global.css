@@ -3065,6 +3065,8 @@ button:not(.link-btn):not(:disabled):hover,
 .hud .district-node-label.role-start span,
 .hud .district-node-label.role-dest button,
 .hud .district-node-label.role-dest span,
+.hud .district-node-label.role-current button,
+.hud .district-node-label.role-current span,
 .hud .district-node-label.role-next button,
 .hud .district-node-label.role-next span,
 .hud .district-node-label.role-suggested button,
@@ -3090,4 +3092,119 @@ button:not(.link-btn):not(:disabled):hover,
   font-weight: 800;
   padding: 0 !important;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.95), 0 0 10px rgba(34, 219, 210, 0.28);
+}
+
+.hud .district-node-label[class*="role-"],
+.hud .district-node-label[class*="role-"] button,
+.hud .district-node-label[class*="role-"] span {
+  background: transparent !important;
+  background-image: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  backdrop-filter: none !important;
+}
+
+/* In-map HTML labels sit inside .hud, but they are not HUD buttons. Keep the
+   actual marker as the only visible pill so START / END / NEXT / CLICK HERE
+   do not become a large button inside a second box. */
+.hud .route-beacon-label,
+.hud .next-hop-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 10px;
+  line-height: 1;
+  background:
+    linear-gradient(180deg, rgba(8, 20, 33, 0.90), rgba(3, 10, 22, 0.86)),
+    rgba(5, 12, 22, 0.82);
+  border: 1px solid rgba(170, 236, 255, 0.48);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    0 0 14px rgba(72, 218, 255, 0.24),
+    0 8px 16px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(8px);
+  text-transform: uppercase;
+}
+
+.hud .route-beacon-label button,
+.hud .next-hop-marker button,
+.hud .node-label-3d button,
+.hud .district-node-label button {
+  all: unset !important;
+  display: block !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  color: inherit !important;
+  font: inherit !important;
+  letter-spacing: inherit !important;
+  line-height: inherit !important;
+  text-align: inherit !important;
+  text-shadow: inherit !important;
+  text-transform: inherit !important;
+  cursor: pointer !important;
+}
+
+.hud .route-beacon-label.start {
+  color: #a9ffd8;
+  border-color: rgba(54, 201, 141, 0.88);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    0 0 18px rgba(54, 201, 141, 0.42),
+    0 8px 16px rgba(0, 0, 0, 0.28);
+}
+
+.hud .route-beacon-label.dest {
+  color: #ffc6df;
+  border-color: rgba(255, 79, 154, 0.88);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    0 0 18px rgba(255, 79, 154, 0.42),
+    0 8px 16px rgba(0, 0, 0, 0.28);
+}
+
+.hud .next-hop-marker {
+  color: #d7fbff;
+  border-color: rgba(102, 230, 255, 0.78);
+}
+
+.hud .next-hop-marker.suggested {
+  color: #06141d;
+  background:
+    linear-gradient(180deg, #d4fbff, #86efff),
+    #b8f7ff;
+  border-color: rgba(225, 254, 255, 0.95);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    0 0 20px rgba(118, 238, 255, 0.55),
+    0 10px 18px rgba(0, 0, 0, 0.32);
+}
+
+.hud .next-hop-marker.suggested::after {
+  border-top-color: #86efff;
+}
+
+.hud .node-label-3d,
+.hud .node-label-3d.active,
+.hud .node-label-3d.role-start,
+.hud .node-label-3d.role-dest,
+.hud .node-label-3d.role-current,
+.hud .node-label-3d.role-next,
+.hud .node-label-3d.role-suggested {
+  background: transparent !important;
+  background-image: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  backdrop-filter: none !important;
 }
