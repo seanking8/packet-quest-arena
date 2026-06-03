@@ -44,15 +44,15 @@ curl -X POST http://localhost:8080/api/sessions/<sessionId>/tick
 ## One-Host Multiplayer Demo
 
 For a one-time live demo with teammates on separate laptops, run Docker Compose
-on one host laptop and have everyone join through that laptop's Wi-Fi/LAN IP:
+on one host laptop and have everyone join through that laptop's demo URL:
 
 ```text
 http://<HOST_IPV4>:3000
 ```
 
 The frontend now proxies REST and WebSocket traffic, so players only need the
-frontend URL. The lobby provides an invite link that pre-fills the session id
-for joining players.
+frontend URL. The lobby provides a session code that joining players paste into
+the `Join a match` field.
 
 See [Docs/shared-multiplayer-demo.md](Docs/shared-multiplayer-demo.md) for the
 host checklist, player checklist, firewall notes, and demo talk track.

@@ -17,11 +17,11 @@ Only one laptop should host the stack.
 docker compose up --build
 ```
 
-Everyone else joins through the host laptop's Wi-Fi/LAN address. They do not need Docker running.
+Everyone else joins through the host laptop's demo URL. They do not need Docker running.
 
 ## Host Checklist
 
-1. Put all demo laptops on the same Wi-Fi network.
+1. Put all demo laptops on a network that can reach the host laptop.
 2. On the host laptop, run `docker compose up --build`.
 3. Find the host laptop's IPv4 address:
 
@@ -29,7 +29,7 @@ Everyone else joins through the host laptop's Wi-Fi/LAN address. They do not nee
    ipconfig
    ```
 
-   Use the IPv4 address under the active Wi-Fi adapter.
+   Use the IPv4 address under the active network adapter.
 
 4. On the host laptop, open:
 
@@ -44,32 +44,17 @@ Everyone else joins through the host laptop's Wi-Fi/LAN address. They do not nee
    ```
 
 5. Create the match, pick a difficulty, and wait in the lobby.
-6. Copy the lobby invite link and send it to the other players.
+6. Copy the lobby session code and send it to the other players.
 7. Start the match after at least two players have joined.
 
 ## Player Checklist
 
-1. Open the host's invite link.
+1. Open the host's game URL.
 2. Enter a display name.
-3. Click `Join session`.
-4. Wait for the host to start the match.
-5. Route packet jobs during the match.
-
-## If The Link Says Localhost
-
-`localhost` only points to the current laptop. If the copied link starts with:
-
-```text
-http://localhost:3000
-```
-
-or
-
-```text
-http://127.0.0.1:3000
-```
-
-the host opened the app locally. Reopen it using the host laptop's IPv4 address first, then copy the link again.
+3. Paste the session code into `Join a match`.
+4. Click `Join session`.
+5. Wait for the host to start the match.
+6. Route packet jobs during the match.
 
 ## Firewall Notes
 
@@ -83,16 +68,15 @@ The frontend proxies REST calls and WebSocket traffic to the backend inside Dock
 
 If teammates cannot load the page:
 
-- Check that all laptops are on the same Wi-Fi.
 - Check that the host can open `http://<HOST_IPV4>:3000`.
 - Allow Docker Desktop or port `3000` through Windows Firewall if Windows prompts.
-- Avoid guest Wi-Fi networks that block device-to-device traffic.
+- Avoid networks that block device-to-device traffic.
 
 ## Demo Talk Track
 
 Use this short explanation:
 
-> For the live demo, we run one shared game server and one shared MySQL database on the host laptop. Each player joins from their own laptop using the same invite link. The backend owns the match state, validates routes, applies congestion and incidents, calculates scores, and broadcasts updates over WebSocket. MySQL stores completed-match evidence such as leaderboards, match reports, and replay history.
+> For the live demo, we run one shared game server and one shared MySQL database on the host laptop. Each player joins from their own laptop using the same session code. The backend owns the match state, validates routes, applies congestion and incidents, calculates scores, and broadcasts updates over WebSocket. MySQL stores completed-match evidence such as leaderboards, match reports, and replay history.
 
 Then show:
 

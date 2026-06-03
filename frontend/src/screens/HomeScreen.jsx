@@ -11,15 +11,11 @@ const DIFFICULTIES = [
 ]
 
 export default function HomeScreen() {
-  const { host, join, startTutorial, inviteSessionId, error, setError, busy } = useGame()
+  const { host, join, startTutorial, error, setError, busy } = useGame()
   const [name, setName] = useState('')
-  const [joinId, setJoinId] = useState(inviteSessionId || '')
+  const [joinId, setJoinId] = useState('')
   const [difficulty, setDifficulty] = useState('MEDIUM')
   const [history, setHistory] = useState({ matches: [], leaderboard: [], loading: true, error: null })
-
-  useEffect(() => {
-    if (inviteSessionId) setJoinId(inviteSessionId)
-  }, [inviteSessionId])
 
   useEffect(() => {
     let cancelled = false
@@ -52,13 +48,6 @@ export default function HomeScreen() {
       <div className="home">
         <ErrorBanner message={error} onDismiss={() => setError(null)} />
 
-        {inviteSessionId && (
-          <div className="invite-banner">
-            <strong>Shared match invite loaded.</strong>
-            <span>Enter your display name, then join the session.</span>
-          </div>
-        )}
-
         <label className="field">
           <span>Display name</span>
           <input
@@ -80,7 +69,7 @@ export default function HomeScreen() {
         <div className="home-cards">
           <section className="card">
             <h2>Create a match</h2>
-            <p className="muted">Start a new session and invite others with the session id.</p>
+            <p className="muted">Start a new session and share the session code with other players.</p>
             <div className="difficulty-picker" role="group" aria-label="Match difficulty">
               {DIFFICULTIES.map((option) => (
                 <button

@@ -8,21 +8,6 @@ import { createSession, joinSession, startMatch, nextRound as nextRoundApi } fro
 const GameContext = createContext(null)
 
 const SESSION_STORAGE_KEY = 'packetQuest.liveSession.v1'
-const INVITE_QUERY_KEYS = ['join', 'session', 'sessionId']
-
-function readInviteSessionId() {
-  if (typeof window === 'undefined') return ''
-  try {
-    const params = new URLSearchParams(window.location.search)
-    for (const key of INVITE_QUERY_KEYS) {
-      const value = params.get(key)
-      if (value && value.trim()) return value.trim()
-    }
-  } catch {
-    /* invalid URL/search state - ignore */
-  }
-  return ''
-}
 
 function readStoredSession() {
   if (typeof window === 'undefined') return {}
@@ -50,11 +35,7 @@ function clearStoredSession() {
 }
 
 export function GameProvider({ children }) {
-  const inviteSessionId = readInviteSessionId()
-  const storedCandidate = readStoredSession()
-  const storedSession = storedCandidate.sessionId && (!inviteSessionId || inviteSessionId === storedCandidate.sessionId)
-    ? storedCandidate
-    : {}
+  const storedSession = readStoredSession()
   const [sessionId, setSessionId] = useState(storedSession.sessionId || null)
   const [playerId, setPlayerId] = useState(storedSession.playerId || null)
   const [playerName, setPlayerName] = useState(storedSession.playerName || '')
@@ -144,7 +125,6 @@ export function GameProvider({ children }) {
     playerName,
     mode,
     selectedMapFamily,
-    inviteSessionId,
     error,
     busy,
     setError,

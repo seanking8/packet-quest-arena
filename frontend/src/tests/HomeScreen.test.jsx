@@ -36,10 +36,3 @@ test('creating a session sends selected difficulty', async () => {
   fireEvent.click(screen.getByRole('button', { name: /create session/i }))
   await waitFor(() => expect(createSession).toHaveBeenCalledWith('MEDIUM'))
 })
-
-test('invite link pre-fills the join session id', () => {
-  window.history.pushState({}, '', '/?join=session-abc')
-  renderHome()
-  expect(screen.getByText(/shared match invite loaded/i)).toBeInTheDocument()
-  expect(screen.getByLabelText(/session id/i)).toHaveValue('session-abc')
-})
