@@ -172,7 +172,6 @@ function SceneContent({ state, onSelect, routePath, selectedPacket, layers }) {
         const key = edgeKey(link.sourceNodeId, link.targetNodeId)
         const inRoute = routeEdges.has(key)
         const isValidNext = routeAssist.validNextEdges.has(key)
-        const isSuggested = routeAssist.suggestedEdges.has(key)
         return (
           <LinkLine
             key={link.id}
@@ -182,8 +181,7 @@ function SceneContent({ state, onSelect, routePath, selectedPacket, layers }) {
             onSelect={onSelect}
             inRoute={inRoute}
             isValidNext={isValidNext}
-            isSuggested={isSuggested}
-            dimmed={routeMode && !inRoute && !isValidNext && !isSuggested}
+            dimmed={routeMode && !inRoute && !isValidNext}
             affectedColor={affectedLinkColor.get(link.id)}
           />
         )
@@ -199,8 +197,15 @@ function SceneContent({ state, onSelect, routePath, selectedPacket, layers }) {
           isDest={n.id === destId}
           isCurrent={n.id === routeAssist.currentId}
           isValidNext={routeAssist.validNextIds.has(n.id)}
-          isSuggestedNext={n.id === routeAssist.suggestedNextId}
-          dimmed={routeMode && !routeAssist.relevantIds.has(n.id)}
+          isSuggestedNext={false}
+          dimmed={
+            routeMode
+            && !pathSet.has(n.id)
+            && n.id !== sourceId
+            && n.id !== destId
+            && n.id !== routeAssist.currentId
+            && !routeAssist.validNextIds.has(n.id)
+          }
           showLabel={showLabels}
         />
       ))}
@@ -209,7 +214,6 @@ function SceneContent({ state, onSelect, routePath, selectedPacket, layers }) {
         <RouteCorridor
           source={nodeIndex[sourceId]}
           dest={nodeIndex[destId]}
-          suggestedPath={routeAssist.suggestedPath.map((id) => nodeIndex[id]).filter(Boolean)}
         />
       )}
 
@@ -329,7 +333,7 @@ function NodeMesh({
       {/* Show the "click to add" cue on any valid next hop — including the
           destination, so it's obvious you can click it to finish the route. */}
       {isValidNext && !isSource && (
-        <NextHopMarker node={node} suggested={isSuggestedNext || isDest} onSelect={handleSelect} />
+        <NextHopMarker node={node} onSelect={handleSelect} />
       )}
       {showLabel && (
         <NodeLabel
@@ -608,12 +612,12 @@ function RouteBeacon({ node, color, label, onSelect }) {
   )
 }
 
-function NextHopMarker({ node, suggested, onSelect }) {
+function NextHopMarker({ node, onSelect }) {
   const anchor = nodeAnchor(node)
   return (
-    <Html center position={[0, anchor.y + 18, 0]} className={`next-hop-marker ${suggested ? 'suggested' : ''}`}>
+    <Html center position={[0, anchor.y + 18, 0]} className="next-hop-marker">
       <button type="button" onClick={onSelect}>
-        {suggested ? 'BEST NEXT' : 'NEXT'}
+        NEXT
       </button>
     </Html>
   )
@@ -635,9 +639,9 @@ function NodeLabel({ node, color, active, dimmed, role, onSelect }) {
   )
 }
 
-function LinkLine({ link, a, b, onSelect, inRoute, isValidNext, isSuggested, dimmed, affectedColor }) {
+function LinkLine({ link, a, b, onSelect, inRoute, isValidNext, dimmed, affectedColor }) {
   const points = useMemo(() => linkPoints(a, b, link), [a, b, link])
-  const color = inRoute ? '#ffd479' : isValidNext ? '#66e6ff' : isSuggested ? '#b8f7ff' : linkColor(link)
+  const color = inRoute ? '#ffd479' : isValidNext ? '#66e6ff' : linkColor(link)
   const broken = isBrokenLink(link.status)
   const isGround = link.linkType === 'FIBRE' || link.linkType === 'LEGACY'
   const mid = points[Math.floor(points.length / 2)]
@@ -645,14 +649,12 @@ function LinkLine({ link, a, b, onSelect, inRoute, isValidNext, isSuggested, dim
     ? 5.2
     : isValidNext
       ? 4.5
-      : isSuggested
-        ? 3.4
-        : link.status === 'OVERLOADED' || link.status === 'CONGESTED'
-          ? 3.8
-          : isGround
-            ? 2.4
-            : 1.8
-  const opacity = dimmed ? 0.2 : inRoute ? 1 : isValidNext ? 0.96 : isSuggested ? 0.62 : broken ? 0.48 : isGround ? 0.92 : 0.78
+      : link.status === 'OVERLOADED' || link.status === 'CONGESTED'
+        ? 3.8
+        : isGround
+          ? 2.4
+          : 1.8
+  const opacity = dimmed ? 0.2 : inRoute ? 1 : isValidNext ? 0.96 : broken ? 0.48 : isGround ? 0.92 : 0.78
   const selectLink = (e) => {
     e.stopPropagation()
     onSelect({ kind: 'link', data: link })
@@ -664,7 +666,7 @@ function LinkLine({ link, a, b, onSelect, inRoute, isValidNext, isSuggested, dim
         points={points}
         color={color}
         lineWidth={lineWidth}
-        dashed={broken || link.linkType === 'LEGACY' || isSuggested}
+        dashed={broken || link.linkType === 'LEGACY'}
         dashSize={1.4}
         gapSize={0.7}
         transparent
@@ -691,7 +693,7 @@ function LinkLine({ link, a, b, onSelect, inRoute, isValidNext, isSuggested, dim
   )
 }
 
-function RouteCorridor({ source, dest, suggestedPath }) {
+function RouteCorridor({ source, dest }) {
   const directPoints = useMemo(() => {
     const a = nodeAnchor(source)
     const b = nodeAnchor(dest)
@@ -700,17 +702,9 @@ function RouteCorridor({ source, dest, suggestedPath }) {
     return [a, mid, b]
   }, [source, dest])
 
-  const suggestedPoints = useMemo(() => {
-    if (!suggestedPath?.length) return []
-    return suggestedPath.map(nodeAnchor)
-  }, [suggestedPath])
-
   return (
     <group>
       <Line points={directPoints} color="#ffffff" lineWidth={1.2} dashed dashSize={2.2} gapSize={1.4} transparent opacity={0.22} />
-      {suggestedPoints.length >= 2 && (
-        <Line points={suggestedPoints} color="#b8f7ff" lineWidth={2.2} dashed dashSize={1.8} gapSize={0.9} transparent opacity={0.52} />
-      )}
     </group>
   )
 }
@@ -888,7 +882,6 @@ function MapRouteAssist({ state, selectedPacket, routeAssist }) {
   const nodes = state.nodes || []
   const source = nodes.find((n) => n.id === selectedPacket.sourceNodeId)
   const dest = nodes.find((n) => n.id === selectedPacket.destinationNodeId)
-  const next = nodes.find((n) => n.id === routeAssist.suggestedNextId)
   return (
     <div className="map-route-assist" aria-live="polite">
       <div>
@@ -901,13 +894,6 @@ function MapRouteAssist({ state, selectedPacket, routeAssist }) {
         <strong>{friendlyNodeName(dest || selectedPacket.destinationNodeId)}</strong>
         <small>{districtForNode(dest || selectedPacket.destinationNodeId)}</small>
       </div>
-      {next && (
-        <div>
-          <span className="assist-chip next">Best next</span>
-          <strong>{friendlyNodeName(next)}</strong>
-          <small>{districtForNode(next)}</small>
-        </div>
-      )}
     </div>
   )
 }

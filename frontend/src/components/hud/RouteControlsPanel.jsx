@@ -15,6 +15,7 @@ export default function RouteControlsPanel({
   onClearPacket,
   onSubmitRoute,
   cueSubmit = false,
+  showBestNextHint = false,
 }) {
   const { sessionId } = useGame()
   const { play } = useAudio()
@@ -75,11 +76,13 @@ export default function RouteControlsPanel({
     if (!selectedPacket) return null
     const last = routePath[routePath.length - 1]
     if (last === selectedPacket.destinationNodeId) return 'Route reaches the destination. Ready to submit.'
-    const suggested = routeAssist.suggestedNextId ? friendlyNodeName(nodeIndex[routeAssist.suggestedNextId] || routeAssist.suggestedNextId) : null
+    const suggested = showBestNextHint && routeAssist.suggestedNextId
+      ? friendlyNodeName(nodeIndex[routeAssist.suggestedNextId] || routeAssist.suggestedNextId)
+      : null
     return suggested
       ? `Valid next hops are highlighted cyan. Best next: ${suggested}.`
       : `Click a highlighted node connected to ${friendlyNodeName(nodeIndex[last] || last)}.`
-  }, [routePath, selectedPacket, routeAssist.suggestedNextId, nodeIndex])
+  }, [routePath, selectedPacket, routeAssist.suggestedNextId, nodeIndex, showBestNextHint])
 
   const onSubmit = async () => {
     if (!routeComplete) return

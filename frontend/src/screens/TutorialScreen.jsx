@@ -321,6 +321,7 @@ export default function TutorialScreen() {
             onClearPacket={() => handleSelectPacket(null)}
             onSubmitRoute={handleTutorialSubmit}
             cueSubmit={cueTarget === 'submit-button'}
+            showBestNextHint
           />
         </div>
       )}
