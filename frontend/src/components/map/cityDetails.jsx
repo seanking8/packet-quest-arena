@@ -320,10 +320,6 @@ function distToSeg(px, pz, ax, az, bx, bz) {
 }
 
 // Curved avenues removed at the user's request.
-const CURVES = []
-function nearCurve() {
-  return false
-}
 
 export function DecorBuildings({ nodes, links, nodeIndex }) {
   const items = useMemo(() => {
@@ -353,7 +349,6 @@ export function DecorBuildings({ nodes, links, nodeIndex }) {
         const approxD = approxW * aspect
         const safe = roadSafePosition(rawX, rawZ, approxW, approxD, Math.floor(r1 * 10))
         if (!roadSafeFootprint(safe.x, safe.z, approxW, approxD, 1.2)) continue
-        if (nearCurve(safe.x, safe.z)) continue // ...and off the curved avenues
         if (nearNode(safe.x, safe.z, 14)) continue
         if (nearLink(safe.x, safe.z, 7)) continue
         out.push({ x: safe.x, z: safe.z, r1, r2, r3, downtown })
@@ -529,26 +524,6 @@ export function Roads() {
         </group>
       ))}
 
-      {/* Curved avenues, drawn as short rotated road segments along each curve. */}
-      {CURVES.map((c, ci) =>
-        c.poly.slice(0, -1).map((p, i) => {
-          const q = c.poly[i + 1]
-          const dx = q[0] - p[0]
-          const dz = q[1] - p[1]
-          const len = Math.hypot(dx, dz)
-          return (
-            <mesh
-              key={`c${ci}_${i}`}
-              position={[(p[0] + q[0]) / 2, 0.06, (p[1] + q[1]) / 2]}
-              rotation={[0, Math.atan2(dx, dz), 0]}
-              raycast={() => null}
-            >
-              <boxGeometry args={[c.width, 0.12, len + 0.8]} />
-              <meshStandardMaterial color="#3a3f47" roughness={1} />
-            </mesh>
-          )
-        })
-      )}
     </group>
   )
 }

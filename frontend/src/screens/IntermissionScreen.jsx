@@ -53,7 +53,7 @@ export default function IntermissionScreen({ state }) {
           </section>
         )}
 
-        {error && <p className="error-text" onClick={() => setError(null)}>{error}</p>}
+        {error && <button type="button" className="error-text" onClick={() => setError(null)}>{error}</button>}
 
         <div className="row">
           {isHost ? (

@@ -177,7 +177,7 @@ function routeEdgeSet(routePath) {
 }
 
 function edgeKey(a, b) {
-  return [a, b].sort().join('::')
+  return [a, b].sort((x, y) => x.localeCompare(y)).join('::')
 }
 
 function nextHopSet(links, routePath, selectedPacket) {

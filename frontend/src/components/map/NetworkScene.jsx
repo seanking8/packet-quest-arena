@@ -841,5 +841,5 @@ export default function NetworkScene({ state, onSelect, routePath = [], selected
 }
 
 function edgeKey(a, b) {
-  return [a, b].sort().join('--')
+  return [a, b].sort((x, y) => x.localeCompare(y)).join('--')
 }

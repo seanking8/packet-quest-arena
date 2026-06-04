@@ -48,6 +48,9 @@ function IncidentRow({ incident, serverTime, onFocus }) {
     <li
       className={`incident-row${onFocus ? ' clickable' : ''}`}
       onClick={onFocus ? () => onFocus(incident) : undefined}
+      onKeyDown={onFocus ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onFocus(incident) } } : undefined}
+      role={onFocus ? 'button' : undefined}
+      tabIndex={onFocus ? 0 : undefined}
       title={onFocus ? 'Focus map on this incident' : undefined}
     >
       <span className="incident-type" style={{ color: meta.color }}>

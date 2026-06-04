@@ -1,7 +1,7 @@
 const BROKEN_STATUS = new Set(['FAILED', 'EXPIRED'])
 
 export function edgeKey(a, b) {
-  return [a, b].sort().join('--')
+  return [a, b].sort((x, y) => x.localeCompare(y)).join('--')
 }
 
 export function linkBetween(links, a, b) {
