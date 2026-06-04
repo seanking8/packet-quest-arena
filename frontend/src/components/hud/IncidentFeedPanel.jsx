@@ -44,15 +44,8 @@ export default function IncidentFeedPanel({ state, onFocus }) {
 function IncidentRow({ incident, serverTime, onFocus }) {
   const meta = incidentMeta(incident.eventType)
   const remaining = remainingSeconds(incident, serverTime)
-  return (
-    <li
-      className={`incident-row${onFocus ? ' clickable' : ''}`}
-      onClick={onFocus ? () => onFocus(incident) : undefined}
-      onKeyDown={onFocus ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onFocus(incident) } } : undefined}
-      role={onFocus ? 'button' : undefined}
-      tabIndex={onFocus ? 0 : undefined}
-      title={onFocus ? 'Focus map on this incident' : undefined}
-    >
+  const content = (
+    <>
       <span className="incident-type" style={{ color: meta.color }}>
         {meta.icon} {meta.label}
       </span>
@@ -62,6 +55,23 @@ function IncidentRow({ incident, serverTime, onFocus }) {
         <span className="sev">sev {Math.round((incident.severity || 0) * 100)}%</span>
         {remaining != null && <span className="sev">{remaining}s left</span>}
       </span>
+    </>
+  )
+  return (
+    <li className={`incident-row${onFocus ? ' clickable' : ''}`}>
+      {onFocus ? (
+        // A real button is keyboard-accessible by default; display:contents keeps
+        // the row's existing layout (no extra box) — avoids handlers on the <li>.
+        <button
+          type="button"
+          className="incident-row-btn"
+          style={{ display: 'contents' }}
+          onClick={() => onFocus(incident)}
+          title="Focus map on this incident"
+        >
+          {content}
+        </button>
+      ) : content}
     </li>
   )
 }
