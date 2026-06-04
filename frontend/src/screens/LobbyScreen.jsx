@@ -16,7 +16,7 @@ const MAP_CHOICES = [
     name: 'District map',
     shortBlurb: 'Clear districts and labels.',
     blurb: 'A clean strategic view with named districts and clear node labels. Easier to read at a glance.',
-    art: 'MAP',
+    art: 'DISTRICT',
   },
 ]
 
